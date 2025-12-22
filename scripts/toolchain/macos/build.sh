@@ -63,7 +63,7 @@ build_llvm() {
   echo "Building MLIR $llvm_project_ref into $install_prefix..."
 
   # Fetch LLVM project source archive
-  repo_dir="$PWD/llvm-project"
+  local repo_dir="$PWD/llvm-project"
   rm -rf "$repo_dir"
   mkdir -p "$repo_dir"
   curl -fL --retry 5 --retry-delay 5 \
@@ -74,7 +74,7 @@ build_llvm() {
   pushd "$repo_dir" > /dev/null
 
   # Build LLVM
-  build_dir="build_llvm"
+  local build_dir="build_llvm"
   cmake -S llvm -B "$build_dir" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=clang \
