@@ -92,7 +92,7 @@ jobs:
 
   release:
     needs: [linux, macos, windows]
-    if: ${{ inputs.release == true || false }}
+    if: ${{ inputs.release == true }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
