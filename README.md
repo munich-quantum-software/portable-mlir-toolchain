@@ -1,6 +1,14 @@
 # Portable MLIR Toolchain
 
-This repository provides pre-built MLIR binaries, which can be installed using [`setup-mlir`](https://github.com/munich-quantum-software/setup-mlir/).
+This repository provides pre-built MLIR binaries.
+
+## Installation
+
+For installation instructions, please refer to the [`setup-mlir`](https://github.com/munich-quantum-software/setup-mlir/) repository.
+The repository provides
+
+- an action for setting up MLIR in GitHub Actions and
+- installation scripts for setting up MLIR locally.
 
 ## Build Scripts
 
