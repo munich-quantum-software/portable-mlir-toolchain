@@ -49,7 +49,7 @@ if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 New-Item -ItemType Directory -Path $repo_dir -Force | Out-Null
 $archive_url = "https://github.com/llvm/llvm-project/archive/$llvm_project_ref.tar.gz"
 
-# Download archive to a temporary file
+# Download archive to temporary file
 $temp_archive = Join-Path ([IO.Path]::GetTempPath()) ("llvm-project-$($llvm_project_ref).tar.gz")
 Write-Host "Downloading $archive_url to $temp_archive..."
 Invoke-WebRequest -Uri $archive_url -OutFile $temp_archive
@@ -57,6 +57,9 @@ Invoke-WebRequest -Uri $archive_url -OutFile $temp_archive
 # Extract archive
 Write-Host "Extracting archive into $repo_dir..."
 tar -xzf $temp_archive --strip-components=1 -C $repo_dir
+
+# Clean up temporary file
+Remove-Item -Path $temp_archive -Force -ErrorAction SilentlyContinue
 
 # Change to repo directory
 pushd $repo_dir > $null
@@ -100,7 +103,7 @@ if (Test-Path $install_bin) {
         'llvm-bolt.exe',
         'perf2bolt.exe'
     )
-    Get-ChildItem -Path $install_bin -Include $patterns -File | Remove-Item -ErrorAction SilentlyContinue
+    Get-ChildItem -Path $install_bin -Include $patterns -Recurse -File | Remove-Item -ErrorAction SilentlyContinue
 }
 
 # Remove lib/clang directory
