@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: ./scripts/toolchain/linux/build.sh -r llvmorg-21.1.0 [-p /path/to/llvm-install]
+# Usage: ./scripts/toolchain/linux/build.sh -r llvmorg-21.1.8 [-p /path/to/llvm-install]
 
 set -euo pipefail
 

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-21.1.6)"
+        description: "llvm-project ref or tag (e.g., llvmorg-21.1.8)"
         required: true
         type: string
       release:
@@ -74,21 +74,21 @@ jobs:
     if: fromJson(needs.change-detection.outputs.run-linux)
     uses: ./.github/workflows/build-mlir-linux.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.6' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
 
   macos:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-macos)
     uses: ./.github/workflows/build-mlir-macos.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.6' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
 
   windows:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
     uses: ./.github/workflows/build-mlir-windows.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.6' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
 
   release:
     needs: [linux, macos, windows]

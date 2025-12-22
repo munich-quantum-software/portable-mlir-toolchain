@@ -22,7 +22,7 @@
 #
 # Usage:
 #   scripts/toolchain/linux/build.sh -r <llvm_project_ref> -p <install_prefix>
-#     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-20.1.8 or 179d30f...)
+#     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
 #     install_prefix   Absolute path on the host for the final install (also where archive is written)
 #
 # Outputs:
