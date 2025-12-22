@@ -22,8 +22,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/setup-mlir/compare/2025.12.22...HEAD
-[2025.12.22]: https://github.com/munich-quantum-software/setup-mlir/releases/tag/2025.12.22
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2025.12.22...HEAD
+[2025.12.22]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2025.12.22
 
 <!-- PR links -->
 
