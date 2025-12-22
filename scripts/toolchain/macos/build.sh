@@ -118,7 +118,7 @@ fi
 
 # Define archive variables
 ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_macos_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
-ARCHIVE_PATH="$(pwd)/${ARCHIVE_NAME}"
+ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
 
 # Change to installation directory
 pushd "$INSTALL_PREFIX" > /dev/null
