@@ -18,7 +18,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 ### Added
 
-- ✨ Add build scripts ([#1]) ([**@denialhaag**], [**@burgholzer**])
+- 🚚 Move build setup from [munich-quantum-software/setup-mlir] ([#1]) ([**@denialhaag**], [**@burgholzer**])
 
 <!-- Version links -->
 
@@ -36,5 +36,6 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- General links -->
 
+[munich-quantum-software/setup-mlir]: https://github.com/munich-quantum-software/setup-mlir
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Common Changelog]: https://common-changelog.org
