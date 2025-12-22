@@ -61,37 +61,6 @@ tar -xzf $temp_archive --strip-components=1 -C $repo_dir
 # Change to repo directory
 pushd $repo_dir > $null
 
-# Build LLD
-$install_prefix_lld = Join-Path $PWD "lld"
-try {
-    $build_dir_lld = 'build_lld'
-    $cmake_args_lld = @(
-        '-S', 'llvm',
-        '-B', $build_dir_lld,
-        '-G', 'Visual Studio 17 2022',
-        '-DCMAKE_BUILD_TYPE=Release',
-        "-DCMAKE_INSTALL_PREFIX=$install_prefix_lld",
-        '-DLLVM_BUILD_EXAMPLES=OFF',
-        '-DLLVM_BUILD_TESTS=OFF',
-        '-DLLVM_ENABLE_PROJECTS=lld',
-        '-DLLVM_INCLUDE_EXAMPLES=OFF',
-        '-DLLVM_INCLUDE_TESTS=OFF',
-        "-DLLVM_TARGETS_TO_BUILD=$host_target"
-    )
-    cmake @cmake_args_lld
-    if ($LASTEXITCODE -ne 0) { throw "LLD configuration failed" }
-    cmake --build $build_dir_lld --target install --config Release
-    if ($LASTEXITCODE -ne 0) { throw "LLD build failed" }
-} catch {
-    # Return to original directory
-    popd > $null
-
-    Write-Error "Failed to build LLD: $($_.Exception.Message)"
-    exit 1
-}
-
-$lld_path = Join-Path $install_prefix_lld "bin\lld-link.exe"
-
 # Build LLVM
 try {
     $build_dir = 'build_llvm'
@@ -101,11 +70,10 @@ try {
         '-G', 'Visual Studio 17 2022',
         '-DCMAKE_BUILD_TYPE=Release',
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
-        "-DCMAKE_LINKER=$lld_path",
         '-DLLVM_BUILD_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
-        '-DLLVM_ENABLE_LTO=THIN',
+        '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_PROJECTS=mlir',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',

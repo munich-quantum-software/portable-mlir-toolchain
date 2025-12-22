@@ -48,10 +48,8 @@ UNAME_ARCH=$(uname -m)
 # Determine target
 if [[ "$UNAME_ARCH" == "arm64" || "$UNAME_ARCH" == "aarch64" ]]; then
   HOST_TARGET="AArch64"
-  ENABLE_LTO=OFF
 elif [[ "$UNAME_ARCH" == "x86_64" ]]; then
   HOST_TARGET="X86"
-  ENABLE_LTO=OFF
 else
   echo "Error: Unsupported architecture: ${UNAME_ARCH}. Only x86_64 and arm64 are supported." >&2
   exit 1
@@ -86,7 +84,7 @@ build_llvm() {
     -DLLVM_BUILD_EXAMPLES=OFF \
     -DLLVM_BUILD_TESTS=OFF \
     -DLLVM_ENABLE_ASSERTIONS=ON \
-    -DLLVM_ENABLE_LTO="$ENABLE_LTO" \
+    -DLLVM_ENABLE_LTO=OFF \
     -DLLVM_ENABLE_PROJECTS=mlir \
     -DLLVM_ENABLE_RTTI=ON \
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
