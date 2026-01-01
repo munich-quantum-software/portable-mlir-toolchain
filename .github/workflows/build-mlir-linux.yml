@@ -41,6 +41,11 @@ jobs:
           sudo rm -rf /opt/microsoft /opt/google /usr/lib/firefox /usr/local/share/chromium
           sudo rm -rf /opt/az
           sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/apache-ant
+          sudo rm -rf /usr/share/gradle
+          sudo rm -rf /usr/local/share/phantomjs*
+          sudo rm -rf /usr/local/share/vcpkg
           docker system prune -af || true
           docker builder prune -af || true
           ls -lA $AGENT_TOOLSDIRECTORY

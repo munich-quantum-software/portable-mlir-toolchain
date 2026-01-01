@@ -130,6 +130,7 @@ build_llvm() {
 
   # Return to original directory
   popd > /dev/null
+  rm -rf "$repo_dir"
 }
 
 ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
@@ -172,3 +173,6 @@ tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --thread
 
 # Return to original directory
 popd > /dev/null
+
+# Clean up zstd installation
+rm -rf "$ZSTD_INSTALL_PREFIX"

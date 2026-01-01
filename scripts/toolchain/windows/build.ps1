@@ -132,6 +132,7 @@ try {
 } finally {
     # Return to original directory
     popd > $null
+    if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 }
 
 # Remove non-essential binaries from bin directory
@@ -171,4 +172,5 @@ try {
 } finally {
     # Return to original directory
     popd > $null
+    if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
 }
