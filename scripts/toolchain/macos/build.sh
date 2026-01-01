@@ -115,6 +115,10 @@ build_llvm() {
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
   )
 
+  if [[ "$build_type" == "Debug" ]]; then
+    cmake_args+=(-DLLVM_USE_SPLIT_DWARF=ON)
+  fi
+
   # Build lld first to use it as linker
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
   cmake --build "$build_dir" --target lld
