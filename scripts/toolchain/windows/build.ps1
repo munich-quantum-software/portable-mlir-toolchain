@@ -13,16 +13,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: pwsh scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm-project ref> -install_prefix <installation directory>
+# Usage: pwsh scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm-project ref> -install_prefix <installation directory> [-debug]
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$llvm_project_ref,
     [Parameter(Mandatory=$true)]
-    [string]$install_prefix
+    [string]$install_prefix,
+    [switch]$debug
 )
 
 $ErrorActionPreference = "Stop"
+
+$build_type = if ($debug) { "Debug" } else { "Release" }
 
 # Detect architecture
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
@@ -71,23 +74,33 @@ try {
         '-S', 'llvm',
         '-B', $build_dir,
         '-G', 'Visual Studio 17 2022',
-        '-DCMAKE_BUILD_TYPE=Release',
+        "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
         '-DLLVM_BUILD_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
         '-DLLVM_ENABLE_LTO=OFF',
-        '-DLLVM_ENABLE_PROJECTS=mlir',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
         '-DLLVM_INCLUDE_EXAMPLES=OFF',
         '-DLLVM_INCLUDE_TESTS=OFF',
         '-DLLVM_INSTALL_UTILS=ON',
+        '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         "-DLLVM_TARGETS_TO_BUILD=$host_target"
     )
-    cmake @cmake_args
+    if ($debug) {
+        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
+        if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
+        cmake --build $build_dir --target lld --config Debug
+        if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
+        # Add build_dir/bin to path so lld-link can be found
+        $env:PATH = "$(Join-Path $PWD $build_dir)\bin;$env:PATH"
+        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
+    } else {
+        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir'
+    }
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
-    cmake --build $build_dir --target install --config Release
+    cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM build failed" }
 } finally {
     # Return to original directory
@@ -113,7 +126,8 @@ if (Test-Path $install_lib_clang) {
 }
 
 # Define archive variables
-$archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target).tar.zst"
+$build_type_suffix = if ($debug) { "_debug" } else { "" }
+$archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target)$($build_type_suffix).tar.zst"
 $archive_path = Join-Path $PWD $archive_name
 
 # Change to installation directory

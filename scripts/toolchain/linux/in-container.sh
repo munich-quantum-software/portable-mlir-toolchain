@@ -20,6 +20,7 @@ set -euo pipefail
 
 : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
+: "${BUILD_TYPE:=Release}"
 
 cd /work
 
@@ -40,8 +41,9 @@ fi
 build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
+  local build_type=$3
 
-  echo "Building MLIR $llvm_project_ref into $install_prefix..."
+  echo "Building MLIR $llvm_project_ref ($build_type) into $install_prefix..."
 
   # Fetch LLVM project source archive
   local repo_dir="$PWD/llvm-project"
@@ -56,29 +58,44 @@ build_llvm() {
 
   # Build LLVM
   local build_dir="build_llvm"
-  cmake -S llvm -B "$build_dir" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=gcc \
-    -DCMAKE_CXX_COMPILER=g++ \
-    -DCMAKE_INSTALL_PREFIX="$install_prefix" \
-    -DLLVM_BUILD_EXAMPLES=OFF \
-    -DLLVM_BUILD_TESTS=OFF \
-    -DLLVM_ENABLE_ASSERTIONS=ON \
-    -DLLVM_ENABLE_LTO=OFF \
-    -DLLVM_ENABLE_PROJECTS=mlir \
-    -DLLVM_ENABLE_RTTI=ON \
-    -DLLVM_INCLUDE_BENCHMARKS=OFF \
-    -DLLVM_INCLUDE_EXAMPLES=OFF \
-    -DLLVM_INCLUDE_TESTS=OFF \
-    -DLLVM_INSTALL_UTILS=ON \
+  local cmake_args=(
+    -S llvm -B "$build_dir"
+    -DCMAKE_BUILD_TYPE="$build_type"
+    -DCMAKE_C_COMPILER=gcc
+    -DCMAKE_CXX_COMPILER=g++
+    -DCMAKE_INSTALL_PREFIX="$install_prefix"
+    -DLLVM_BUILD_EXAMPLES=OFF
+    -DLLVM_BUILD_TESTS=OFF
+    -DLLVM_ENABLE_ASSERTIONS=ON
+    -DLLVM_ENABLE_LTO=OFF
+    -DLLVM_ENABLE_RTTI=ON
+    -DLLVM_INCLUDE_BENCHMARKS=OFF
+    -DLLVM_INCLUDE_EXAMPLES=OFF
+    -DLLVM_INCLUDE_TESTS=OFF
+    -DLLVM_INSTALL_UTILS=ON
+    -DLLVM_OPTIMIZED_TABLEGEN=ON
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
-  cmake --build "$build_dir" --target install --config Release
+  )
+
+  if [[ "$build_type" == "Debug" ]]; then
+    cmake_args+=(-DLLVM_USE_SPLIT_DWARF=ON)
+    # Build lld first to use it as linker
+    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
+    cmake --build "$build_dir" --target lld
+    # Use the just-built lld as the linker
+    export PATH="$PWD/$build_dir/bin:$PATH"
+    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
+  else
+    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir"
+  fi
+
+  cmake --build "$build_dir" --target install --config "$build_type"
 
   # Return to original directory
   popd > /dev/null
 }
 
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
+build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
@@ -91,13 +108,17 @@ fi
 rm -rf "$INSTALL_PREFIX/lib/clang" 2>/dev/null || true
 
 # Strip binaries
-if command -v strip >/dev/null 2>&1; then
+if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
   find "$INSTALL_PREFIX/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
   find "$INSTALL_PREFIX/lib" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
 fi
 
 # Define archive variables
-ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
+BUILD_TYPE_SUFFIX=""
+if [[ "$BUILD_TYPE" == "Debug" ]]; then
+  BUILD_TYPE_SUFFIX="_debug"
+fi
+ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}${BUILD_TYPE_SUFFIX}.tar.zst"
 ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
 
 # Change to installation directory

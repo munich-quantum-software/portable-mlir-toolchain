@@ -21,22 +21,28 @@
 #   then runs the in-container build script to produce the MLIR toolchain.
 #
 # Usage:
-#   scripts/toolchain/linux/build.sh -r <llvm_project_ref> -p <install_prefix>
+#   scripts/toolchain/linux/build.sh -r <llvm_project_ref> -p <install_prefix> [-d]
 #     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
 #     install_prefix   Absolute path on the host for the final install (also where archive is written)
+#     -d               Build in Debug mode (default: Release)
 #
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates <install_prefix>/llvm-mlir_<llvm_project_ref>_linux_<arch>_<host_target>.tar.zst
+#     (or llvm-mlir_<llvm_project_ref>_linux_<arch>_<host_target>_debug.tar.zst if -d is used)
 
 set -euo pipefail
 
+BUILD_TYPE="Release"
+
 # Parse arguments
-while getopts ":r:p:" opt; do
+while getopts ":r:p:d" opt; do
   case $opt in
     r) LLVM_PROJECT_REF="$OPTARG"
     ;;
     p) INSTALL_PREFIX="$OPTARG"
+    ;;
+    d) BUILD_TYPE="Debug"
     ;;
     \?) echo "Error: Invalid option -$OPTARG" >&2; exit 1
     ;;
@@ -74,6 +80,7 @@ IN_CONTAINER_SCRIPT="/work${REL_DIR}/in-container.sh"
 
 # Build environment vars (only pass optional ones if provided)
 ENV_ARGS=(-e HOME=/work -e LLVM_PROJECT_REF="$LLVM_PROJECT_REF" -e INSTALL_PREFIX="/out" \
+  -e BUILD_TYPE="$BUILD_TYPE" \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}")
 
 # Run build inside container

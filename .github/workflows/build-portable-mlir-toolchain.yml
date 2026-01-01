@@ -72,23 +72,35 @@ jobs:
   linux:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-linux)
+    strategy:
+      matrix:
+        build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-linux.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
+      build-type: ${{ matrix.build-type }}
 
   macos:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-macos)
+    strategy:
+      matrix:
+        build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-macos.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
+      build-type: ${{ matrix.build-type }}
 
   windows:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
+    strategy:
+      matrix:
+        build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-windows.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
+      build-type: ${{ matrix.build-type }}
 
   release:
     needs: [linux, macos, windows]

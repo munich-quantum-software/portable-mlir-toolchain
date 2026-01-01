@@ -8,6 +8,10 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Added
+
+- ✨🚸 Add **Debug** builds of the LLVM toolchain ([#4]) ([**@burgholzer**])
+
 ## [2025.12.23]
 
 ### Distribution
@@ -34,6 +38,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#4]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/4
 [#1]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/1
 
 <!-- Contributor -->
