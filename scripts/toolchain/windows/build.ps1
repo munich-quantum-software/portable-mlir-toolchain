@@ -13,19 +13,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: pwsh scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm-project ref> -install_prefix <installation directory> [-debug]
+# Usage: pwsh scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm-project ref> -install_prefix <installation directory> [-build_type <Release|Debug>]
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$llvm_project_ref,
     [Parameter(Mandatory=$true)]
     [string]$install_prefix,
-    [switch]$debug
+    [ValidateSet("Release", "Debug")]
+    [string]$build_type = "Release"
 )
 
 $ErrorActionPreference = "Stop"
 
-$build_type = if ($debug) { "Debug" } else { "Release" }
+$debug = ($build_type -eq "Debug")
 
 # Detect architecture
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
