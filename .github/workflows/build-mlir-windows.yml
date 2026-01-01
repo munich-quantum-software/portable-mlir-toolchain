@@ -28,6 +28,13 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Free up some space
+        run: |
+          Remove-Item -Recurse -Force "C:\Android\android-sdk" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\Program Files\ghc" -ErrorAction SilentlyContinue
+          docker system prune -af
+          docker builder prune -af
       - name: Build
         shell: pwsh
         run: |
