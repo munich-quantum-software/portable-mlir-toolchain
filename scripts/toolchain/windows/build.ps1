@@ -60,7 +60,7 @@ tar -xzf $zstd_temp_archive
 Remove-Item $zstd_temp_archive
 
 pushd (Join-Path $zstd_dir "build\cmake") > $null
-cmake -S . -B build -G "Visual Studio 17 2022" -A $cmake_arch -DCMAKE_INSTALL_PREFIX=$zstd_install_prefix -DZSTD_BUILD_PROGRAMS=ON -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF
+cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_INSTALL_PREFIX=$zstd_install_prefix -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF
 cmake --build build --target install --config Release
 popd > $null
 Remove-Item -Recurse -Force $zstd_dir
