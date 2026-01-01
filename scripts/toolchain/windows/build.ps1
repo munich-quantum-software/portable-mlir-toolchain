@@ -26,6 +26,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
 $debug = ($build_type -eq "Debug")
 
 # Detect architecture
@@ -48,7 +49,7 @@ switch ($arch) {
 Write-Host "Building MLIR $llvm_project_ref into $install_prefix..."
 
 # Build zstd
-$zstd_install_prefix = Join-Path $PWD "zstd-install"
+$zstd_install_prefix = Join-Path $root_dir "zstd-install"
 if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
 $zstd_dir = "zstd-1.5.7"
 if (Test-Path $zstd_dir) { Remove-Item -Recurse -Force $zstd_dir }
@@ -60,13 +61,21 @@ tar -xzf $zstd_temp_archive
 Remove-Item $zstd_temp_archive
 
 pushd (Join-Path $zstd_dir "build\cmake") > $null
-cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_INSTALL_PREFIX=$zstd_install_prefix -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF
+$zstd_cmake_args = @(
+    '-S', '.',
+    '-B', 'build',
+    '-G', 'Visual Studio 17 2022',
+    "-DCMAKE_INSTALL_PREFIX=$zstd_install_prefix",
+    '-DZSTD_BUILD_STATIC=ON',
+    '-DZSTD_BUILD_SHARED=OFF'
+)
+cmake @zstd_cmake_args
 cmake --build build --target install --config Release
 popd > $null
 Remove-Item -Recurse -Force $zstd_dir
 
 # Fetch LLVM project source archive
-$repo_dir = Join-Path $PWD "llvm-project"
+$repo_dir = Join-Path $root_dir "llvm-project"
 if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 New-Item -ItemType Directory -Path $repo_dir -Force | Out-Null
 $archive_url = "https://github.com/llvm/llvm-project/archive/$llvm_project_ref.tar.gz"
@@ -115,7 +124,7 @@ try {
     cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
     # Add build_dir/bin to path so lld-link can be found
-    $env:PATH = "$(Join-Path $PWD $build_dir)\bin;$env:PATH"
+    $env:PATH = "$(Join-Path $repo_dir $build_dir)\bin;$env:PATH"
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
     cmake --build $build_dir --target install --config $build_type
@@ -146,7 +155,7 @@ foreach ($dir in $dirs_to_remove) {
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
 $archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target)$($build_type_suffix).tar.zst"
-$archive_path = Join-Path $PWD $archive_name
+$archive_path = Join-Path $root_dir $archive_name
 
 # Change to installation directory
 pushd $install_prefix > $null
