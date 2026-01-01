@@ -46,9 +46,9 @@ jobs:
           sudo rm -rf /usr/share/gradle
           sudo rm -rf /usr/local/share/phantomjs*
           sudo rm -rf /usr/local/share/vcpkg
+          sudo rm -rf $AGENT_TOOLSDIRECTORY
           docker system prune -af || true
           docker builder prune -af || true
-          ls -lA $AGENT_TOOLSDIRECTORY
       - name: Build
         run: |
           DEBUG_FLAG=""
