@@ -135,7 +135,6 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE" "$ZSTD_INSTALL_PR
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
   rm -f "$INSTALL_PREFIX/bin/clang*" \
-        "$INSTALL_PREFIX/bin/lld*" \
         "$INSTALL_PREFIX/bin/llvm-bolt" \
         "$INSTALL_PREFIX/bin/perf2bolt" \
         2>/dev/null || true

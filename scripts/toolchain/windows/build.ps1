@@ -130,7 +130,6 @@ $install_bin = Join-Path $install_prefix "bin"
 if (Test-Path $install_bin) {
     $patterns = @(
         'clang*.exe',
-        'lld*.exe',
         'llvm-bolt.exe',
         'perf2bolt.exe'
     )
