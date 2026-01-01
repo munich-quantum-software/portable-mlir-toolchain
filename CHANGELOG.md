@@ -10,8 +10,13 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Added
 
-- 📦 Build `zstd` from source on macOS to ensure compatibility with `MACOSX_DEPLOYMENT_TARGET` ([#4]) ([**@burgholzer**])
 - ✨🚸 Add **Debug** builds of the LLVM toolchain ([#4]) ([**@burgholzer**])
+
+### Changed
+
+- 📦 Build the `lld` linker on all platforms and use it for building LLVM ([#4]) ([**@burgholzer**])
+- 📦 Build `zstd` from source on all platforms and use it for building LLVM and compressing the final archives ([#4]) ([**@burgholzer**])
+- 📉 Optimize size of distributed toolchain by using more aggressive compression (`--long=30`) ([#4]) ([**@burgholzer**])
 
 ## [2025.12.23]
 
