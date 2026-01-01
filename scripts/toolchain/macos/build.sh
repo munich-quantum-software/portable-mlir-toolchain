@@ -60,10 +60,23 @@ else
 fi
 
 # Main LLVM setup function
+build_zstd() {
+  local install_prefix=$1
+  echo "Building zstd v1.5.7 into $install_prefix..."
+  local zstd_dir="zstd-1.5.7"
+  rm -rf "$zstd_dir"
+  curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz" | tar -xz
+  pushd "$zstd_dir" > /dev/null
+  MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" make -j"$(sysctl -n hw.ncpu)" install PREFIX="$install_prefix"
+  popd > /dev/null
+  rm -rf "$zstd_dir"
+}
+
 build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
   local build_type=$3
+  local zstd_install_prefix=$4
 
   echo "Building MLIR $llvm_project_ref ($build_type) into $install_prefix..."
 
@@ -90,6 +103,8 @@ build_llvm() {
     -DLLVM_BUILD_EXAMPLES=OFF
     -DLLVM_BUILD_TESTS=OFF
     -DLLVM_ENABLE_ASSERTIONS=ON
+    -DLLVM_ENABLE_ZSTD=ON
+    -DCMAKE_PREFIX_PATH="$zstd_install_prefix"
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
     -DLLVM_INCLUDE_BENCHMARKS=OFF
@@ -117,7 +132,10 @@ build_llvm() {
   popd > /dev/null
 }
 
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE"
+ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
+build_zstd "$ZSTD_INSTALL_PREFIX"
+build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE" "$ZSTD_INSTALL_PREFIX"
+rm -rf "$ZSTD_INSTALL_PREFIX"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then

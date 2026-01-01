@@ -10,6 +10,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Added
 
+- 📦 Build `zstd` from source on macOS to ensure compatibility with `MACOSX_DEPLOYMENT_TARGET` ([#4]) ([**@burgholzer**])
 - ✨🚸 Add **Debug** builds of the LLVM toolchain ([#4]) ([**@burgholzer**])
 
 ## [2025.12.23]
