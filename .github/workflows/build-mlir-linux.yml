@@ -46,7 +46,15 @@ jobs:
           sudo rm -rf /usr/share/gradle
           sudo rm -rf /usr/local/share/phantomjs*
           sudo rm -rf /usr/local/share/vcpkg
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /usr/local/share/chrome_driver
+          sudo rm -rf /usr/local/share/gecko_driver
+          sudo rm -rf /usr/local/share/selenium
+          sudo rm -rf /usr/local/share/mono
+          sudo rm -rf /usr/local/share/kotlin
+          sudo rm -rf /usr/local/share/nvm
           sudo rm -rf $AGENT_TOOLSDIRECTORY
+          sudo apt-get clean
           docker system prune -af || true
           docker builder prune -af || true
       - name: Build

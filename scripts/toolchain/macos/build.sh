@@ -86,7 +86,18 @@ build_llvm() {
   mkdir -p "$repo_dir"
   curl -fL --retry 5 --retry-delay 5 \
     "https://github.com/llvm/llvm-project/archive/${llvm_project_ref}.tar.gz" \
-    | tar -xz --strip-components=1 -C "$repo_dir"
+    | tar -xz --strip-components=1 -C "$repo_dir" \
+      --exclude='clang' \
+      --exclude='lldb' \
+      --exclude='polly' \
+      --exclude='flang' \
+      --exclude='openmp' \
+      --exclude='libclc' \
+      --exclude='libc' \
+      --exclude='llvm/test' \
+      --exclude='mlir/test' \
+      --exclude='llvm/unittests' \
+      --exclude='mlir/unittests'
 
   # Change to repo directory
   pushd "$repo_dir" > /dev/null
@@ -107,6 +118,10 @@ build_llvm() {
     -DCMAKE_PREFIX_PATH="$zstd_install_prefix"
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
+    -DLLVM_ENABLE_LIBXML2=OFF
+    -DLLVM_ENABLE_TERMINFO=OFF
+    -DLLVM_ENABLE_LIBEDIT=OFF
+    -DLLVM_ENABLE_LIBPFM=OFF
     -DLLVM_INCLUDE_BENCHMARKS=OFF
     -DLLVM_INCLUDE_EXAMPLES=OFF
     -DLLVM_INCLUDE_TESTS=OFF

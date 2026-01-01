@@ -37,6 +37,10 @@ jobs:
           sudo rm -rf "/Applications/Google Chrome.app"
           sudo rm -rf $AGENT_TOOLSDIRECTORY/Java_Temurin-Hotspot_jdk
           sudo rm -rf $AGENT_TOOLSDIRECTORY/CodeQL
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /usr/local/share/mono
+          sudo rm -rf /usr/local/share/kotlin
+          sudo rm -rf /usr/local/share/nvm
           brew uninstall --force --ignore-dependencies gcc@13 gcc@14 gcc@15 firefox
           brew cleanup
           ls -lA $AGENT_TOOLSDIRECTORY

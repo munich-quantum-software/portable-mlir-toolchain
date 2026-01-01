@@ -35,6 +35,7 @@ jobs:
           Remove-Item -Recurse -Force "C:\Program Files\ghc" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "C:\msys64" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "C:\Selenium" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\Program Files\nodejs" -ErrorAction SilentlyContinue
       - name: Build
         shell: pwsh
         run: |

@@ -87,7 +87,18 @@ Invoke-WebRequest -Uri $archive_url -OutFile $temp_archive
 
 # Extract archive
 Write-Host "Extracting archive into $repo_dir..."
-tar -xzf $temp_archive --strip-components=1 -C $repo_dir
+tar -xzf $temp_archive --strip-components=1 -C $repo_dir `
+    --exclude='clang' `
+    --exclude='lldb' `
+    --exclude='polly' `
+    --exclude='flang' `
+    --exclude='openmp' `
+    --exclude='libclc' `
+    --exclude='libc' `
+    --exclude='llvm/test' `
+    --exclude='mlir/test' `
+    --exclude='llvm/unittests' `
+    --exclude='mlir/unittests'
 
 # Clean up temporary file
 Remove-Item -Path $temp_archive -Force -ErrorAction SilentlyContinue
@@ -111,6 +122,10 @@ try {
         "-DCMAKE_PREFIX_PATH=$zstd_install_prefix",
         '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_RTTI=ON',
+        '-DLLVM_ENABLE_LIBXML2=OFF',
+        '-DLLVM_ENABLE_TERMINFO=OFF',
+        '-DLLVM_ENABLE_LIBEDIT=OFF',
+        '-DLLVM_ENABLE_LIBPFM=OFF',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
         '-DLLVM_INCLUDE_EXAMPLES=OFF',
         '-DLLVM_INCLUDE_TESTS=OFF',
