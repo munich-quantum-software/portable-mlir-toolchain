@@ -47,6 +47,24 @@ switch ($arch) {
 
 Write-Host "Building MLIR $llvm_project_ref into $install_prefix..."
 
+# Build zstd
+$zstd_install_prefix = Join-Path $PWD "zstd-install"
+if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
+$zstd_dir = "zstd-1.5.7"
+if (Test-Path $zstd_dir) { Remove-Item -Recurse -Force $zstd_dir }
+$zstd_archive_url = "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz"
+$zstd_temp_archive = Join-Path ([IO.Path]::GetTempPath()) "zstd-v1.5.7.tar.gz"
+Write-Host "Downloading zstd from $zstd_archive_url..."
+Invoke-WebRequest -Uri $zstd_archive_url -OutFile $zstd_temp_archive
+tar -xzf $zstd_temp_archive
+Remove-Item $zstd_temp_archive
+
+pushd (Join-Path $zstd_dir "build\cmake") > $null
+cmake -S . -B build -G "Visual Studio 17 2022" -A $cmake_arch -DCMAKE_INSTALL_PREFIX=$zstd_install_prefix -DZSTD_BUILD_PROGRAMS=ON -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF
+cmake --build build --target install --config Release
+popd > $null
+Remove-Item -Recurse -Force $zstd_dir
+
 # Fetch LLVM project source archive
 $repo_dir = Join-Path $PWD "llvm-project"
 if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
@@ -80,6 +98,8 @@ try {
         '-DLLVM_BUILD_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
+        '-DLLVM_ENABLE_ZSTD=ON',
+        "-DCMAKE_PREFIX_PATH=$zstd_install_prefix",
         '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
@@ -89,17 +109,14 @@ try {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         "-DLLVM_TARGETS_TO_BUILD=$host_target"
     )
-    if ($debug) {
-        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
-        if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
-        cmake --build $build_dir --target lld --config Debug
-        if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
-        # Add build_dir/bin to path so lld-link can be found
-        $env:PATH = "$(Join-Path $PWD $build_dir)\bin;$env:PATH"
-        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
-    } else {
-        cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir'
-    }
+    # Build lld first to use it as linker
+    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
+    if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
+    cmake --build $build_dir --target lld --config $build_type
+    if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
+    # Add build_dir/bin to path so lld-link can be found
+    $env:PATH = "$(Join-Path $PWD $build_dir)\bin;$env:PATH"
+    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
     cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM build failed" }
@@ -136,8 +153,8 @@ pushd $install_prefix > $null
 
 # Emit compressed archive (.tar.zst)
 try {
-   $env:ZSTD_CLEVEL = 19
-   tar --zstd -cf $archive_path .
+   $zstd_exe = Join-Path $zstd_install_prefix "bin\zstd.exe"
+   tar -cf - . | & $zstd_exe -19 --long=30 --threads=0 -o $archive_path
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"

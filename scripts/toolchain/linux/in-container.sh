@@ -38,10 +38,23 @@ else
 fi
 
 # Main LLVM setup function
+build_zstd() {
+  local install_prefix=$1
+  echo "Building zstd v1.5.7 into $install_prefix..."
+  local zstd_dir="zstd-1.5.7"
+  rm -rf "$zstd_dir"
+  curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz" | tar -xz
+  pushd "$zstd_dir" > /dev/null
+  make -j"$(nproc)" install PREFIX="$install_prefix"
+  popd > /dev/null
+  rm -rf "$zstd_dir"
+}
+
 build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
   local build_type=$3
+  local zstd_install_prefix=$4
 
   echo "Building MLIR $llvm_project_ref ($build_type) into $install_prefix..."
 
@@ -67,6 +80,8 @@ build_llvm() {
     -DLLVM_BUILD_EXAMPLES=OFF
     -DLLVM_BUILD_TESTS=OFF
     -DLLVM_ENABLE_ASSERTIONS=ON
+    -DLLVM_ENABLE_ZSTD=ON
+    -DCMAKE_PREFIX_PATH="$zstd_install_prefix"
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
     -DLLVM_INCLUDE_BENCHMARKS=OFF
@@ -79,15 +94,14 @@ build_llvm() {
 
   if [[ "$build_type" == "Debug" ]]; then
     cmake_args+=(-DLLVM_USE_SPLIT_DWARF=ON)
-    # Build lld first to use it as linker
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
-    cmake --build "$build_dir" --target lld
-    # Use the just-built lld as the linker
-    export PATH="$PWD/$build_dir/bin:$PATH"
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
-  else
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir"
   fi
+
+  # Build lld first to use it as linker
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
+  cmake --build "$build_dir" --target lld
+  # Use the just-built lld as the linker
+  export PATH="$PWD/$build_dir/bin:$PATH"
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
 
   cmake --build "$build_dir" --target install --config "$build_type"
 
@@ -95,7 +109,9 @@ build_llvm() {
   popd > /dev/null
 }
 
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE"
+ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
+build_zstd "$ZSTD_INSTALL_PREFIX"
+build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE" "$ZSTD_INSTALL_PREFIX"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
@@ -125,7 +141,7 @@ ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
 pushd "$INSTALL_PREFIX" > /dev/null
 
 # Emit compressed archive (.tar.zst)
-ZSTD_CLEVEL=19 tar --use-compress-program zstd -cf "${ARCHIVE_PATH}" . || {
+tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${ARCHIVE_PATH}" . || {
   echo "Error: Failed to create archive" >&2
   exit 1
 }

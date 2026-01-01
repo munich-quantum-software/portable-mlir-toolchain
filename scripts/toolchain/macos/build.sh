@@ -115,16 +115,12 @@ build_llvm() {
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
   )
 
-  if [[ "$build_type" == "Debug" ]]; then
-    # Build lld first to use it as linker
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
-    cmake --build "$build_dir" --target lld
-    # Use the just-built lld as the linker
-    export PATH="$PWD/$build_dir/bin:$PATH"
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
-  else
-    cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir"
-  fi
+  # Build lld first to use it as linker
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
+  cmake --build "$build_dir" --target lld
+  # Use the just-built lld as the linker
+  export PATH="$PWD/$build_dir/bin:$PATH"
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
 
   cmake --build "$build_dir" --target install --config "$build_type"
 
@@ -135,7 +131,6 @@ build_llvm() {
 ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
 build_zstd "$ZSTD_INSTALL_PREFIX"
 build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE" "$ZSTD_INSTALL_PREFIX"
-rm -rf "$ZSTD_INSTALL_PREFIX"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
@@ -165,7 +160,7 @@ ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
 pushd "$INSTALL_PREFIX" > /dev/null
 
 # Emit compressed archive (.tar.zst)
-ZSTD_CLEVEL=19 tar --zstd -cf "${ARCHIVE_PATH}" . || {
+tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${ARCHIVE_PATH}" . || {
   echo "Error: Failed to create archive" >&2
   exit 1
 }
