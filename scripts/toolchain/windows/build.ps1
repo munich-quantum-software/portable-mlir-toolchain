@@ -137,10 +137,11 @@ if (Test-Path $install_bin) {
     Get-ChildItem -Path $install_bin -Include $patterns -Recurse -File | Remove-Item -ErrorAction SilentlyContinue
 }
 
-# Remove lib/clang directory
-$install_lib_clang = Join-Path $install_prefix "lib\clang"
-if (Test-Path $install_lib_clang) {
-    Remove-Item -Path $install_lib_clang -Recurse -Force -ErrorAction SilentlyContinue
+# Remove non-essential directories
+$dirs_to_remove = @("lib\clang", "share")
+foreach ($dir in $dirs_to_remove) {
+    $path = Join-Path $install_prefix $dir
+    if (Test-Path $path) { Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # Define archive variables

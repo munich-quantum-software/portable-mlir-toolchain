@@ -140,7 +140,9 @@ if [[ -d "$INSTALL_PREFIX/bin" ]]; then
         "$INSTALL_PREFIX/bin/perf2bolt" \
         2>/dev/null || true
 fi
-rm -rf "$INSTALL_PREFIX/lib/clang" 2>/dev/null || true
+
+# Remove non-essential directories
+rm -rf "$INSTALL_PREFIX/lib/clang" "$INSTALL_PREFIX/share" 2>/dev/null || true
 
 # Strip binaries
 if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
