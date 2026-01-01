@@ -28,6 +28,13 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Free up some space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/share/android-sdk
+          sudo rm -rf /usr/share/swift
+          docker system prune -af || true
+          docker builder prune -af || true
       - name: Build
         run: |
           DEBUG_FLAG=""
