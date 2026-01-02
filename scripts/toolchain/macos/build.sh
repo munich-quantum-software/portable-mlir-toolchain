@@ -178,7 +178,8 @@ build_llvm() {
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
   cmake --build "$build_dir" --target lld
   # Use the just-built lld as the linker
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_USE_LINKER="$PWD/$build_dir/bin/lld"
+  export PATH="$PWD/$build_dir/bin:$PATH"
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
 
   cmake --build "$build_dir" --target install
 

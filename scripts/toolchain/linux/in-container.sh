@@ -156,12 +156,13 @@ build_llvm() {
   # for the subsequent full LLVM and MLIR build. This significantly reduces
   # overall build time, especially for large builds like MLIR.
   # The first stage builds just lld, and the second stage enables both mlir and lld
-  # while using the newly built lld as the linker via -DLLVM_USE_LINKER.
+  # while using the newly built lld as the linker via LLVM_ENABLE_LLD=ON.
   # Build lld first to use it as linker
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
   cmake --build "$build_dir" --target lld
   # Use the just-built lld as the linker
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_USE_LINKER="$PWD/$build_dir/bin/lld"
+  export PATH="$PWD/$build_dir/bin:$PATH"
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
 
   cmake --build "$build_dir" --target install --config "$build_type"
 
