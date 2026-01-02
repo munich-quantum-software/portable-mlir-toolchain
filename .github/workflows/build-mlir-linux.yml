@@ -85,8 +85,6 @@ jobs:
             buildah \
             '^byobu.*' \
             '^clang-.*' \
-            containerd.io \
-            containernetworking-plugins \
             '^dotnet-.*' \
             firefox \
             '^fonts-.*' \
