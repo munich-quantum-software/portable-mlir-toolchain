@@ -20,5 +20,4 @@ Refer to
 - [`scripts/toolchain/windows/build.ps1`](./scripts/toolchain/windows/build.ps1) for Windows.
 
 The usage is detailed in the scripts.
-By default, the scripts produce a **Release** build. To produce a **Debug** build, use the `-d` flag (or `-build_type Debug` for the Windows script).
 Note that the Linux script requires Docker to be installed on the host system.
