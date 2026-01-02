@@ -146,7 +146,6 @@ jobs:
             /opt/ghc \
             /opt/pipx* \
             /opt/google \
-            /opt/microsoft \
             /opt/mssql-tools \
             /snap \
             /usr/bin/kotlin* \
@@ -186,7 +185,7 @@ jobs:
             /var/lib/mysql \
             /var/lib/snapd \
             /var/lib/ubuntu-advantage \
-            /var/snap || true
+            /var/snap
       - name: Disk usage (after cleanup)
         run: |
           set -euo pipefail
