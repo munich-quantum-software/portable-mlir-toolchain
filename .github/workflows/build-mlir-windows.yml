@@ -92,8 +92,11 @@ jobs:
           Remove-IfExists "$env:TEMP"
           Remove-IfExists "$env:LOCALAPPDATA\Temp"
 
-          # Clean NuGet cache (safe)
+          # Clean NuGet cache
           try { dotnet nuget locals all --clear | Out-Null } catch {}
+
+          # Never fail the job because cleanup couldn't remove something.
+          exit 0
       - name: Disk usage (after cleanup)
         shell: pwsh
         run: |
