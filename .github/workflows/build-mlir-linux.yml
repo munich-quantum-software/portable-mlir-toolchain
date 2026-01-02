@@ -46,6 +46,10 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/.ghcup
 
+          list_installed_dpkg() {
+            dpkg --get-selections $@ | grep -v deinstall | awk '{print $1}'
+          }
+
           # Remove large packages
           pkgs=$(list_installed_dpkg 'aspnetcore-*' 'dotnet-*' 'llvm-*' '*php*' 'mongodb-*' 'mysql-*' azure-cli google-chrome-stable microsoft-edge-stable snapd firefox powershell mono-devel libgl1-mesa-dri 'google-cloud-*' 'gcloud-*' apache2 'temurin-*-jdk' || true)
 
