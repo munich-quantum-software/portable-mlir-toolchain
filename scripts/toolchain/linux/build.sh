@@ -52,12 +52,12 @@ done
 # Check arguments
 if [ -z "${LLVM_PROJECT_REF:-}" ]; then
   echo "Error: llvm-project ref (-r) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm-project ref> -p <installation directory> [-d]" >&2
   exit 1
 fi
 if [ -z "${INSTALL_PREFIX:-}" ]; then
   echo "Error: Installation directory (-p) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm-project ref> -p <installation directory> [-d]" >&2
   exit 1
 fi
 
