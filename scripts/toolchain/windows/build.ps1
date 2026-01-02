@@ -123,7 +123,6 @@ try {
         '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_ENABLE_LIBXML2=OFF',
-        '-DLLVM_ENABLE_TERMINFO=OFF',
         '-DLLVM_ENABLE_LIBEDIT=OFF',
         '-DLLVM_ENABLE_LIBPFM=OFF',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
@@ -131,6 +130,7 @@ try {
         '-DLLVM_INCLUDE_TESTS=OFF',
         '-DLLVM_INSTALL_UTILS=ON',
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
+        '-DLLVM_ABI_BREAKING_CHECKS=FORCE_OFF',
         "-DLLVM_TARGETS_TO_BUILD=$host_target"
     )
     # Build lld first to use it as linker
@@ -138,9 +138,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
     cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
-    # Add build_dir/bin to path so lld-link can be found
-    $env:PATH = "$(Join-Path $repo_dir $build_dir)\bin;$env:PATH"
-    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
+    # Use the just-built lld as the linker
+    $lld_path = Join-Path $repo_dir $build_dir bin lld-link.exe
+    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' "-DLLVM_USE_LINKER=$lld_path"
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
     cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM build failed" }

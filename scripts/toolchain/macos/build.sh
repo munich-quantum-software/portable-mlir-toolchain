@@ -119,7 +119,6 @@ build_llvm() {
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
     -DLLVM_ENABLE_LIBXML2=OFF
-    -DLLVM_ENABLE_TERMINFO=OFF
     -DLLVM_ENABLE_LIBEDIT=OFF
     -DLLVM_ENABLE_LIBPFM=OFF
     -DLLVM_INCLUDE_BENCHMARKS=OFF
@@ -127,6 +126,7 @@ build_llvm() {
     -DLLVM_INCLUDE_TESTS=OFF
     -DLLVM_INSTALL_UTILS=ON
     -DLLVM_OPTIMIZED_TABLEGEN=ON
+    -DLLVM_ABI_BREAKING_CHECKS=FORCE_OFF
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
   )
 
@@ -138,8 +138,7 @@ build_llvm() {
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
   cmake --build "$build_dir" --target lld
   # Use the just-built lld as the linker
-  export PATH="$PWD/$build_dir/bin:$PATH"
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
+  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_USE_LINKER="$PWD/$build_dir/bin/lld"
 
   cmake --build "$build_dir" --target install --config "$build_type"
 
