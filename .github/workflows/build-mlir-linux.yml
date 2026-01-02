@@ -94,6 +94,7 @@ jobs:
             '^gfortran-.*' \
             '^google-.*' \
             '^gradle.*' \
+            '^java.*' \
             '^kotlin.*' \
             kubectl \
             '^libclang-.*' \
@@ -127,11 +128,11 @@ jobs:
             skopeo \
             snapd \
             tcl \
+            'temurin-*' \
             tk \
             '^tex-.*' \
             '^vim.*'
 
-          sudo apt-get autoremove -qq -y
           sudo apt-get clean -qq
 
           sudo rmz -f \
