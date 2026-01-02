@@ -28,6 +28,12 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate build-type
+        run: |
+          if [[ "${{ inputs.build-type }}" != "Release" && "${{ inputs.build-type }}" != "Debug" ]]; then
+            echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
+            exit 1
+          fi
       - name: Free up some space
         run: |
           # Remove man-page updates
@@ -91,7 +97,7 @@ jobs:
           if [[ "${{ inputs.build-type }}" == "Debug" ]]; then
             DEBUG_FLAG="-d"
           fi
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install $DEBUG_FLAG
+          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install ${DEBUG_FLAG}
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:

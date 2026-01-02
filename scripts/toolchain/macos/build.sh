@@ -18,6 +18,7 @@
 
 set -euo pipefail
 
+ZSTD_VERSION="1.5.7"
 BUILD_TYPE="Release"
 
 # Parse arguments
@@ -46,6 +47,12 @@ if [ -z "${INSTALL_PREFIX:-}" ]; then
   exit 1
 fi
 
+# Validate build type
+if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
+  echo "Error: Invalid build type: $BUILD_TYPE. Must be 'Release' or 'Debug'." >&2
+  exit 1
+fi
+
 # Determine architecture
 UNAME_ARCH=$(uname -m)
 
@@ -62,14 +69,47 @@ fi
 # Main LLVM setup function
 build_zstd() {
   local install_prefix=$1
-  echo "Building zstd v1.5.7 into $install_prefix..."
-  local zstd_dir="zstd-1.5.7"
-  rm -rf "$zstd_dir"
-  curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz" | tar -xz
+  echo "Building zstd v$ZSTD_VERSION into $install_prefix..."
+  local zstd_dir="zstd-$ZSTD_VERSION"
+  local zstd_tarball="zstd-${ZSTD_VERSION}.tar.gz"
+  local zstd_checksum="${zstd_tarball}.sha256"
+  local zstd_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}"
+  local zstd_checksum_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum}"
+
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
+
+  echo "Downloading zstd tarball..."
+  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_url" -o "$zstd_tarball"; then
+    echo "Error: Failed to download zstd tarball from $zstd_url" >&2
+    exit 1
+  fi
+
+  echo "Downloading zstd checksum..."
+  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_checksum_url" -o "$zstd_checksum"; then
+    echo "Error: Failed to download zstd checksum from $zstd_checksum_url" >&2
+    exit 1
+  fi
+
+  echo "Verifying checksum..."
+  if ! shasum -a 256 -c "$zstd_checksum" > /dev/null 2>&1; then
+    echo "Error: zstd checksum verification failed!" >&2
+    exit 1
+  fi
+
+  echo "Extracting zstd..."
+  if ! tar -xzf "$zstd_tarball"; then
+    echo "Error: Failed to extract zstd tarball" >&2
+    exit 1
+  fi
+
   pushd "$zstd_dir" > /dev/null
-  MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" make -j"$(sysctl -n hw.ncpu)" install PREFIX="$install_prefix"
+  if ! MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" make -j"$(sysctl -n hw.ncpu)" install PREFIX="$install_prefix"; then
+    echo "Error: Failed to build/install zstd" >&2
+    exit 1
+  fi
   popd > /dev/null
-  rm -rf "$zstd_dir"
+
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
 }
 
 build_llvm() {
@@ -140,7 +180,7 @@ build_llvm() {
   # Use the just-built lld as the linker
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_USE_LINKER="$PWD/$build_dir/bin/lld"
 
-  cmake --build "$build_dir" --target install --config "$build_type"
+  cmake --build "$build_dir" --target install
 
   # Return to original directory
   popd > /dev/null

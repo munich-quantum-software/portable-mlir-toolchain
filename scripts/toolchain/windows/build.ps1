@@ -26,6 +26,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$zstd_version = "1.5.7"
 $root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
 $debug = ($build_type -eq "Debug")
 
@@ -51,14 +52,32 @@ Write-Host "Building MLIR $llvm_project_ref into $install_prefix..."
 # Build zstd
 $zstd_install_prefix = Join-Path $root_dir "zstd-install"
 if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
-$zstd_dir = "zstd-1.5.7"
+$zstd_dir = "zstd-$zstd_version"
 if (Test-Path $zstd_dir) { Remove-Item -Recurse -Force $zstd_dir }
-$zstd_archive_url = "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz"
-$zstd_temp_archive = Join-Path ([IO.Path]::GetTempPath()) "zstd-v1.5.7.tar.gz"
-Write-Host "Downloading zstd from $zstd_archive_url..."
-Invoke-WebRequest -Uri $zstd_archive_url -OutFile $zstd_temp_archive
-tar -xzf $zstd_temp_archive
-Remove-Item $zstd_temp_archive
+
+$zstd_tarball = "zstd-$zstd_version.tar.gz"
+$zstd_checksum_file = "$zstd_tarball.sha256"
+$zstd_url = "https://github.com/facebook/zstd/releases/download/v$zstd_version/$zstd_tarball"
+$zstd_checksum_url = "https://github.com/facebook/zstd/releases/download/v$zstd_version/$zstd_checksum_file"
+
+Write-Host "Downloading zstd from $zstd_url..."
+Invoke-WebRequest -Uri $zstd_url -OutFile $zstd_tarball
+Write-Host "Downloading zstd checksum from $zstd_checksum_url..."
+Invoke-WebRequest -Uri $zstd_checksum_url -OutFile $zstd_checksum_file
+
+Write-Host "Verifying checksum..."
+$expected_hash_line = Get-Content $zstd_checksum_file | Select-Object -First 1
+$expected_hash = ($expected_hash_line -split ' ')[0]
+$actual_hash = (Get-FileHash $zstd_tarball -Algorithm SHA256).Hash
+
+if ($actual_hash.ToLower() -ne $expected_hash.ToLower()) {
+    throw "Checksum verification failed for $zstd_tarball. Expected: $expected_hash, Actual: $actual_hash"
+}
+
+Write-Host "Extracting zstd..."
+tar -xzf $zstd_tarball
+Remove-Item $zstd_tarball
+Remove-Item $zstd_checksum_file
 
 pushd (Join-Path $zstd_dir "build\cmake") > $null
 $zstd_cmake_args = @(

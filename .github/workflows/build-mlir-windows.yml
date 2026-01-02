@@ -28,6 +28,13 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate build-type
+        shell: bash
+        run: |
+          if [[ "${{ inputs.build-type }}" != "Release" && "${{ inputs.build-type }}" != "Debug" ]]; then
+            echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
+            exit 1
+          fi
       - name: Free up some space
         run: |
           Remove-Item -Recurse -Force "C:\Android\android-sdk" -ErrorAction SilentlyContinue

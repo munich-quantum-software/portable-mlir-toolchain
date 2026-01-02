@@ -18,9 +18,17 @@
 
 set -euo pipefail
 
+ZSTD_VERSION="1.5.7"
+
 : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
 : "${BUILD_TYPE:=Release}"
+
+# Validate build type
+if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
+  echo "Error: Invalid build type: $BUILD_TYPE. Must be 'Release' or 'Debug'." >&2
+  exit 1
+fi
 
 cd /work
 
@@ -40,14 +48,47 @@ fi
 # Main LLVM setup function
 build_zstd() {
   local install_prefix=$1
-  echo "Building zstd v1.5.7 into $install_prefix..."
-  local zstd_dir="zstd-1.5.7"
-  rm -rf "$zstd_dir"
-  curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz" | tar -xz
+  echo "Building zstd v$ZSTD_VERSION into $install_prefix..."
+  local zstd_dir="zstd-$ZSTD_VERSION"
+  local zstd_tarball="zstd-${ZSTD_VERSION}.tar.gz"
+  local zstd_checksum="${zstd_tarball}.sha256"
+  local zstd_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}"
+  local zstd_checksum_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum}"
+
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
+
+  echo "Downloading zstd tarball..."
+  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_url" -o "$zstd_tarball"; then
+    echo "Error: Failed to download zstd tarball from $zstd_url" >&2
+    exit 1
+  fi
+
+  echo "Downloading zstd checksum..."
+  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_checksum_url" -o "$zstd_checksum"; then
+    echo "Error: Failed to download zstd checksum from $zstd_checksum_url" >&2
+    exit 1
+  fi
+
+  echo "Verifying checksum..."
+  if ! sha256sum -c "$zstd_checksum" > /dev/null 2>&1; then
+    echo "Error: zstd checksum verification failed!" >&2
+    exit 1
+  fi
+
+  echo "Extracting zstd..."
+  if ! tar -xzf "$zstd_tarball"; then
+    echo "Error: Failed to extract zstd tarball" >&2
+    exit 1
+  fi
+
   pushd "$zstd_dir" > /dev/null
-  make -j"$(nproc)" install PREFIX="$install_prefix"
+  if ! make -j"$(nproc)" install PREFIX="$install_prefix"; then
+    echo "Error: Failed to build/install zstd" >&2
+    exit 1
+  fi
   popd > /dev/null
-  rm -rf "$zstd_dir"
+
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
 }
 
 build_llvm() {
@@ -111,6 +152,11 @@ build_llvm() {
     cmake_args+=(-DLLVM_USE_SPLIT_DWARF=ON)
   fi
 
+  # Building lld first allows us to use it as a faster, parallel-friendly linker
+  # for the subsequent full LLVM and MLIR build. This significantly reduces
+  # overall build time, especially for large builds like MLIR.
+  # The first stage builds just lld, and the second stage enables both mlir and lld
+  # while using the newly built lld as the linker via -DLLVM_USE_LINKER.
   # Build lld first to use it as linker
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
   cmake --build "$build_dir" --target lld
