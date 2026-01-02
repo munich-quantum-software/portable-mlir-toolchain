@@ -73,6 +73,7 @@ jobs:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-linux)
     strategy:
+      fail-fast: false
       matrix:
         build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-linux.yml
@@ -84,6 +85,7 @@ jobs:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-macos)
     strategy:
+      fail-fast: false
       matrix:
         build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-macos.yml
@@ -95,6 +97,7 @@ jobs:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
     strategy:
+      fail-fast: false
       matrix:
         build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-windows.yml
