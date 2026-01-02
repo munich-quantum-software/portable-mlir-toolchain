@@ -94,7 +94,6 @@ jobs:
             '^gfortran-.*' \
             '^google-.*' \
             '^gradle.*' \
-            '^java.*' \
             '^kotlin.*' \
             kubectl \
             '^libclang-.*' \
@@ -128,12 +127,14 @@ jobs:
             skopeo \
             snapd \
             tcl \
-            'temurin-*' \
             tk \
             '^tex-.*' \
-            '^vim.*'
+            '^vim.*' || true
 
-          sudo apt-get clean -qq
+          sudo apt-get -qq -y autoremove || true
+          sudo apt-get clean -qq || true
+
+          # Don't touch /opt/hostedtoolcache or $AGENT_TOOLSDIRECTORY; the runner/actions may still use them.
 
           sudo rmz -f \
             "${AGENT_TOOLSDIRECTORY}/*" \
@@ -189,7 +190,7 @@ jobs:
             /var/lib/mysql \
             /var/lib/snapd \
             /var/lib/ubuntu-advantage \
-            /var/snap
+            /var/snap || true
       - name: Disk usage (after cleanup)
         run: |
           set -euo pipefail
@@ -200,11 +201,29 @@ jobs:
           df -m / /mnt || true
       - name: Build
         run: |
+          set -euo pipefail
+
           DEBUG_FLAG=""
           if [[ "${{ inputs.build-type }}" == "Debug" ]]; then
             DEBUG_FLAG="-d"
           fi
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install ${DEBUG_FLAG}
+
+          # Prefer /mnt if available, but fall back to /workspace
+          INSTALL_DIR="${{ github.workspace }}/llvm-install"
+          if [[ -d "/mnt" && -w "/mnt" ]]; then
+            INSTALL_DIR="/mnt/llvm-install"
+          fi
+
+          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p "${INSTALL_DIR}" ${DEBUG_FLAG}
+
+          # Move archives back next to the workspace for artifact pickup
+          shopt -s nullglob
+          files=("${INSTALL_DIR}"/llvm-mlir_*.tar.zst)
+          if (( ${#files[@]} == 0 )); then
+            echo "Error: No archive produced in ${INSTALL_DIR}" >&2
+            exit 1
+          fi
+          mv -v "${files[@]}" "${{ github.workspace }}"/
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:

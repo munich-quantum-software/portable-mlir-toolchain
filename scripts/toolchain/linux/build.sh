@@ -73,20 +73,25 @@ fi
 # Ensure output dir exists
 mkdir -p "$INSTALL_PREFIX"
 
-# Determine path to in-container script once mounted at /work
-# If ROOT_DIR is mounted at /work, then SCRIPT_DIR becomes /work${REL_DIR}
-REL_DIR="${SCRIPT_DIR#"${ROOT_DIR}"}"
-IN_CONTAINER_SCRIPT="/work${REL_DIR}/in-container.sh"
+# If /mnt exists, use it to keep large build trees off the root filesystem.
+HOST_BUILD_WORKSPACE_DEFAULT="$ROOT_DIR/.build-work"
+if [[ -d "/mnt" && -w "/mnt" ]]; then
+  HOST_BUILD_WORKSPACE_DEFAULT="/mnt/portable-mlir-toolchain-build"
+fi
+HOST_BUILD_WORKSPACE="${HOST_BUILD_WORKSPACE:-$HOST_BUILD_WORKSPACE_DEFAULT}"
+mkdir -p "$HOST_BUILD_WORKSPACE"
 
-# Build environment vars (only pass optional ones if provided)
+# Build environment vars
 ENV_ARGS=(-e HOME=/work -e LLVM_PROJECT_REF="$LLVM_PROJECT_REF" -e INSTALL_PREFIX="/out" \
   -e BUILD_TYPE="$BUILD_TYPE" \
+  -e BUILD_WORKSPACE="/build" \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}")
 
 # Run build inside container
 sudo docker run --rm --privileged \
   -v "$ROOT_DIR":/work:rw \
   -v "$INSTALL_PREFIX":/out:rw \
+  -v "$HOST_BUILD_WORKSPACE":/build:rw \
   "${ENV_ARGS[@]}" \
   "$BASE_IMAGE" \
   bash -euo pipefail "$IN_CONTAINER_SCRIPT"

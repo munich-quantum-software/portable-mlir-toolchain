@@ -23,6 +23,7 @@ ZSTD_VERSION="1.5.7"
 : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
 : "${BUILD_TYPE:=Release}"
+: "${BUILD_WORKSPACE:=/work}"
 
 # Validate build type
 if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
@@ -30,7 +31,9 @@ if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
   exit 1
 fi
 
-cd /work
+# Keep large build trees off the container root filesystem when possible.
+mkdir -p "$BUILD_WORKSPACE"
+cd "$BUILD_WORKSPACE"
 
 # Determine architecture
 UNAME_ARCH=$(uname -m)
