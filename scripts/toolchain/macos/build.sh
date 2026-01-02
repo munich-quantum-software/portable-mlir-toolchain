@@ -14,21 +14,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: ./scripts/toolchain/macos/build.sh -r <ref> -p <installation directory> [-d]
+# Usage: ./scripts/toolchain/macos/build.sh -r <ref> -p <installation directory>
 
 set -euo pipefail
 
 ZSTD_VERSION="1.5.7"
-BUILD_TYPE="Release"
 
 # Parse arguments
-while getopts ":r:p:d" opt; do
+while getopts ":r:p" opt; do
   case $opt in
     r) LLVM_PROJECT_REF="$OPTARG"
     ;;
     p) INSTALL_PREFIX="$OPTARG"
-    ;;
-    d) BUILD_TYPE="Debug"
     ;;
     \?) echo "Error: Invalid option -$OPTARG" >&2; exit 1
     ;;
@@ -44,12 +41,6 @@ fi
 if [ -z "${INSTALL_PREFIX:-}" ]; then
   echo "Error: Installation directory (-p) is required" >&2
   echo "Usage: $0 -r <llvm-project ref> -p <installation directory> [-d]" >&2
-  exit 1
-fi
-
-# Validate build type
-if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
-  echo "Error: Invalid build type: $BUILD_TYPE. Must be 'Release' or 'Debug'." >&2
   exit 1
 fi
 
@@ -115,10 +106,9 @@ build_zstd() {
 build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
-  local build_type=$3
-  local zstd_install_prefix=$4
+  local zstd_install_prefix=$3
 
-  echo "Building MLIR $llvm_project_ref ($build_type) into $install_prefix..."
+  echo "Building MLIR $llvm_project_ref into $install_prefix..."
 
   # Fetch LLVM project source archive
   local repo_dir="$PWD/llvm-project"
@@ -146,7 +136,7 @@ build_llvm() {
   local build_dir="build_llvm"
   local cmake_args=(
     -S llvm -B "$build_dir"
-    -DCMAKE_BUILD_TYPE="$build_type"
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_COMPILER=clang
     -DCMAKE_CXX_COMPILER=clang++
     -DCMAKE_INSTALL_PREFIX="$install_prefix"
@@ -165,13 +155,8 @@ build_llvm() {
     -DLLVM_INCLUDE_EXAMPLES=OFF
     -DLLVM_INCLUDE_TESTS=OFF
     -DLLVM_INSTALL_UTILS=ON
-    -DLLVM_OPTIMIZED_TABLEGEN=ON
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
   )
-
-  if [[ "$build_type" == "Debug" ]]; then
-    cmake_args+=(-DLLVM_USE_SPLIT_DWARF=ON)
-  fi
 
   # Build lld first to use it as linker
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
@@ -189,7 +174,7 @@ build_llvm() {
 
 ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
 build_zstd "$ZSTD_INSTALL_PREFIX"
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$BUILD_TYPE" "$ZSTD_INSTALL_PREFIX"
+build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$ZSTD_INSTALL_PREFIX"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
@@ -203,17 +188,13 @@ fi
 rm -rf "$INSTALL_PREFIX/lib/clang" "$INSTALL_PREFIX/share" 2>/dev/null || true
 
 # Strip binaries
-if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
+if command -v strip >/dev/null 2>&1; then
   find "$INSTALL_PREFIX/bin" -type f -perm -111 -exec strip -S {} + 2>/dev/null || true
   find "$INSTALL_PREFIX/lib" -name "*.a" -exec strip -S {} + 2>/dev/null || true
 fi
 
 # Define archive variables
-BUILD_TYPE_SUFFIX=""
-if [[ "$BUILD_TYPE" == "Debug" ]]; then
-  BUILD_TYPE_SUFFIX="_debug"
-fi
-ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_macos_${UNAME_ARCH}_${HOST_TARGET}${BUILD_TYPE_SUFFIX}.tar.zst"
+ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_macos_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
 ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
 
 # Change to installation directory

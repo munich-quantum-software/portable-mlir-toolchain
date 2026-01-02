@@ -7,11 +7,6 @@ on:
         description: "llvm-project ref or tag (e.g., llvmorg-21.1.8)"
         required: true
         type: string
-      build-type:
-        description: "Build type (Release or Debug)"
-        required: false
-        default: "Release"
-        type: string
 
 permissions:
   contents: read
@@ -28,36 +23,11 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Validate build-type
-        run: |
-          if [[ "${{ inputs.build-type }}" != "Release" && "${{ inputs.build-type }}" != "Debug" ]]; then
-            echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
-            exit 1
-          fi
-      - name: Free up some space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/share/android-sdk
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf "/Applications/Microsoft Edge.app"
-          sudo rm -rf "/Applications/Google Chrome.app"
-          sudo rm -rf /usr/local/lib/node_modules
-          sudo rm -rf /usr/local/share/mono
-          sudo rm -rf /usr/local/share/kotlin
-          sudo rm -rf /usr/local/share/nvm
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY/*"
-          brew uninstall --force --ignore-dependencies gcc@13 gcc@14 gcc@15 firefox
-          brew cleanup
       - name: Build
-        run: |
-          DEBUG_FLAG=""
-          if [[ "${{ inputs.build-type }}" == "Debug" ]]; then
-            DEBUG_FLAG="-d"
-          fi
-          bash ${{ github.workspace }}/scripts/toolchain/macos/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install ${DEBUG_FLAG}
+        run: bash ${{ github.workspace }}/scripts/toolchain/macos/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
+          name: ${{ matrix.runs-on }}-archive
           path: llvm-mlir_*.tar.zst
           if-no-files-found: error
