@@ -36,54 +36,48 @@ jobs:
           fi
       - name: Free up some space
         run: |
-          # Remove man-page updates
+          # Disable man-page updates
           sudo rm -f /var/lib/man-db/auto-update
-          sudo apt-get purge -qq -y man-db manpages manpages-dev
-          sudo apt-get autoremove -qq -y
-          sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/* || true
-
-          # Remove Android library
-          sudo rm -rf /usr/local/lib/android || true
-
-          # Remove .NET runtime
-          sudo rm -rf /usr/share/dotnet
-
-          # Remove Haskell runtime
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/.ghcup
 
           list_installed_dpkg() {
-            dpkg --get-selections $@ | grep -v deinstall | awk '{print $1}'
+            dpkg --get-selections "$@" 2>/dev/null | grep -v deinstall | awk '{print $1}'
           }
 
-          # Remove large packages
-          pkgs=$(list_installed_dpkg 'aspnetcore-*' 'dotnet-*' 'llvm-*' '*php*' 'mongodb-*' 'mysql-*' azure-cli google-chrome-stable microsoft-edge-stable snapd firefox powershell mono-devel libgl1-mesa-dri 'google-cloud-*' 'gcloud-*' apache2 'temurin-*-jdk' || true)
+          # Identify large packages to remove
+          pkgs=$(list_installed_dpkg 'aspnetcore-*' 'dotnet-*' 'llvm-*' '*php*' 'mongodb-*' 'mysql-*' azure-cli google-chrome-stable microsoft-edge-stable snapd firefox powershell mono-devel libgl1-mesa-dri 'google-cloud-*' 'gcloud-*' apache2 'temurin-*' man-db manpages manpages-dev || true)
 
-          if [ -d "/usr/lib/google-cloud-sdk" ]; then
-            sudo rm -rf /usr/lib/google-cloud-sdk || true
-            sudo rm -rf  /usr/share/man || true
+          if [ -n "$pkgs" ]; then
+            sudo apt-get purge -qq -y $pkgs || true
           fi
 
-          sudo apt-get remove -qq --autoremove -y $pkgs || true
-          sudo apt-get clean -qq || true
+          sudo apt-get autoremove -qq -y
+          sudo apt-get clean -qq
+          sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/* || true
 
-          # Remove tool cache
+          # Remove large directories
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /usr/lib/google-cloud-sdk || true
+          sudo rm -rf /usr/share/man || true
+          sudo rm -rf /var/lib/apache2 || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/lib/jvm || true
           sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
 
-          # Remove Docker images
+          # Remove Docker images and build cache
           docker system prune -af || true
           docker builder prune -af || true
 
-          # Remove other large installed files
-          sudo rm -rf /usr/share/swift || true
-          sudo rm -rf /usr/lib/jvm || true
+          # Remove other large installed files/folders
           sudo rm -rf /home/runner/.rustup || true
           sudo rm -rf /usr/local/julia* || true
           sudo rm -rf /opt/microsoft /opt/google /usr/local/share/chromium || true
           sudo rm -rf /usr/local/aws-cli || true
           sudo rm -rf /usr/local/bin/aliyun /usr/local/bin/oc /usr/local/bin/kubectl /usr/local/bin/terraform || true
           sudo rm -rf /usr/local/share/boost || true
-          sudo rm -rf /usr/share/gradle || true
+          sudo rm -rf /usr/share/gradle /usr/share/sbt /usr/local/share/powershell /opt/pipx /opt/az || true
           sudo rm -rf /usr/local/share/phantomjs* || true
           sudo rm -rf /usr/local/share/vcpkg || true
           sudo rm -rf /usr/local/lib/node_modules || true
