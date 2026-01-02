@@ -136,14 +136,14 @@ jobs:
           sudo apt-get clean -qq
 
           sudo rmz -f \
-            "${AGENT_TOOLSDIRECTORY}" \
+            "${AGENT_TOOLSDIRECTORY}/*" \
             "${HOME}/.rustup" \
             "${HOME}/.cargo" \
             "${HOME}/.dotnet" \
             "${HOME}/linuxbrew" \
             "${HOME}/snap" \
             /opt/containerd \
-            /opt/hostedtoolcache \
+            /opt/hostedtoolcache/* \
             /opt/microsoft \
             /opt/az \
             /opt/ghc \
