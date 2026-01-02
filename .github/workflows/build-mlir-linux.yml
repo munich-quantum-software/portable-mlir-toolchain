@@ -115,7 +115,6 @@ jobs:
             '^nginx-.*' \
             '^php.*' \
             '^podman.*' \
-            '^powershell.*' \
             '^postgres.*' \
             python-babel-localedata \
             '^python3-babel.*' \
@@ -127,11 +126,12 @@ jobs:
             tcl \
             tk \
             '^tex-.*' \
-            '^vim.*' || true
+            '^vim.*'
 
           sudo apt-get -qq -y autoremove || true
           sudo apt-get clean -qq || true
-
+ 
+          echo "== rmz =="
           sudo rmz -f \
             "${AGENT_TOOLSDIRECTORY}/*" \
             "${HOME}/.rustup" \
