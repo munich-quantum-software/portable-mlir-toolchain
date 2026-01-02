@@ -63,8 +63,12 @@ jobs:
           rmz --version
       - name: Disk usage (before cleanup)
         run: |
-          free_space=$(df -m --output=avail /mnt | tail -n 1 | tr -d ' ')
-          echo "Initial free space of /mnt: ${free_space}MB"
+          set -euo pipefail
+          echo "== df -h (/ and /mnt) =="
+          df -h / /mnt || true
+          echo
+          echo "== df -m (/ and /mnt) =="
+          df -m / /mnt || true
       - name: Free up some space
         run: |
           set -euo pipefail
@@ -73,11 +77,8 @@ jobs:
           docker system prune -af --volumes || true
           docker builder prune -af || true
 
-          # Disable man-page updates
-          sudo rmz -f /var/lib/man-db/auto-update
-
           # apt cleanup
-          sudo apt-get -y remove --purge \
+          sudo apt-get -qq -y remove --purge \
             '^apache2.*' \
             '^aspnetcore-.*' \
             azure-cli \
@@ -192,8 +193,12 @@ jobs:
             /var/snap
       - name: Disk usage (after cleanup)
         run: |
-          free_space=$(df -m --output=avail /mnt | tail -n 1 | tr -d ' ')
-          echo "Final free space of /mnt: ${free_space}MB"
+          set -euo pipefail
+          echo "== df -h (/ and /mnt) =="
+          df -h / /mnt || true
+          echo
+          echo "== df -m (/ and /mnt) =="
+          df -m / /mnt || true
       - name: Build
         run: |
           DEBUG_FLAG=""
