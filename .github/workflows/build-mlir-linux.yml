@@ -94,7 +94,6 @@ jobs:
             '^gfortran-.*' \
             '^google-.*' \
             '^gradle.*' \
-            '^java.*' \
             '^kotlin.*' \
             kubectl \
             '^libclang-.*' \
