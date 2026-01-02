@@ -149,7 +149,6 @@ try {
         '-DLLVM_INCLUDE_TESTS=OFF',
         '-DLLVM_INSTALL_UTILS=ON',
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
-        '-DLLVM_ABI_BREAKING_CHECKS=FORCE_OFF',
         "-DLLVM_TARGETS_TO_BUILD=$host_target"
     )
     # Build lld first to use it as linker
