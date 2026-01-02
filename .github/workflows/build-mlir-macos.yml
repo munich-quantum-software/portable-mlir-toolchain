@@ -45,7 +45,7 @@ jobs:
           sudo rm -rf /usr/local/share/mono
           sudo rm -rf /usr/local/share/kotlin
           sudo rm -rf /usr/local/share/nvm
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY/*"
           brew uninstall --force --ignore-dependencies gcc@13 gcc@14 gcc@15 firefox
           brew cleanup
       - name: Build
