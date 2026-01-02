@@ -128,7 +128,6 @@ jobs:
             skopeo \
             snapd \
             tcl \
-            'temurin-*' \
             tk \
             '^tex-.*' \
             '^vim.*'
