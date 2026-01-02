@@ -200,7 +200,7 @@ if [[ "$BUILD_TYPE" == "Debug" ]]; then
   BUILD_TYPE_SUFFIX="_debug"
 fi
 ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}${BUILD_TYPE_SUFFIX}.tar.zst"
-ARCHIVE_PATH="$PWD/${ARCHIVE_NAME}"
+ARCHIVE_PATH="${INSTALL_PREFIX}/${ARCHIVE_NAME}"
 
 # Change to installation directory
 pushd "$INSTALL_PREFIX" > /dev/null
