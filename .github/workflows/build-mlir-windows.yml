@@ -35,15 +35,69 @@ jobs:
             echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
             exit 1
           fi
-      - name: Free up some space
+
+      - name: Disk usage (before cleanup)
+        shell: pwsh
         run: |
-          Remove-Item -Recurse -Force "C:\Android\android-sdk" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\Program Files\ghc" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\msys64" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\Selenium" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\Program Files\nodejs" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "$env:AGENT_TOOLSDIRECTORY" -ErrorAction SilentlyContinue
+          Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
+
+      - name: Free up some space
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+
+          function Remove-IfExists([string]$Path) {
+            if (Test-Path $Path) {
+              Write-Host "Removing $Path"
+              Remove-Item -Recurse -Force $Path -ErrorAction SilentlyContinue
+            }
+          }
+
+          # Big optional stacks we don't need for this job
+          Remove-IfExists "C:\Android\android-sdk"
+          Remove-IfExists "C:\Program Files\dotnet"
+          Remove-IfExists "C:\Program Files\ghc"
+          Remove-IfExists "C:\msys64"
+          Remove-IfExists "C:\Program Files\nodejs"
+          Remove-IfExists "$env:AGENT_TOOLSDIRECTORY"
+          Remove-IfExists "C:\hostedtoolcache"
+          Remove-IfExists "C:\vcpkg"
+
+          # Browser drivers / browsers (not needed)
+          Remove-IfExists "C:\Selenium"
+          Remove-IfExists "C:\SeleniumWebDrivers"
+          Remove-IfExists "C:\Program Files\Google"
+          Remove-IfExists "C:\Program Files (x86)\Google"
+          Remove-IfExists "C:\Program Files\Microsoft\Edge"
+          Remove-IfExists "C:\Program Files (x86)\Microsoft\Edge"
+
+          # Conda
+          Remove-IfExists "C:\Miniconda"
+
+          try {
+            wsl --shutdown | Out-Null
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\CanonicalGroupLimited.Ubuntu*"
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\TheDebianProject.DebianGNULinux*"
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\kali-linux.*"
+          } catch {}
+
+          # Docker
+          try {
+            docker system prune -af --volumes | Out-Null
+          } catch {}
+          Remove-IfExists "C:\ProgramData\Docker"
+
+          # Generic temp caches
+          Remove-IfExists "C:\Windows\Temp"
+          Remove-IfExists "$env:TEMP"
+          Remove-IfExists "$env:LOCALAPPDATA\Temp"
+
+          # Clean NuGet cache (safe)
+          try { dotnet nuget locals all --clear | Out-Null } catch {}
+      - name: Disk usage (after cleanup)
+        shell: pwsh
+        run: |
+          Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
