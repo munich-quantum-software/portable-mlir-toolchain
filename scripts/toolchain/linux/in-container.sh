@@ -153,7 +153,7 @@ build_llvm() {
   export PATH="$PWD/$build_dir/bin:$PATH"
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
 
-  cmake --build "$build_dir" --target install --config "$build_type"
+  cmake --build "$build_dir" --target install
 
   # Return to original directory
   popd > /dev/null
