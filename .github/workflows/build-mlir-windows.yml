@@ -54,22 +54,43 @@ jobs:
           }
 
           # Big optional stacks we don't need for this job
+          Remove-IfExists "C:\azureCLI"
+          Remove-IfExists "C:\azureDevOpsCli"
           Remove-IfExists "C:\Android\android-sdk"
+          Remove-IfExists "C:\hostedtoolcache"
+          Remove-IfExists "C:\Julia"
+          Remove-IfExists "C:\mingw32"
+          Remove-IfExists "C:\mingw64"
+          Remove-IfExists "C:\npm"
+          Remove-IfExists "C:\Program Files\Amazon"
+          Remove-IfExists "C:\Program Files\Android"
+          Remove-IfExists "C:\Program Files\Azure Cosmos DB Emulator"
           Remove-IfExists "C:\Program Files\dotnet"
           Remove-IfExists "C:\Program Files\ghc"
-          Remove-IfExists "C:\msys64"
+          Remove-IfExists "C:\Program Files\Google"
+          Remove-IfExists "C:\Program Files\Internet Explorer"
+          Remove-IfExists "C:\Program Files\LLVM"
+          Remove-IfExists "C:\Program Files\Microsoft\Edge"
+          Remove-IfExists "C:\Program Files\Mozilla Firefox"
+          Remove-IfExists "C:\Program Files\MySQL"
           Remove-IfExists "C:\Program Files\nodejs"
-          Remove-IfExists "$env:AGENT_TOOLSDIRECTORY"
-          Remove-IfExists "C:\hostedtoolcache"
-          Remove-IfExists "C:\vcpkg"
-
-          # Browser drivers / browsers (not needed)
+          Remove-IfExists "C:\Program Files\Windows Mail"
+          Remove-IfExists "C:\Program Files\Windows Media Player"
+          Remove-IfExists "C:\Program Files\Windows NT"
+          Remove-IfExists "C:\Program Files\Windows Photo Viewer"
+          Remove-IfExists "C:\Program Files (x86)\Android"
+          Remove-IfExists "C:\Program Files (x86)\Epic Games"
+          Remove-IfExists "C:\Program Files (x86)\Internet Explorer"
+          Remove-IfExists "C:\Program Files (x86)\Google"
+          Remove-IfExists "C:\Program Files (x86)\Microsoft\Edge"
+          Remove-IfExists "C:\Program Files (x86)\Windows Mail"
+          Remove-IfExists "C:\Program Files (x86)\Windows Media Player"
+          Remove-IfExists "C:\Program Files (x86)\Windows NT"
+          Remove-IfExists "C:\Program Files (x86)\Windows Photo Viewer"
           Remove-IfExists "C:\Selenium"
           Remove-IfExists "C:\SeleniumWebDrivers"
-          Remove-IfExists "C:\Program Files\Google"
-          Remove-IfExists "C:\Program Files (x86)\Google"
-          Remove-IfExists "C:\Program Files\Microsoft\Edge"
-          Remove-IfExists "C:\Program Files (x86)\Microsoft\Edge"
+          Remove-IfExists "C:\vcpkg"
+          Remove-IfExists "$env:AGENT_TOOLSDIRECTORY"
 
           # Conda
           Remove-IfExists "C:\Miniconda"
@@ -101,9 +122,6 @@ jobs:
         shell: pwsh
         run: |
           Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
-          Get-ChildItem "C:\" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
-          Get-ChildItem "C:\Program Files" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
-          Get-ChildItem "C:\Program Files (x86)" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
