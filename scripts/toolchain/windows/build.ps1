@@ -157,7 +157,7 @@ try {
     cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
     # Use the just-built lld as the linker
-    $env:PATH = "$(Join-Path $repo_dir $build_dir bin);$env:PATH"
+    $env:PATH = "$(Join-Path $repo_dir $build_dir bin $build_type);$(Join-Path $repo_dir $build_dir $build_type bin);$env:PATH"
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
     cmake --build $build_dir --target install --config $build_type
