@@ -40,10 +40,6 @@ jobs:
         shell: pwsh
         run: |
           Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
-          Get-ChildItem -Recurse C:\ | Sort-Object FullName | Format-Table -AutoSize
-          Get-ChildItem -Path "C:\Program Files (x86)" -Directory | Where-Object { $_.Length / 1GB -gt 2 }
-          Get-ChildItem -Path "C:\Program Files" -Directory | Where-Object { $_.Length / 1GB -gt 2 }
-          exit 1
 
       - name: Free up some space
         shell: pwsh
@@ -105,6 +101,9 @@ jobs:
         shell: pwsh
         run: |
           Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
+          Get-ChildItem "C:\" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
+          Get-ChildItem "C:\Program Files" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
+          Get-ChildItem "C:\Program Files (x86)" -Directory | Select-Object Name, FullName | Format-Table -AutoSize
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
