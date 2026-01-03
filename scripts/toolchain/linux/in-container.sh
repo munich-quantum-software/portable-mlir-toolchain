@@ -184,18 +184,25 @@ fi
 # Define archive variables
 ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
 ARCHIVE_PATH="${INSTALL_PREFIX}/${ARCHIVE_NAME}"
+TEMP_ARCHIVE_PATH="/tmp/${ARCHIVE_NAME}"
 
 # Change to installation directory
 pushd "$INSTALL_PREFIX" > /dev/null
 
-# Emit compressed archive (.tar.zst)
-tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${ARCHIVE_PATH}" . || {
+# Emit compressed archive (.tar.zst) to temporary location to avoid "file changed as we read it" error
+tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${TEMP_ARCHIVE_PATH}" . || {
   echo "Error: Failed to create archive" >&2
   exit 1
 }
 
 # Return to original directory
 popd > /dev/null
+
+# Move archive to final location
+mv "${TEMP_ARCHIVE_PATH}" "${ARCHIVE_PATH}" || {
+  echo "Error: Failed to move archive to final location" >&2
+  exit 1
+}
 
 # Clean up zstd installation
 rm -rf "$ZSTD_INSTALL_PREFIX"
