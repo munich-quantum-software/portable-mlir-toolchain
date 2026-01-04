@@ -28,6 +28,7 @@
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates <install_prefix>/llvm-mlir_<llvm_project_ref>_linux_<arch>_<host_target>.tar.zst
+#   - Creates <install_prefix>/zstd-<zstd_version>_linux_<arch>_<host_target>.tar
 
 set -euo pipefail
 
@@ -46,12 +47,12 @@ done
 # Check arguments
 if [ -z "${LLVM_PROJECT_REF:-}" ]; then
   echo "Error: llvm-project ref (-r) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 if [ -z "${INSTALL_PREFIX:-}" ]; then
   echo "Error: Installation directory (-p) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 

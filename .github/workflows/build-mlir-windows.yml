@@ -136,5 +136,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
-          path: llvm-mlir_*.tar.zst
+          path: |
+            llvm-mlir_*.tar.zst
+            zstd-*.zip
           if-no-files-found: error

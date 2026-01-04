@@ -14,7 +14,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: ./scripts/toolchain/macos/build.sh -r <ref> -p <installation directory>
+# macOS build script: build and package the MLIR toolchain
+#
+# Description:
+#   Builds LLVM and MLIR for macOS (arch-aware), and packages the results.
+#
+# Usage:
+#   scripts/toolchain/macos/build.sh -r <llvm_project_ref> -p <install_prefix>
+#     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
+#     install_prefix   Absolute path for the final install
+#
+# Outputs:
+#   - Installs into <install_prefix>
+#   - Creates llvm-mlir_<llvm_project_ref>_macos_<arch>_<host_target>.tar.zst in the current directory
+#   - Creates zstd-<zstd_version>_macos_<arch>_<host_target>.tar in the current directory
 
 set -euo pipefail
 
@@ -35,12 +48,12 @@ done
 # Check arguments
 if [ -z "${LLVM_PROJECT_REF:-}" ]; then
   echo "Error: llvm-project ref (-r) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 if [ -z "${INSTALL_PREFIX:-}" ]; then
   echo "Error: Installation directory (-p) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 
@@ -207,6 +220,17 @@ tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --thread
 }
 
 # Return to original directory
+popd > /dev/null
+
+# Package zstd executable
+ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_macos_${UNAME_ARCH}_${HOST_TARGET}.tar"
+ZSTD_ARCHIVE_PATH="$PWD/${ZSTD_ARCHIVE_NAME}"
+echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
+pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
+tar -cf "${ZSTD_ARCHIVE_PATH}" zstd || {
+  echo "Error: Failed to create zstd archive" >&2
+  exit 1
+}
 popd > /dev/null
 
 # Clean up zstd installation

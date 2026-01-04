@@ -13,7 +13,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: pwsh scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm-project ref> -install_prefix <installation directory> [-build_type <Release|Debug>]
+# Windows build script: build and package the MLIR toolchain
+#
+# Description:
+#   Builds LLVM and MLIR for Windows (arch-aware), and packages the results.
+#
+# Usage:
+#   scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm_project_ref> -install_prefix <install_prefix> [-build_type <Release|Debug>]
+#     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
+#     install_prefix   Absolute path for the final install
+#     build_type       Build type (Release or Debug). Defaults to Release.
+#
+# Outputs:
+#   - Installs into <install_prefix>
+#   - Creates llvm-mlir_<llvm_project_ref>_windows_<arch>_<host_target>[_debug].tar.zst in the current directory
+#   - Creates zstd-<zstd_version>_windows_<arch>_<host_target>[_debug].zip in the current directory
 
 param(
     [Parameter(Mandatory=$true)]
@@ -199,6 +213,12 @@ try {
    $zstd_exe = Join-Path $zstd_install_prefix "bin\zstd.exe"
    tar -cf - . | & $zstd_exe -19 --long=30 --threads=0 -o $archive_path
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
+
+   # Package zstd executable
+   $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target)$($build_type_suffix).zip"
+   $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
+   Write-Host "Packaging zstd into $zstd_archive_name..."
+   Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"
     exit 1

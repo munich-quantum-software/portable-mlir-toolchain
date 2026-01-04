@@ -14,7 +14,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Usage: ./scripts/toolchain/linux/build.sh -r llvmorg-21.1.8 [-p /path/to/llvm-install]
+# Linux in-container build script: build and package the MLIR toolchain
+#
+# Description:
+#   Builds LLVM and MLIR for Linux (arch-aware) inside a container, and packages the results.
+#
+# Environment:
+#   LLVM_PROJECT_REF  llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
+#   INSTALL_PREFIX    Absolute path for the final install
+#   BUILD_WORKSPACE   Path to the build workspace
+#
+# Outputs:
+#   - Installs into $INSTALL_PREFIX
+#   - Creates $INSTALL_PREFIX/llvm-mlir_$LLVM_PROJECT_REF_linux_<arch>_<host_target>.tar.zst
+#   - Creates $INSTALL_PREFIX/zstd-<zstd_version>_linux_<arch>_<host_target>.tar
 
 set -euo pipefail
 
@@ -196,6 +209,17 @@ tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --thread
 }
 
 # Return to original directory
+popd > /dev/null
+
+# Package zstd executable
+ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar"
+ZSTD_ARCHIVE_PATH="${INSTALL_PREFIX}/${ZSTD_ARCHIVE_NAME}"
+echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
+pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
+tar -cf "${ZSTD_ARCHIVE_PATH}" zstd || {
+  echo "Error: Failed to create zstd archive" >&2
+  exit 1
+}
 popd > /dev/null
 
 # Move archive to final location

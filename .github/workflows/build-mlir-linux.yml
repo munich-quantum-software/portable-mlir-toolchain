@@ -37,7 +37,7 @@ jobs:
 
           # Move archives back next to the workspace for artifact pickup
           shopt -s nullglob
-          files=("${INSTALL_DIR}"/llvm-mlir_*.tar.zst)
+          files=("${INSTALL_DIR}"/llvm-mlir_*.tar.zst "${INSTALL_DIR}"/zstd-*.tar)
           if (( ${#files[@]} == 0 )); then
             echo "Error: No archive produced in ${INSTALL_DIR}" >&2
             exit 1
@@ -47,5 +47,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.runs-on }}-archive
-          path: llvm-mlir_*.tar.zst
+          path: |
+            llvm-mlir_*.tar.zst
+            zstd-*.tar
           if-no-files-found: error

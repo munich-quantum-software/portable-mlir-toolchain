@@ -10,6 +10,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Added
 
+- 📦 Package and upload `zstd` as a standalone asset for all platforms ([#4]) ([**@burgholzer**])
 - ✨🚸 Add Debug builds for Windows ([#4]) ([**@burgholzer**])
 
 ### Changed
