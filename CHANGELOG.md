@@ -8,6 +8,17 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Added
+
+- 📦 Package and upload `zstd` as a standalone asset for all platforms ([#4]) ([**@burgholzer**])
+- ✨🚸 Add Debug builds for Windows ([#4]) ([**@burgholzer**])
+
+### Changed
+
+- 📦 Build the `lld` linker on all platforms and use it as a linker for building LLVM ([#4]) ([**@burgholzer**])
+- 📦 Build `zstd` from source on all platforms and use it for building LLVM and compressing the final archives ([#4]) ([**@burgholzer**])
+- 📉 Optimize size of distributed toolchain by using more aggressive compression (`--long=30`) ([#4]) ([**@burgholzer**])
+
 ## [2025.12.23]
 
 ### Distribution
@@ -34,6 +45,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#4]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/4
 [#1]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/1
 
 <!-- Contributor -->

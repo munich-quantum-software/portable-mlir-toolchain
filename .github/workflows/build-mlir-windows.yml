@@ -7,6 +7,11 @@ on:
         description: "llvm-project ref or tag (e.g., llvmorg-21.1.8)"
         required: true
         type: string
+      build-type:
+        description: "Build type (Release or Debug)"
+        required: false
+        default: "Release"
+        type: string
 
 permissions:
   contents: read
@@ -23,12 +28,115 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Validate build-type
+        shell: bash
+        run: |
+          if [[ "${{ inputs.build-type }}" != "Release" && "${{ inputs.build-type }}" != "Debug" ]]; then
+            echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
+            exit 1
+          fi
+
+      - name: Disk usage (before cleanup)
+        shell: pwsh
+        run: |
+          Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
+
+      - name: Free up some space
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+
+          function Remove-IfExists([string]$Path) {
+            if (Test-Path $Path) {
+              Write-Host "Removing $Path"
+              Remove-Item -Recurse -Force $Path -ErrorAction SilentlyContinue
+            }
+          }
+
+          # Big optional stacks we don't need for this job
+          Remove-IfExists "C:\azureCLI"
+          Remove-IfExists "C:\azureDevOpsCli"
+          Remove-IfExists "C:\Android\android-sdk"
+          Remove-IfExists "C:\hostedtoolcache"
+          Remove-IfExists "C:\Julia"
+          Remove-IfExists "C:\mingw32"
+          Remove-IfExists "C:\mingw64"
+          Remove-IfExists "C:\npm"
+          Remove-IfExists "C:\Program Files\Amazon"
+          Remove-IfExists "C:\Program Files\Android"
+          Remove-IfExists "C:\Program Files\Azure Cosmos DB Emulator"
+          Remove-IfExists "C:\Program Files\dotnet"
+          Remove-IfExists "C:\Program Files\ghc"
+          Remove-IfExists "C:\Program Files\Google"
+          Remove-IfExists "C:\Program Files\Internet Explorer"
+          Remove-IfExists "C:\Program Files\LLVM"
+          Remove-IfExists "C:\Program Files\Microsoft\Edge"
+          Remove-IfExists "C:\Program Files\Mozilla Firefox"
+          Remove-IfExists "C:\Program Files\MySQL"
+          Remove-IfExists "C:\Program Files\nodejs"
+          Remove-IfExists "C:\Program Files\Windows Mail"
+          Remove-IfExists "C:\Program Files\Windows Media Player"
+          Remove-IfExists "C:\Program Files\Windows NT"
+          Remove-IfExists "C:\Program Files\Windows Photo Viewer"
+          Remove-IfExists "C:\Program Files (x86)\Android"
+          Remove-IfExists "C:\Program Files (x86)\Epic Games"
+          Remove-IfExists "C:\Program Files (x86)\Internet Explorer"
+          Remove-IfExists "C:\Program Files (x86)\Google"
+          Remove-IfExists "C:\Program Files (x86)\Microsoft\Edge"
+          Remove-IfExists "C:\Program Files (x86)\Windows Mail"
+          Remove-IfExists "C:\Program Files (x86)\Windows Media Player"
+          Remove-IfExists "C:\Program Files (x86)\Windows NT"
+          Remove-IfExists "C:\Program Files (x86)\Windows Photo Viewer"
+          Remove-IfExists "C:\Selenium"
+          Remove-IfExists "C:\SeleniumWebDrivers"
+          Remove-IfExists "C:\vcpkg"
+          Remove-IfExists "$env:AGENT_TOOLSDIRECTORY"
+
+          # Conda
+          Remove-IfExists "C:\Miniconda"
+
+          try {
+            wsl --shutdown | Out-Null
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\CanonicalGroupLimited.Ubuntu*"
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\TheDebianProject.DebianGNULinux*"
+            Remove-IfExists "$env:LOCALAPPDATA\Packages\kali-linux.*"
+          } catch {}
+
+          # Docker
+          try {
+            docker system prune -af --volumes | Out-Null
+          } catch {}
+          Remove-IfExists "C:\ProgramData\Docker"
+
+          # Generic temp caches
+          Remove-IfExists "C:\Windows\Temp"
+          Remove-IfExists "$env:TEMP"
+          Remove-IfExists "$env:LOCALAPPDATA\Temp"
+
+          # Clean NuGet cache
+          try { dotnet nuget locals all --clear | Out-Null } catch {}
+
+          # Never fail the job because cleanup couldn't remove something.
+          exit 0
+      - name: Disk usage (after cleanup)
+        shell: pwsh
+        run: |
+          Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
+        with:
+          python-version: 3.13
+          activate-environment: true
+          enable-cache: false
       - name: Build
         shell: pwsh
-        run: ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install -build_type ${{ inputs.build-type }}
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: ${{ matrix.runs-on }}-archive
-          path: llvm-mlir_*.tar.zst
+          name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
+          path: |
+            llvm-mlir_*.tar.zst
+            zstd-*.zip
           if-no-files-found: error

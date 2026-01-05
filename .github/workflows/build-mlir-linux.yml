@@ -23,17 +23,31 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Free up some space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android/sdk
-          sudo rm -rf /usr/share/swift
       - name: Build
-        run: bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install
+        run: |
+          set -euo pipefail
+
+          # Prefer /mnt if available, but fall back to /workspace
+          INSTALL_DIR="${{ github.workspace }}/llvm-install"
+          if [[ -d "/mnt" && -w "/mnt" ]]; then
+            INSTALL_DIR="/mnt/llvm-install"
+          fi
+
+          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p "${INSTALL_DIR}"
+
+          # Move archives back next to the workspace for artifact pickup
+          shopt -s nullglob
+          files=("${INSTALL_DIR}"/llvm-mlir_*.tar.zst "${INSTALL_DIR}"/zstd-*.tar)
+          if (( ${#files[@]} == 0 )); then
+            echo "Error: No archive produced in ${INSTALL_DIR}" >&2
+            exit 1
+          fi
+          mv -v "${files[@]}" "${{ github.workspace }}"/
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.runs-on }}-archive
-          path: llvm-mlir_*.tar.zst
+          path: |
+            llvm-mlir_*.tar.zst
+            zstd-*.tar
           if-no-files-found: error

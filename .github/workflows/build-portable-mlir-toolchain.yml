@@ -86,9 +86,14 @@ jobs:
   windows:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Release, Debug]
     uses: ./.github/workflows/build-mlir-windows.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-21.1.8' }}
+      build-type: ${{ matrix.build-type }}
 
   release:
     needs: [linux, macos, windows]

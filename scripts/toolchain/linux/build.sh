@@ -28,6 +28,7 @@
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates <install_prefix>/llvm-mlir_<llvm_project_ref>_linux_<arch>_<host_target>.tar.zst
+#   - Creates <install_prefix>/zstd-<zstd_version>_linux_<arch>_<host_target>.tar
 
 set -euo pipefail
 
@@ -46,42 +47,51 @@ done
 # Check arguments
 if [ -z "${LLVM_PROJECT_REF:-}" ]; then
   echo "Error: llvm-project ref (-r) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 if [ -z "${INSTALL_PREFIX:-}" ]; then
   echo "Error: Installation directory (-p) is required" >&2
-  echo "Usage: $0 -r <llvm-project ref> -p <installation directory>" >&2
+  echo "Usage: $0 -r <llvm_project_ref> -p <install_prefix>" >&2
   exit 1
 fi
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR=$(cd "$SCRIPT_DIR/../../.." && pwd)
 
+# Path to the in-container script as seen *inside* the container after mounting ROOT_DIR at /work.
+REL_SCRIPT_DIR="${SCRIPT_DIR#"${ROOT_DIR}"}"
+IN_CONTAINER_SCRIPT="/work${REL_SCRIPT_DIR}/in-container.sh"
+
 ARCH=$(uname -m)
-BASE_IMAGE="quay.io/pypa/manylinux_2_28_x86_64:2025.12.19-1"
+BASE_IMAGE="quay.io/pypa/manylinux_2_28_x86_64:2025.12.29-3"
 if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-  BASE_IMAGE="quay.io/pypa/manylinux_2_28_aarch64:2025.12.19-1"
+  BASE_IMAGE="quay.io/pypa/manylinux_2_28_aarch64:2025.12.29-3"
 fi
 
 # Ensure output dir exists
 mkdir -p "$INSTALL_PREFIX"
 
-# Determine path to in-container script once mounted at /work
-# If ROOT_DIR is mounted at /work, then SCRIPT_DIR becomes /work${REL_DIR}
-REL_DIR="${SCRIPT_DIR#"${ROOT_DIR}"}"
-IN_CONTAINER_SCRIPT="/work${REL_DIR}/in-container.sh"
+# If /mnt exists, use it to keep large build trees off the root filesystem.
+HOST_BUILD_WORKSPACE_DEFAULT="$ROOT_DIR/.build-work"
+if [[ -d "/mnt" && -w "/mnt" ]]; then
+  HOST_BUILD_WORKSPACE_DEFAULT="/mnt/portable-mlir-toolchain-build"
+fi
+HOST_BUILD_WORKSPACE="${HOST_BUILD_WORKSPACE:-$HOST_BUILD_WORKSPACE_DEFAULT}"
+mkdir -p "$HOST_BUILD_WORKSPACE"
 
-# Build environment vars (only pass optional ones if provided)
+# Build environment vars
 ENV_ARGS=(-e HOME=/work -e LLVM_PROJECT_REF="$LLVM_PROJECT_REF" -e INSTALL_PREFIX="/out" \
+  -e BUILD_WORKSPACE="/build" \
   -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}")
 
 # Run build inside container
 sudo docker run --rm --privileged \
   -v "$ROOT_DIR":/work:rw \
   -v "$INSTALL_PREFIX":/out:rw \
+  -v "$HOST_BUILD_WORKSPACE":/build:rw \
   "${ENV_ARGS[@]}" \
   "$BASE_IMAGE" \
-  bash -c "yum -y update && yum -y install zstd && bash -euo pipefail \"$IN_CONTAINER_SCRIPT\""
+  bash -euo pipefail "$IN_CONTAINER_SCRIPT"
 
 echo "Linux build completed at $INSTALL_PREFIX"

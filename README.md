@@ -1,6 +1,7 @@
 # Portable MLIR Toolchain
 
 This repository provides pre-built MLIR binaries.
+Standalone `zstd` executables are also provided as separate assets for each supported platform to facilitate decompression.
 
 ## Installation
 
