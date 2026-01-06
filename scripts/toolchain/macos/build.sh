@@ -113,7 +113,7 @@ build_zstd() {
     -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" \
     -DZSTD_BUILD_STATIC=ON \
     -DZSTD_BUILD_SHARED=OFF
-  if ! cmake --build . --target install -j"$(sysctl -n hw.ncpu)"; then
+  if ! cmake --build build_cmake --target install -j"$(sysctl -n hw.ncpu)"; then
     echo "Error: Failed to build/install zstd" >&2
     exit 1
   fi
