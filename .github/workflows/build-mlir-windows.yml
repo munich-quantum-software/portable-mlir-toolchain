@@ -138,5 +138,5 @@ jobs:
           name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
           path: |
             llvm-mlir_*.tar.zst
-            zstd-*.zip
+            ${{ inputs.build-type == 'Release' && 'zstd-*.zip' || '' }}
           if-no-files-found: error
