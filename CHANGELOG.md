@@ -64,15 +64,15 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.01.06...HEAD
-[2026.01.06]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.06
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.01.07...HEAD
+[2026.01.07]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.07
 [2026.01.05]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.05
 [2025.12.23]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2025.12.23
 [2025.12.22]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2025.12.22
 
 <!-- PR links -->
 
-[11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/11
+[#11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/11
 [#4]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/4
 [#1]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/1
 
