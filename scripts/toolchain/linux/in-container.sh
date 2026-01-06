@@ -91,7 +91,12 @@ build_zstd() {
   fi
 
   pushd "$zstd_dir" > /dev/null
-  if ! make -j"$(nproc)" install PREFIX="$install_prefix"; then
+  cmake -S . -B build_cmake \
+    -DCMAKE_INSTALL_PREFIX="$install_prefix" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DZSTD_BUILD_STATIC=ON \
+    -DZSTD_BUILD_SHARED=OFF
+  if ! cmake --build build_cmake --target install -j"$(nproc)"; then
     echo "Error: Failed to build/install zstd" >&2
     exit 1
   fi
