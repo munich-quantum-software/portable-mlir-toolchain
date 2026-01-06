@@ -8,7 +8,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
-## [2026.01.06]
+## [2026.01.07]
 
 ### Distribution
 
@@ -22,6 +22,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 ### Changed
 
 - 📦 Only distribute `zstd` once for Windows ([#11]) ([**@burgholzer**])
+- 📦 Use `.tar.gz` instead of `.tar` for `zstd` binary archives on Linux and macOS to follow standard format conventions ([#11]) ([**@burgholzer**])
 
 ## [2026.01.05]
 

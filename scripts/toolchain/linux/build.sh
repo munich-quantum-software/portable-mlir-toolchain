@@ -28,7 +28,7 @@
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates <install_prefix>/llvm-mlir_<llvm_project_ref>_linux_<arch>_<host_target>.tar.zst
-#   - Creates <install_prefix>/zstd-<zstd_version>_linux_<arch>_<host_target>.tar
+#   - Creates <install_prefix>/zstd-<zstd_version>_linux_<arch>_<host_target>.tar.gz
 
 set -euo pipefail
 

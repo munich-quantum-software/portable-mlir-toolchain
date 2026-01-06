@@ -27,7 +27,7 @@
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates llvm-mlir_<llvm_project_ref>_macos_<arch>_<host_target>.tar.zst in the current directory
-#   - Creates zstd-<zstd_version>_macos_<arch>_<host_target>.tar in the current directory
+#   - Creates zstd-<zstd_version>_macos_<arch>_<host_target>.tar.gz in the current directory
 
 set -euo pipefail
 
@@ -229,11 +229,11 @@ tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --thread
 popd > /dev/null
 
 # Package zstd executable
-ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_macos_${UNAME_ARCH}_${HOST_TARGET}.tar"
+ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_macos_${UNAME_ARCH}_${HOST_TARGET}.tar.gz"
 ZSTD_ARCHIVE_PATH="$PWD/${ZSTD_ARCHIVE_NAME}"
 echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
 pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
-tar -cf "${ZSTD_ARCHIVE_PATH}" zstd || {
+tar -czf "${ZSTD_ARCHIVE_PATH}" zstd || {
   echo "Error: Failed to create zstd archive" >&2
   exit 1
 }

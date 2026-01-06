@@ -27,7 +27,7 @@
 # Outputs:
 #   - Installs into $INSTALL_PREFIX
 #   - Creates $INSTALL_PREFIX/llvm-mlir_$LLVM_PROJECT_REF_linux_<arch>_<host_target>.tar.zst
-#   - Creates $INSTALL_PREFIX/zstd-<zstd_version>_linux_<arch>_<host_target>.tar
+#   - Creates $INSTALL_PREFIX/zstd-<zstd_version>_linux_<arch>_<host_target>.tar.gz
 
 set -euo pipefail
 
@@ -217,11 +217,11 @@ tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --thread
 popd > /dev/null
 
 # Package zstd executable
-ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar"
+ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.gz"
 ZSTD_ARCHIVE_PATH="${INSTALL_PREFIX}/${ZSTD_ARCHIVE_NAME}"
 echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
 pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
-tar -cf "${ZSTD_ARCHIVE_PATH}" zstd || {
+tar -czf "${ZSTD_ARCHIVE_PATH}" zstd || {
   echo "Error: Failed to create zstd archive" >&2
   exit 1
 }
