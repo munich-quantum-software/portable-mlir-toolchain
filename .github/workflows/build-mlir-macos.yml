@@ -31,5 +31,5 @@ jobs:
           name: ${{ matrix.runs-on }}-archive
           path: |
             llvm-mlir_*.tar.zst
-            zstd-*.tar
+            zstd-*.tar.gz
           if-no-files-found: error

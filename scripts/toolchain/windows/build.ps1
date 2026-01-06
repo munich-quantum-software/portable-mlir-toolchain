@@ -215,10 +215,12 @@ try {
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
 
    # Package zstd executable
-   $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target)$($build_type_suffix).zip"
-   $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
-   Write-Host "Packaging zstd into $zstd_archive_name..."
-   Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
+   if (!$debug) {
+       $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target)$($build_type_suffix).zip"
+       $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
+       Write-Host "Packaging zstd into $zstd_archive_name..."
+       Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
+   }
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"
     exit 1
