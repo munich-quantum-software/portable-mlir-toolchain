@@ -107,7 +107,7 @@ build_zstd() {
   fi
 
   pushd "$zstd_dir" > /dev/null
-  cmake -S . -B build_cmake \
+  cmake -S build/cmake -B build_cmake \
     -DCMAKE_INSTALL_PREFIX="$install_prefix" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" \
