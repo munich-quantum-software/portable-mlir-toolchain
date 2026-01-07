@@ -8,7 +8,23 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.01.08]
+
+### Distribution
+
+- LLVM tag: `llvmorg-21.1.8` (redistributed without zstd support)
+- zstd version: `1.5.7`
+
+### Fixed
+
+- 🐛 Disable zstd support for the LLVM distribution again ([#13]) ([**@burgholzer**])
+
 ## [2026.01.07]
+
+> [!NOTE]
+> This release has been removed due to another oversight in packaging `zstd`.
+> The distribution of LLVM would still require the static `zstd` library to be available at CMake configuration time, but we never ship it.
+> This has been fixed in the latest release by disabling zstd support for the LLVM distribution explicitly.
 
 ### Distribution
 
@@ -64,7 +80,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.01.07...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.01.08...HEAD
+[2026.01.08]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.08
 [2026.01.07]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.07
 [2026.01.05]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.05
 [2025.12.23]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2025.12.23
@@ -72,6 +89,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/13
 [#11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/11
 [#4]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/4
 [#1]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/1

@@ -54,7 +54,7 @@ else
   exit 1
 fi
 
-# Main LLVM setup function
+# Build and install zstd
 build_zstd() {
   local install_prefix=$1
   echo "Building zstd v$ZSTD_VERSION into $install_prefix..."
@@ -105,10 +105,10 @@ build_zstd() {
   rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
 }
 
+# Main LLVM setup function
 build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
-  local zstd_install_prefix=$3
 
   echo "Building MLIR $llvm_project_ref into $install_prefix..."
 
@@ -145,8 +145,7 @@ build_llvm() {
     -DLLVM_BUILD_EXAMPLES=OFF
     -DLLVM_BUILD_TESTS=OFF
     -DLLVM_ENABLE_ASSERTIONS=ON
-    -DLLVM_ENABLE_ZSTD=ON
-    -DCMAKE_PREFIX_PATH="$zstd_install_prefix"
+    -DLLVM_ENABLE_ZSTD=OFF
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
     -DLLVM_ENABLE_LIBXML2=OFF
@@ -180,7 +179,7 @@ build_llvm() {
 
 ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
 build_zstd "$ZSTD_INSTALL_PREFIX"
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX" "$ZSTD_INSTALL_PREFIX"
+build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 
 # Prune non-essential tools
 if [[ -d "$INSTALL_PREFIX/bin" ]]; then
