@@ -8,6 +8,12 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.01.13]
+
+### Distribution
+
+- LLVM commit: `113f01aa82d055410f22a9d03b3468fa68600589` ([same as Xanadu's PennyLane Catalyst `v0.14.0`](https://github.com/PennyLaneAI/catalyst/blob/7601be537f7e18fb880925743b6c13f429accb50/doc/releases/changelog-0.14.0.md#L516))
+
 ## [2026.01.08]
 
 ### Distribution
