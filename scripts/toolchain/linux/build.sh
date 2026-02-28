@@ -64,9 +64,9 @@ REL_SCRIPT_DIR="${SCRIPT_DIR#"${ROOT_DIR}"}"
 IN_CONTAINER_SCRIPT="/work${REL_SCRIPT_DIR}/in-container.sh"
 
 ARCH=$(uname -m)
-BASE_IMAGE="quay.io/pypa/manylinux_2_28_x86_64:2025.12.29-3"
+BASE_IMAGE="quay.io/pypa/manylinux_2_28_x86_64:2026.02.28-1"
 if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-  BASE_IMAGE="quay.io/pypa/manylinux_2_28_aarch64:2025.12.29-3"
+  BASE_IMAGE="quay.io/pypa/manylinux_2_28_aarch64:2026.02.28-1"
 fi
 
 # Ensure output dir exists
