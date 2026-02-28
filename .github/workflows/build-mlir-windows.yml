@@ -119,7 +119,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install -build_type ${{ inputs.build-type }}
+          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
