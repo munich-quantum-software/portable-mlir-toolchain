@@ -7,11 +7,6 @@ on:
         description: "llvm-project ref or tag (e.g., llvmorg-21.1.8)"
         required: true
         type: string
-      build-type:
-        description: "Build type (Release or Debug)"
-        required: false
-        default: "Release"
-        type: string
 
 permissions:
   contents: read
@@ -28,13 +23,6 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Validate build-type
-        shell: bash
-        run: |
-          if [[ "${{ inputs.build-type }}" != "Release" && "${{ inputs.build-type }}" != "Debug" ]]; then
-            echo "Error: build-type must be 'Release' or 'Debug', got '${{ inputs.build-type }}'"
-            exit 1
-          fi
 
       - name: Disk usage (before cleanup)
         shell: pwsh
@@ -131,12 +119,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install -build_type ${{ inputs.build-type }}
+          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install
       - name: Upload archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
+          name: ${{ matrix.runs-on }}-archive
           path: |
             llvm-mlir_*.tar.zst
-            ${{ inputs.build-type == 'Release' && 'zstd-*.zip' || '' }}
+            zstd-*.zip
           if-no-files-found: error
