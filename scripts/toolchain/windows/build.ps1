@@ -32,7 +32,7 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$llvm_project_ref,
     [Parameter(Mandatory=$true)]
-    [string]$install_prefix,
+    [string]$install_prefix
 )
 
 $ErrorActionPreference = "Stop"
