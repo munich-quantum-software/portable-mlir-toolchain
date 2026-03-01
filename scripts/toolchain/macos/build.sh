@@ -107,7 +107,7 @@ build_zstd() {
   fi
 
   pushd "$zstd_dir" > /dev/null
-  cmake -S build/cmake -B build_cmake \
+  cmake -G Ninja -S build/cmake -B build_cmake \
     -DCMAKE_INSTALL_PREFIX="$install_prefix" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}" \
@@ -153,6 +153,7 @@ build_llvm() {
   # Build LLVM
   local build_dir="build_llvm"
   local cmake_args=(
+    -G Ninja
     -S llvm -B "$build_dir"
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_COMPILER=clang
