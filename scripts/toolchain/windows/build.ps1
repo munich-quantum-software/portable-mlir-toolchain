@@ -194,7 +194,9 @@ try {
         # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         # Suppress deprecation warning for `std::complex<llvm::APFloat>`
-        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
+        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING',
+        # Limit the link stage to 1 parallel job to avoid high memory usage and linker errors
+        '-DLLVM_PARALLEL_LINK_JOBS=1'
     )
     if ($debug) {
         $cmake_args += @(
