@@ -166,6 +166,12 @@ try {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         "-DLLVM_TARGETS_TO_BUILD=$host_target"
     )
+    if ($debug) {
+        $cmake_args += @(
+            '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
+            '-DCMAKE_POLICY_CMP0141=NEW'
+        )
+    }
     # Build lld first to use it as linker
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
