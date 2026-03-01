@@ -19,26 +19,30 @@
 #   Builds LLVM and MLIR for Windows (arch-aware), and packages the results.
 #
 # Usage:
-#   scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm_project_ref> -install_prefix <install_prefix>
+#   scripts/toolchain/windows/build.ps1 -llvm_project_ref <llvm_project_ref> -install_prefix <install_prefix> [-build_type <Release|Debug>]
 #     llvm_project_ref llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
 #     install_prefix   Absolute path for the final install
+#     build_type       Build type (Release or Debug). Defaults to Release.
 #
 # Outputs:
 #   - Installs into <install_prefix>
-#   - Creates llvm-mlir_<llvm_project_ref>_windows_<arch>_<host_target>.tar.zst in the current directory
-#   - Creates zstd-<zstd_version>_windows_<arch>_<host_target>.zip in the current directory
+#   - Creates llvm-mlir_<llvm_project_ref>_windows_<arch>_<host_target>[_debug].tar.zst in the current directory
+#   - Creates zstd-<zstd_version>_windows_<arch>_<host_target>[_debug].zip in the current directory
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$llvm_project_ref,
     [Parameter(Mandatory=$true)]
-    [string]$install_prefix
+    [string]$install_prefix,
+    [ValidateSet("Release", "Debug")]
+    [string]$build_type = "Release"
 )
 
 $ErrorActionPreference = "Stop"
 
 $zstd_version = "1.5.7"
 $root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
+$debug = ($build_type -eq "Debug")
 
 # Detect architecture
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
@@ -142,7 +146,7 @@ try {
         '-S', 'llvm',
         '-B', $build_dir,
         '-G', 'Visual Studio 17 2022',
-        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
         '-DLLVM_BUILD_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
@@ -163,13 +167,13 @@ try {
     # Build lld first to use it as linker
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
-    cmake --build $build_dir --target lld --config Release
+    cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
     # Use the just-built lld as the linker
-    $env:PATH = "$(Join-Path $repo_dir $build_dir bin Release);$(Join-Path $repo_dir $build_dir Release bin);$env:PATH"
+    $env:PATH = "$(Join-Path $repo_dir $build_dir bin $build_type);$(Join-Path $repo_dir $build_dir $build_type bin);$env:PATH"
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
-    cmake --build $build_dir --target install --config Release
+    cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM build failed" }
 } finally {
     # Return to original directory
@@ -196,7 +200,8 @@ foreach ($dir in $dirs_to_remove) {
 }
 
 # Define archive variables
-$archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target).tar.zst"
+$build_type_suffix = if ($debug) { "_debug" } else { "" }
+$archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target)$($build_type_suffix).tar.zst"
 $archive_path = Join-Path $root_dir $archive_name
 
 # Change to installation directory
@@ -209,10 +214,12 @@ try {
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
 
    # Package zstd executable
-   $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target).zip"
-   $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
-   Write-Host "Packaging zstd into $zstd_archive_name..."
-   Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
+   if (!$debug) {
+       $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target)$($build_type_suffix).zip"
+       $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
+       Write-Host "Packaging zstd into $zstd_archive_name..."
+       Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
+   }
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"
     exit 1
