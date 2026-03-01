@@ -69,8 +69,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p "${{ github.workspace }}/zstd-install"
-          tar -xzf zstd-*.tar.gz -C "${{ github.workspace }}/zstd-install" --strip-components=1
+          mkdir -p "${{ github.workspace }}/zstd-install/bin"
+          tar -xzf zstd-*.tar.gz -C "${{ github.workspace }}/zstd-install/bin"
 
           archive=$(find . -maxdepth 1 -name 'llvm-mlir_*.tar.zst' -print -quit)
           bash ${{ github.workspace }}/scripts/toolchain/linux/test-installation.sh \
