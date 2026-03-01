@@ -200,9 +200,6 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 echo "Bundling zstd into LLVM install..."
 cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
 cp -r "$ZSTD_INSTALL_PREFIX/lib/."     "$INSTALL_PREFIX/lib/"
-if [[ -d "$ZSTD_INSTALL_PREFIX/lib/cmake" ]]; then
-  cp -r "$ZSTD_INSTALL_PREFIX/lib/cmake/." "$INSTALL_PREFIX/lib/cmake/"
-fi
 
 # Strip binaries
 if command -v strip >/dev/null 2>&1; then

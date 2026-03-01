@@ -211,10 +211,6 @@ try {
 Write-Host "Bundling zstd into LLVM install..."
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
-$zstd_cmake_dir = Join-Path $zstd_install_prefix "lib\cmake"
-if (Test-Path $zstd_cmake_dir) {
-    Copy-Item -Recurse -Force "$zstd_cmake_dir\*" (Join-Path $install_prefix "lib\cmake")
-}
 
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
