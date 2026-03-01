@@ -193,10 +193,12 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 # Bundle zstd into the LLVM install so consumers can find it
 echo "Bundling zstd into LLVM install..."
 cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
-cp -r "$ZSTD_INSTALL_PREFIX/lib/." "$INSTALL_PREFIX/lib/"
-if [[ -d "$ZSTD_INSTALL_PREFIX/lib/cmake" ]]; then
-  cp -r "$ZSTD_INSTALL_PREFIX/lib/cmake/." "$INSTALL_PREFIX/lib/cmake/"
-fi
+# Handle both lib/ and lib64/ install locations
+for lib_dir in "$ZSTD_INSTALL_PREFIX/lib" "$ZSTD_INSTALL_PREFIX/lib64"; do
+  if [ -d "$lib_dir" ]; then
+    cp -r "$lib_dir/." "$INSTALL_PREFIX/lib/"
+  fi
+done
 
 # Strip binaries
 if command -v strip >/dev/null 2>&1; then
