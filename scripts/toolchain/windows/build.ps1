@@ -151,7 +151,9 @@ try {
         '-DLLVM_BUILD_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
-        '-DLLVM_ENABLE_ZSTD=OFF',
+        "-DLLVM_ENABLE_ZSTD=FORCE_ON",
+        '-DLLVM_USE_STATIC_ZSTD=ON',
+        "-DCMAKE_PREFIX_PATH=$zstd_install_prefix",
         '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_ENABLE_LIBXML2=OFF',
@@ -181,22 +183,13 @@ try {
     if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 }
 
-# Remove non-essential binaries from bin directory
-$install_bin = Join-Path $install_prefix "bin"
-if (Test-Path $install_bin) {
-    $patterns = @(
-        'clang*.exe',
-        'llvm-bolt.exe',
-        'perf2bolt.exe'
-    )
-    Get-ChildItem -Path $install_bin -Include $patterns -Recurse -File | Remove-Item -ErrorAction SilentlyContinue
-}
-
-# Remove non-essential directories
-$dirs_to_remove = @("lib\clang", "share")
-foreach ($dir in $dirs_to_remove) {
-    $path = Join-Path $install_prefix $dir
-    if (Test-Path $path) { Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue }
+# Bundle zstd into the LLVM install so consuming projects can find it
+Write-Host "Bundling zstd into LLVM install..."
+Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
+Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
+$zstd_cmake_dir = Join-Path $zstd_install_prefix "lib\cmake"
+if (Test-Path $zstd_cmake_dir) {
+    Copy-Item -Recurse -Force "$zstd_cmake_dir\*" (Join-Path $install_prefix "lib\cmake")
 }
 
 # Define archive variables

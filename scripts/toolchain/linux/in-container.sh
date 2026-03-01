@@ -145,7 +145,9 @@ build_llvm() {
     -DLLVM_BUILD_EXAMPLES=OFF
     -DLLVM_BUILD_TESTS=OFF
     -DLLVM_ENABLE_ASSERTIONS=ON
-    -DLLVM_ENABLE_ZSTD=OFF
+    -DLLVM_ENABLE_ZSTD=FORCE_ON
+    -DLLVM_USE_STATIC_ZSTD=ON
+    -DCMAKE_PREFIX_PATH="$ZSTD_INSTALL_PREFIX"
     -DLLVM_ENABLE_LTO=OFF
     -DLLVM_ENABLE_RTTI=ON
     -DLLVM_ENABLE_LIBXML2=OFF
@@ -181,16 +183,13 @@ ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
 build_zstd "$ZSTD_INSTALL_PREFIX"
 build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 
-# Prune non-essential tools
-if [[ -d "$INSTALL_PREFIX/bin" ]]; then
-  rm -f "$INSTALL_PREFIX/bin/clang*" \
-        "$INSTALL_PREFIX/bin/llvm-bolt" \
-        "$INSTALL_PREFIX/bin/perf2bolt" \
-        2>/dev/null || true
+# Bundle zstd into the LLVM install so consumers can find it
+echo "Bundling zstd into LLVM install..."
+cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
+cp -r "$ZSTD_INSTALL_PREFIX/lib/." "$INSTALL_PREFIX/lib/"
+if [[ -d "$ZSTD_INSTALL_PREFIX/lib/cmake" ]]; then
+  cp -r "$ZSTD_INSTALL_PREFIX/lib/cmake/." "$INSTALL_PREFIX/lib/cmake/"
 fi
-
-# Remove non-essential directories
-rm -rf "$INSTALL_PREFIX/lib/clang" "$INSTALL_PREFIX/share" 2>/dev/null || true
 
 # Strip binaries
 if command -v strip >/dev/null 2>&1; then
