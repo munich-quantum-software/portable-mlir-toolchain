@@ -169,7 +169,7 @@ try {
     if ($debug) {
         $cmake_args += @(
             '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
-            '-DCMAKE_POLICY_CMP0141=NEW'
+            '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
         )
     }
     # Build lld first to use it as linker
