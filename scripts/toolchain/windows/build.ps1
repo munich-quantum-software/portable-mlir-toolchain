@@ -230,68 +230,6 @@ Write-Host "Bundling zstd into LLVM install..."
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
 
-function Test-Installation {
-    param([string]$ArchivePath)
-
-    Write-Host "Testing installation from $ArchivePath..."
-
-    $zstdExe = Join-Path $zstd_install_prefix "bin\zstd.exe"
-
-    $testInstallDir = Join-Path ([IO.Path]::GetTempPath()) "mlir-test-install-$([IO.Path]::GetRandomFileName())"
-    $testBuildDir   = Join-Path ([IO.Path]::GetTempPath()) "mlir-test-build-$([IO.Path]::GetRandomFileName())"
-    New-Item -ItemType Directory -Force -Path $testInstallDir | Out-Null
-    New-Item -ItemType Directory -Force -Path $testBuildDir   | Out-Null
-
-    try {
-        # Extract the archive using the bundled zstd
-        tar --use-compress-program="$zstdExe -d" -xf $ArchivePath -C $testInstallDir
-        if ($LASTEXITCODE -ne 0) { throw "Failed to extract archive for testing" }
-
-        # Verify basic structure
-        foreach ($d in @("bin", "lib\cmake\llvm", "lib\cmake\mlir", "include")) {
-            if (-not (Test-Path "$testInstallDir\$d")) {
-                throw "Error: $d not found in installation"
-            }
-        }
-
-        # Verify key binaries run
-        $env:PATH = "$testInstallDir\bin;$env:PATH"
-        & mlir-opt --version
-        if ($LASTEXITCODE -ne 0) { throw "mlir-opt --version failed" }
-        & mlir-translate --version
-        if ($LASTEXITCODE -ne 0) { throw "mlir-translate --version failed" }
-
-        # Locate integration test sources relative to this script
-        $scriptDir    = Split-Path -Parent $MyInvocation.ScriptName
-        $repoRoot     = (Resolve-Path (Join-Path $scriptDir "..\..\..")).Path
-        $integrationSrc = Join-Path $repoRoot "tests\integration"
-
-        if (-not (Test-Path $integrationSrc)) {
-            throw "Integration test sources not found at $integrationSrc"
-        }
-
-        # Build the toy project against the installed MLIR
-        cmake -G Ninja `
-            -S $integrationSrc `
-            -B $testBuildDir `
-            -DCMAKE_BUILD_TYPE=Release `
-            "-DMLIR_DIR=$testInstallDir\lib\cmake\mlir" `
-            "-DLLVM_DIR=$testInstallDir\lib\cmake\llvm"
-        if ($LASTEXITCODE -ne 0) { throw "Integration test CMake configuration failed" }
-        cmake --build $testBuildDir
-        if ($LASTEXITCODE -ne 0) { throw "Integration test build failed" }
-
-        # Run the toy binary
-        & "$testBuildDir\hello_mlir.exe"
-        if ($LASTEXITCODE -ne 0) { throw "Integration test binary failed" }
-
-        Write-Host "Integration test passed!"
-    } finally {
-        Remove-Item -Recurse -Force $testInstallDir -ErrorAction SilentlyContinue
-        Remove-Item -Recurse -Force $testBuildDir   -ErrorAction SilentlyContinue
-    }
-}
-
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
 $archive_name = "llvm-mlir_$($llvm_project_ref)_windows_$($arch)_$($host_target)$($build_type_suffix).tar.zst"
@@ -307,13 +245,10 @@ try {
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
 
    # Package zstd executable
-   if (!$debug) {
-       $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target)$($build_type_suffix).zip"
-       $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
-       Write-Host "Packaging zstd into $zstd_archive_name..."
-       Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
-   }
-   Test-Installation -ArchivePath $archive_path
+   $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target).zip"
+   $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
+   Write-Host "Packaging zstd into $zstd_archive_name..."
+   Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"
     exit 1

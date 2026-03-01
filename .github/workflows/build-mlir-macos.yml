@@ -33,3 +33,28 @@ jobs:
             llvm-mlir_*.tar.zst
             zstd-*.tar.gz
           if-no-files-found: error
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download archive
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.runs-on }}-archive
+      - name: Test installation
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${{ github.workspace }}/zstd-install"
+          tar -xzf zstd-*.tar.gz -C "${{ github.workspace }}/zstd-install" --strip-components=1
+
+          archive=$(ls llvm-mlir_*.tar.zst | head -1)
+          bash ${{ github.workspace }}/scripts/toolchain/macos/test-installation.sh \
+            -a "${{ github.workspace }}/$archive" \
+            -z "${{ github.workspace }}/zstd-install"

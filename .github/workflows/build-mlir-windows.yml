@@ -152,5 +152,31 @@ jobs:
           name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
           path: |
             llvm-mlir_*.tar.zst
-            ${{ inputs.build-type == 'Release' && 'zstd-*.zip' || '' }}
+            zstd-*.zip
           if-no-files-found: error
+          overwrite: true
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download archive
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.runs-on }}-${{ inputs.build-type }}-archive
+      - name: Test installation
+        shell: pwsh
+        run: |
+          $zstd_zip = Get-Item zstd-*.zip | Select-Object -First 1
+          Expand-Archive -Path $zstd_zip.FullName -DestinationPath "${{ github.workspace }}\zstd-install"
+
+          $archive = Get-Item llvm-mlir_*.tar.zst | Select-Object -First 1
+
+          & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
+            -ArchivePath $archive.FullName `
+            -ZstdInstallPrefix "${{ github.workspace }}\zstd-install"
