@@ -163,29 +163,42 @@ try {
     $cmake_args = @(
         '-S', 'llvm',
         '-B', $build_dir,
-        '-G', 'Ninja',
         "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
+        # Only build the host target to speed up the build and reduce the size of the resulting binaries
+        "-DLLVM_TARGETS_TO_BUILD=$host_target",
+        # Use Ninja generator for better build parallelism and MSVC support
+        '-G', 'Ninja',
+        # No need to build examples, tests, or benchmarks
         '-DLLVM_BUILD_EXAMPLES=OFF',
+        '-DLLVM_INCLUDE_EXAMPLES=OFF',
         '-DLLVM_BUILD_TESTS=OFF',
+        '-DLLVM_INCLUDE_TESTS=OFF',
+        '-DLLVM_INCLUDE_BENCHMARKS=OFF',
+        # Enabling assertions is generally recommended to build LLVM
         '-DLLVM_ENABLE_ASSERTIONS=ON',
+        # We want to use the zstd we just built, so force LLVM to use it and not any system version
         "-DLLVM_ENABLE_ZSTD=FORCE_ON",
         '-DLLVM_USE_STATIC_ZSTD=ON',
         "-DCMAKE_PREFIX_PATH=$zstd_install_prefix",
+        # Disable LTO to avoid downstream consumers needing to have the same LTO configuration
         '-DLLVM_ENABLE_LTO=OFF',
+        # Enable RTTI because we rely on it downstream
         '-DLLVM_ENABLE_RTTI=ON',
+        # Disable components we don't need to speed up the build and reduce the size of the resulting binaries
         '-DLLVM_ENABLE_LIBXML2=OFF',
         '-DLLVM_ENABLE_LIBEDIT=OFF',
         '-DLLVM_ENABLE_LIBPFM=OFF',
-        '-DLLVM_INCLUDE_BENCHMARKS=OFF',
-        '-DLLVM_INCLUDE_EXAMPLES=OFF',
-        '-DLLVM_INCLUDE_TESTS=OFF',
+        # Tools include FileCheck, not, and others that are useful to have in the install
         '-DLLVM_INSTALL_UTILS=ON',
+        # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
-        "-DLLVM_TARGETS_TO_BUILD=$host_target"
+        # Suppress deprecation warning for `std::complex<llvm::APFloat>`
+        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
     )
     if ($debug) {
         $cmake_args += @(
+            # Embed debug information in the object files to avoid having to distribute separate PDB files
             '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
             '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
         )

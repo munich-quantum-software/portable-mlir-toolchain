@@ -143,28 +143,38 @@ build_llvm() {
   # Build LLVM
   local build_dir="build_llvm"
   local cmake_args=(
-    -G Ninja
     -S llvm -B "$build_dir"
     -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX="$install_prefix"
+    # Only build the host target to speed up the build and reduce the size of the resulting binaries
+    -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
+    # Use the gcc toolchain from the manylinux container to ensure the widest compatibility of the resulting binaries.
     -DCMAKE_C_COMPILER=gcc
     -DCMAKE_CXX_COMPILER=g++
-    -DCMAKE_INSTALL_PREFIX="$install_prefix"
+    # Use Ninja for fast, parallel builds
+    -G Ninja
+    # No need to build examples, tests, or benchmarks
     -DLLVM_BUILD_EXAMPLES=OFF
+    -DLLVM_INCLUDE_EXAMPLES=OFF
     -DLLVM_BUILD_TESTS=OFF
+    -DLLVM_INCLUDE_TESTS=OFF
+    -DLLVM_INCLUDE_BENCHMARKS=OFF
+    # Enabling assertions is generally recommended to build LLVM
     -DLLVM_ENABLE_ASSERTIONS=ON
+    # We want to use the zstd we just built, so force LLVM to use it and not any system version
     -DLLVM_ENABLE_ZSTD=FORCE_ON
     -DLLVM_USE_STATIC_ZSTD=ON
     -DCMAKE_PREFIX_PATH="$ZSTD_INSTALL_PREFIX"
+    # Disable LTO to avoid downstream consumers needing to have the same LTO configuration
     -DLLVM_ENABLE_LTO=OFF
+    # Enable RTTI because we rely on it downstream
     -DLLVM_ENABLE_RTTI=ON
+    # Disable components we don't need to speed up the build and reduce the size of the resulting binaries
     -DLLVM_ENABLE_LIBXML2=OFF
     -DLLVM_ENABLE_LIBEDIT=OFF
     -DLLVM_ENABLE_LIBPFM=OFF
-    -DLLVM_INCLUDE_BENCHMARKS=OFF
-    -DLLVM_INCLUDE_EXAMPLES=OFF
-    -DLLVM_INCLUDE_TESTS=OFF
+    # Tools include FileCheck, not, and others that are useful to have in the install
     -DLLVM_INSTALL_UTILS=ON
-    -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
   )
 
   # Building lld first allows us to use it as a faster, parallel-friendly linker
