@@ -165,6 +165,9 @@ try {
         '-B', $build_dir,
         "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
+        # Build in C++20 mode because that is what we use downstream
+        '-DCMAKE_CXX_STANDARD=20',
+        '-DCMAKE_CXX_STANDARD_REQUIRED=ON',
         # Only build the host target to speed up the build and reduce the size of the resulting binaries
         "-DLLVM_TARGETS_TO_BUILD=$host_target",
         # Use Ninja generator for better build parallelism and MSVC support

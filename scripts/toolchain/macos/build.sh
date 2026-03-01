@@ -156,6 +156,9 @@ build_llvm() {
     -S llvm -B "$build_dir"
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX="$install_prefix"
+    # Build in C++20 mode because that is what we use downstream
+    -DCMAKE_CXX_STANDARD=20
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON
     # Only build the host target to speed up the build and reduce the size of the resulting binaries
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
     # Use the system clang to build to be compatible with downstream macOS users
