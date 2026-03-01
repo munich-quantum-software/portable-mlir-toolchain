@@ -41,6 +41,12 @@ ZSTD_VERSION="1.5.7"
 mkdir -p "$BUILD_WORKSPACE"
 cd "$BUILD_WORKSPACE"
 
+# Ensure Ninja is available for fast, parallel builds
+uv tool install ninja
+
+# Ensure `uv`-installed tools are on the PATH
+export PATH="$HOME/.local/bin:$PATH"
+
 # Determine architecture
 UNAME_ARCH=$(uname -m)
 
