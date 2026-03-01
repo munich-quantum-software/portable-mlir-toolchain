@@ -250,5 +250,85 @@ mv "${TEMP_ARCHIVE_PATH}" "${ARCHIVE_PATH}" || {
   exit 1
 }
 
+# Test the produced installation by extracting the archive and building a toy CMake project
+test_installation() {
+  local archive_path=$1
+  local zstd_bin="$ZSTD_INSTALL_PREFIX/bin/zstd"
+
+  echo "Testing installation from ${archive_path}..."
+
+  local test_install_dir
+  test_install_dir=$(mktemp -d)
+  local test_build_dir
+  test_build_dir=$(mktemp -d)
+
+  # Extract the archive using the bundled zstd
+  tar --use-compress-program="$zstd_bin -d" -xf "$archive_path" -C "$test_install_dir"
+
+  # Verify basic structure (handle both lib/ and lib64/)
+  for d in bin include; do
+    if [ ! -d "$test_install_dir/$d" ]; then
+      echo "Error: $d not found in installation" >&2
+      rm -rf "$test_install_dir" "$test_build_dir"
+      exit 1
+    fi
+  done
+
+  # Find the cmake config directories (may be under lib/ or lib64/)
+  local mlir_cmake_dir llvm_cmake_dir
+  mlir_cmake_dir=$(find "$test_install_dir" -type d -name mlir -path "*/cmake/*" 2>/dev/null | head -1)
+  llvm_cmake_dir=$(find "$test_install_dir" -type d -name llvm -path "*/cmake/*" 2>/dev/null | head -1)
+
+  if [ -z "$mlir_cmake_dir" ]; then
+    echo "Error: MLIR cmake directory not found in installation" >&2
+    rm -rf "$test_install_dir" "$test_build_dir"
+    exit 1
+  fi
+  if [ -z "$llvm_cmake_dir" ]; then
+    echo "Error: LLVM cmake directory not found in installation" >&2
+    rm -rf "$test_install_dir" "$test_build_dir"
+    exit 1
+  fi
+
+  echo "Found MLIR cmake dir: $mlir_cmake_dir"
+  echo "Found LLVM cmake dir: $llvm_cmake_dir"
+
+  # Verify key binaries run
+  export PATH="$test_install_dir/bin:$PATH"
+  mlir-opt --version
+  mlir-translate --version
+
+  # Locate the integration test sources relative to this script
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local repo_root
+  repo_root="$(cd "$script_dir/../../.." && pwd)"
+  local integration_src="$repo_root/tests/integration"
+
+  if [ ! -d "$integration_src" ]; then
+    echo "Error: integration test sources not found at $integration_src" >&2
+    rm -rf "$test_install_dir" "$test_build_dir"
+    exit 1
+  fi
+
+  # Build the toy project against the installed MLIR
+  cmake -G Ninja \
+    -S "$integration_src" \
+    -B "$test_build_dir" \
+    -DCMAKE_BUILD_TYPE=Release \
+    "-DMLIR_DIR=$mlir_cmake_dir" \
+    "-DLLVM_DIR=$llvm_cmake_dir"
+  cmake --build "$test_build_dir"
+
+  # Run the toy binary
+  "$test_build_dir/hello_mlir"
+
+  echo "Integration test passed!"
+  rm -rf "$test_install_dir" "$test_build_dir"
+}
+
+# Test the produced installation
+test_installation "${ARCHIVE_PATH}"
+
 # Clean up zstd installation
 rm -rf "$ZSTD_INSTALL_PREFIX"
