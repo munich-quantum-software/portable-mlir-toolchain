@@ -40,13 +40,6 @@ jobs:
         shell: pwsh
         run: |
           Get-PSDrive -PSProvider FileSystem | Sort-Object Name | Format-Table -AutoSize
-          Write-Host "`n--- Top directories on C:\ ---"
-          Get-ChildItem 'C:\' -Directory -ErrorAction SilentlyContinue |
-            ForEach-Object {
-              $size = (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue |
-                Measure-Object -Property Length -Sum).Sum
-              [PSCustomObject]@{ Path = $_.FullName; 'Size (GB)' = [math]::Round($size/1GB, 2) }
-            } | Sort-Object 'Size (GB)' -Descending | Format-Table -AutoSize
 
       - name: Free up some space
         shell: pwsh
@@ -69,6 +62,13 @@ jobs:
           Remove-IfExists "C:\mingw32"
           Remove-IfExists "C:\mingw64"
           Remove-IfExists "C:\npm"
+          Remove-IfExists "C:\ghcup"
+          Remove-IfExists "C:\rtools45"
+          Remove-IfExists "C:\msys64"
+          Remove-IfExists "C:\Strawberry"
+          Remove-IfExists "C:\PostgreSQL"
+          Remove-IfExists "C:\aliyun-cli"
+          Remove-IfExists "C:\temp"
           Remove-IfExists "C:\Program Files\Amazon"
           Remove-IfExists "C:\Program Files\Android"
           Remove-IfExists "C:\Program Files\Azure Cosmos DB Emulator"
