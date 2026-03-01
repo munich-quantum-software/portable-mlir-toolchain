@@ -154,6 +154,8 @@ build_llvm() {
     # Use the gcc toolchain from the manylinux container to ensure the widest compatibility of the resulting binaries.
     -DCMAKE_C_COMPILER=gcc
     -DCMAKE_CXX_COMPILER=g++
+    # Suppress noisy warnings that heavily pollute the log
+    -DCMAKE_CXX_FLAGS="-w"
     # Use Ninja for fast, parallel builds
     -G Ninja
     # No need to build examples, tests, or benchmarks
