@@ -47,6 +47,24 @@ $debug = ($build_type -eq "Debug")
 # Detect architecture
 $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 
+# Find and enter VS developer shell to set up MSVC environment for Ninja
+$vsInstaller = if (Test-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe") {
+    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+} else {
+    "C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"
+}
+$vsPath = & $vsInstaller -latest -property installationPath 2>$null
+if (-not $vsPath) { throw "Visual Studio installation not found" }
+$devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
+$vsArch = switch ($arch) {
+    'X64'   { 'amd64' }
+    'Arm64' { 'arm64' }
+    default { throw "Unsupported architecture: $arch" }
+}
+Write-Host "Setting up VS developer environment for $vsArch..."
+& $devShell -Arch $vsArch -SkipAutomaticLocation
+if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
+
 # Determine target
 switch ($arch) {
     x64 {
@@ -97,7 +115,7 @@ pushd (Join-Path $zstd_dir "build\cmake") > $null
 $zstd_cmake_args = @(
     '-S', '.',
     '-B', 'build',
-    '-G', 'Visual Studio 17 2022',
+    '-G', 'Ninja',
     "-DCMAKE_INSTALL_PREFIX=$zstd_install_prefix",
     '-DZSTD_BUILD_STATIC=ON',
     '-DZSTD_BUILD_SHARED=OFF'
@@ -145,7 +163,7 @@ try {
     $cmake_args = @(
         '-S', 'llvm',
         '-B', $build_dir,
-        '-G', 'Visual Studio 17 2022',
+        '-G', 'Ninja',
         "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
         '-DLLVM_BUILD_EXAMPLES=OFF',
@@ -178,7 +196,7 @@ try {
     cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
     # Use the just-built lld as the linker
-    $env:PATH = "$(Join-Path $repo_dir $build_dir bin $build_type);$(Join-Path $repo_dir $build_dir $build_type bin);$env:PATH"
+    $env:PATH = "$(Join-Path $repo_dir $build_dir bin);$env:PATH"
     cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
     if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
     cmake --build $build_dir --target install --config $build_type
