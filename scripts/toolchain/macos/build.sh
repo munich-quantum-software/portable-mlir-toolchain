@@ -164,6 +164,8 @@ build_llvm() {
     # Use the system clang to build to be compatible with downstream macOS users
     -DCMAKE_C_COMPILER=clang
     -DCMAKE_CXX_COMPILER=clang++
+    # Suppress noisy Clang warnings that heavily pollutes the log
+    -DCMAKE_CXX_FLAGS="-Wno-ambiguous-reversed-operator -Wno-deprecated-enum-enum-conversion"
     # Ensure compatibility with older macOS versions by setting the deployment target
     -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
     # Use Ninja for faster, parallel builds
