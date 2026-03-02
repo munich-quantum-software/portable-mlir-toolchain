@@ -186,10 +186,10 @@ pushd $repo_dir > $null
 # Build LLVM
 try {
     $build_dir = 'build_llvm'
-    $cmake_args = @(
+    # Base cmake args shared by all stages (no build-type yet).
+    $cmake_args_base = @(
         '-S', 'llvm',
         '-B', $build_dir,
-        "-DCMAKE_BUILD_TYPE=$build_type",
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
         # Build in C++20 mode because that is what we use downstream
         '-DCMAKE_CXX_STANDARD=20',
@@ -225,28 +225,21 @@ try {
         # Suppress deprecation warning for `std::complex<llvm::APFloat>`
         '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
     )
-    if ($debug) {
-        $cmake_args += @(
-            # Embed debug information in the object files to avoid having to distribute separate PDB files
-            '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
-            '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
-        )
-    }
 
-    # Stage 1: build lld only using the system linker.
-    # Limit parallel link jobs to 1 to avoid OOM – MSVC link.exe can consume
-    # several GB per link job and the stage-1 lld binaries are large.
-    $stage1_cmake_args = $cmake_args + @(
-        '-DLLVM_ENABLE_PROJECTS=lld',
-        '-DLLVM_PARALLEL_LINK_JOBS=1'
+    # Stage 1: build lld only using the system linker, always in Release mode.
+    # Building lld in Release (even for Debug toolchain builds) ensures the
+    # linker itself is fast.
+    $stage1_cmake_args = $cmake_args_base + @(
+        '-DCMAKE_BUILD_TYPE=Release',
+        '-DLLVM_ENABLE_PROJECTS=lld'
     )
-    Write-Step "Stage 1 – CMake configure (lld only, system linker)"
+    Write-Step "Stage 1 – CMake configure (lld only, Release, system linker)"
     cmake @stage1_cmake_args
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 cmake configure failed" }
     Write-Done
 
-    Write-Step "Stage 1 – Build lld"
-    cmake --build $build_dir --target lld --config $build_type
+    Write-Step "Stage 1 – Build lld (Release)"
+    cmake --build $build_dir --target lld --config Release
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld build failed" }
     Write-Done
 
@@ -255,33 +248,27 @@ try {
     # than MSVC link.exe.
     $env:PATH = "$(Join-Path $repo_dir $build_dir bin);$env:PATH"
 
-    # Stage 2a: reconfigure with lld-link as linker and build+install lld.
-    $stage2a_cmake_args = $stage1_cmake_args + @(
+    # Stage 2: reconfigure with lld-link as linker and build+install llvm+mlir.
+    $stage2_cmake_args = $cmake_args_base + @(
+        "-DCMAKE_BUILD_TYPE=$build_type",
+        '-DLLVM_ENABLE_PROJECTS=mlir',
         '-DLLVM_ENABLE_LLD=ON'
     )
-    Write-Step "Stage 2a – CMake configure (lld + lld-link linker)"
-    cmake @stage2a_cmake_args
-    if ($LASTEXITCODE -ne 0) { throw "Stage 2a cmake configure failed" }
+    if ($debug) {
+        $stage2_cmake_args += @(
+            # Embed debug information in the object files to avoid having to distribute separate PDB files
+            '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
+            '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
+        )
+    }
+    Write-Step "Stage 2 – CMake configure ($build_type, lld-link linker)"
+    cmake @stage2_cmake_args
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2 CMake configure failed" }
     Write-Done
 
-    Write-Step "Stage 2a – Install lld"
+    Write-Step "Stage 2 – Build and install LLVM/MLIR ($build_type)"
     cmake --build $build_dir --target install --config $build_type
-    if ($LASTEXITCODE -ne 0) { throw "Stage 2a lld install failed" }
-    Write-Done
-
-    # Stage 2b: build and install the rest (mlir + llvm tools).
-    $stage2b_cmake_args = $cmake_args + @(
-        '-DLLVM_ENABLE_PROJECTS=mlir;lld',
-        '-DLLVM_ENABLE_LLD=ON'
-    )
-    Write-Step "Stage 2b – CMake configure (mlir + lld, lld-link linker)"
-    cmake @stage2b_cmake_args
-    if ($LASTEXITCODE -ne 0) { throw "Stage 2b cmake configure failed" }
-    Write-Done
-
-    Write-Step "Stage 2b – Build and install LLVM/MLIR"
-    cmake --build $build_dir --target install --config $build_type
-    if ($LASTEXITCODE -ne 0) { throw "Stage 2b full install failed" }
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2 install failed" }
     Write-Done
 } finally {
     # Return to original directory
@@ -294,6 +281,14 @@ Write-Step "Bundling zstd into install tree"
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
 Write-Done
+
+# Bundle the Release lld-link into the install tree so consuming projects can
+# use it as a fast linker regardless of the MLIR build type.
+$lld_exe = Join-Path $repo_dir $build_dir "bin" "lld-link.exe"
+if (-not (Test-Path $lld_exe)) {
+    throw "Expected lld-link.exe not found at '$lld_exe' after build"
+}
+Copy-Item -Force $lld_exe (Join-Path $install_prefix "bin" "lld-link.exe")
 
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
