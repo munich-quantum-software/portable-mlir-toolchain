@@ -27,7 +27,7 @@
 # Outputs:
 #   - Installs into <install_prefix>
 #   - Creates llvm-mlir_<llvm_project_ref>_windows_<arch>_<host_target>[_debug].tar.zst in the current directory
-#   - Creates zstd-<zstd_version>_windows_<arch>_<host_target>.zip in the current directory (for Release builds)
+#   - Creates zstd-<zstd_version>_windows_<arch>_<host_target>.zip in the current directory
 
 param(
     [Parameter(Mandatory=$true)]

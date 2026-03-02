@@ -15,7 +15,9 @@
 
 param(
     [Parameter(Mandatory)][string]$ArchivePath,
-    [Parameter(Mandatory)][string]$ZstdInstallPrefix
+    [Parameter(Mandatory)][string]$ZstdInstallPrefix,
+    [ValidateSet("Release", "Debug")]
+    [string]$BuildType = "Release"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,6 +44,9 @@ function Write-Done {
 # ---------------------------------------------------------------------------
 
 $ZstdExe = Join-Path $ZstdInstallPrefix "zstd.exe"
+if (-not (Test-Path $ZstdExe)) {
+    throw "zstd.exe not found at '$ZstdExe'"
+}
 
 Write-Host "Testing installation from $ArchivePath..."
 
@@ -102,7 +107,7 @@ try {
     cmake -G Ninja `
     -S $IntegrationSrc `
     -B $TestBuildDir `
-    -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_BUILD_TYPE=$BuildType `
     "-DCMAKE_PREFIX_PATH=$TestInstallDir" `
     "-DMLIR_DIR=$MLIRCMakeDir" `
     "-DLLVM_DIR=$LLVMCMakeDir"

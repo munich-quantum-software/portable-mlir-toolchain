@@ -250,6 +250,8 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 
 # Bundle zstd into the LLVM install so consuming projects can find it
 log_step "Bundling zstd into install tree"
+mkdir -p "$INSTALL_PREFIX/include"
+mkdir -p "$INSTALL_PREFIX/lib"
 cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
 cp -r "$ZSTD_INSTALL_PREFIX/lib/."     "$INSTALL_PREFIX/lib/"
 log_done

@@ -179,4 +179,5 @@ jobs:
 
           & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
             -ArchivePath $archive.FullName `
-            -ZstdInstallPrefix "${{ github.workspace }}\zstd-install"
+            -ZstdInstallPrefix "${{ github.workspace }}\zstd-install" `
+            -BuildType ${{ inputs.build-type }}

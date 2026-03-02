@@ -235,10 +235,18 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 
 # Bundle zstd into the LLVM install so consumers can find it
 log_step "Bundling zstd into install tree"
+mkdir -p "$INSTALL_PREFIX/include"
+# Prefer lib64 if LLVM installed there, otherwise fall back to lib
+if [ -d "$INSTALL_PREFIX/lib64" ]; then
+  LLVM_LIB_DIR="$INSTALL_PREFIX/lib64"
+else
+  LLVM_LIB_DIR="$INSTALL_PREFIX/lib"
+fi
+mkdir -p "$LLVM_LIB_DIR"
 cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
 for lib_dir in "$ZSTD_INSTALL_PREFIX/lib" "$ZSTD_INSTALL_PREFIX/lib64"; do
   if [ -d "$lib_dir" ]; then
-    cp -r "$lib_dir/." "$INSTALL_PREFIX/lib/"
+    cp -r "$lib_dir/." "$LLVM_LIB_DIR/"
   fi
 done
 log_done
@@ -247,7 +255,7 @@ log_done
 log_step "Stripping debug symbols"
 if command -v strip >/dev/null 2>&1; then
   find "$INSTALL_PREFIX/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
-  find "$INSTALL_PREFIX/lib" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
+  find "$LLVM_LIB_DIR" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
 fi
 log_done
 
