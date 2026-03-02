@@ -222,8 +222,8 @@ try {
         '-DLLVM_INSTALL_UTILS=ON',
         # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
-        # Suppress deprecation warning for `std::complex<llvm::APFloat>`
-        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
+        # Suppress noisy MSVC warnings that heavily pollutes the log
+        '-DCMAKE_CXX_FLAGS=/W0'
     )
 
     # Stage 1: build lld only using the system linker, always in Release mode.
