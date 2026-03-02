@@ -197,9 +197,7 @@ try {
         # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         # Suppress deprecation warning for `std::complex<llvm::APFloat>`
-        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING',
-        # Limit the link stage to 1 parallel job to avoid high memory usage and linker errors
-        '-DLLVM_PARALLEL_LINK_JOBS=1'
+        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
     )
     if ($debug) {
         $cmake_args += @(
@@ -208,17 +206,39 @@ try {
             '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
         )
     }
-    # Build lld first to use it as linker
-    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=lld'
-    if ($LASTEXITCODE -ne 0) { throw "LLVM LLD configuration failed" }
+
+    # Stage 1: build lld only using the system linker.
+    $stage1_cmake_args = $cmake_args + @(
+        '-DLLVM_ENABLE_PROJECTS=lld'
+    )
+    cmake @stage1_cmake_args
+    if ($LASTEXITCODE -ne 0) { throw "Stage 1 cmake configure failed" }
     cmake --build $build_dir --target lld --config $build_type
-    if ($LASTEXITCODE -ne 0) { throw "LLVM LLD build failed" }
-    # Use the just-built lld as the linker
+    if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld build failed" }
+
+    # Make the stage-1 lld available on PATH so subsequent cmake invocations
+    # pick up lld-link as the linker, which is far more memory-efficient
+    # than MSVC link.exe.
     $env:PATH = "$(Join-Path $repo_dir $build_dir bin);$env:PATH"
-    cmake @cmake_args '-DLLVM_ENABLE_PROJECTS=mlir;lld' '-DLLVM_ENABLE_LLD=ON'
-    if ($LASTEXITCODE -ne 0) { throw "LLVM configuration failed" }
+
+    # Stage 2a: reconfigure with lld-link as linker and build+install lld.
+    $stage2a_cmake_args = $stage1_cmake_args + @(
+        '-DLLVM_ENABLE_LLD=ON'
+    )
+    cmake @stage2a_cmake_args
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2a cmake configure failed" }
     cmake --build $build_dir --target install --config $build_type
-    if ($LASTEXITCODE -ne 0) { throw "LLVM build failed" }
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2a lld install failed" }
+
+    # Stage 2b: build and install the rest (mlir + llvm tools).
+    $stage2b_cmake_args = $cmake_args + @(
+        '-DLLVM_ENABLE_PROJECTS=mlir;lld',
+        '-DLLVM_ENABLE_LLD=ON'
+    )
+    cmake @stage2b_cmake_args
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2b cmake configure failed" }
+    cmake --build $build_dir --target install --config $build_type
+    if ($LASTEXITCODE -ne 0) { throw "Stage 2b full install failed" }
 } finally {
     # Return to original directory
     popd > $null
