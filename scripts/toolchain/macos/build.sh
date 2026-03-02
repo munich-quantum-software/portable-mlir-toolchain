@@ -183,9 +183,10 @@ build_llvm() {
   pushd "$repo_dir" > /dev/null
 
   # Build LLVM
-  local build_dir="build_llvm"
+  local build_dir_stage1="build_lld_release"
+  local build_dir_stage2="build_llvm"
   local cmake_args=(
-    -S llvm -B "$build_dir"
+    -S llvm
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX="$install_prefix"
     # Only build the host target to speed up the build and reduce the size of the resulting binaries
@@ -223,25 +224,25 @@ build_llvm() {
     -DLLVM_INSTALL_UTILS=ON
   )
 
-  # ── Stage 1: build lld ────────────────────────────────────────────────────
-  log_step "Stage 1 – CMake configure (lld only, system linker)"
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
+  # ── Stage 1: build and install lld with system linker ────────────────────
+  log_step "Stage 1 – CMake configure (lld only, Release, system linker)"
+  cmake "${cmake_args[@]}" -B "$build_dir_stage1" -DLLVM_ENABLE_PROJECTS="lld"
   log_done
 
-  log_step "Stage 1 – Build lld"
-  cmake --build "$build_dir" --target lld
+  log_step "Stage 1 – Build and install lld"
+  cmake --build "$build_dir_stage1" --target install-lld
   log_done
 
-  # Use the just-built lld as the linker
-  export PATH="$PWD/$build_dir/bin:$PATH"
+  # Use the just-built lld as the linker for stage 2
+  export PATH="$PWD/$build_dir_stage1/bin:$PATH"
 
-  # ── Stage 2: full build with lld as linker ────────────────────────────────
-  log_step "Stage 2 – CMake configure (mlir + lld, lld linker)"
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
+  # ── Stage 2: build mlir only, using the stage-1 lld as linker ────────────
+  log_step "Stage 2 – CMake configure (mlir only, lld linker)"
+  cmake "${cmake_args[@]}" -B "$build_dir_stage2" -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_ENABLE_LLD=ON
   log_done
 
   log_step "Stage 2 – Build and install LLVM/MLIR"
-  cmake --build "$build_dir" --target install
+  cmake --build "$build_dir_stage2" --target install
   log_done
 
   # Return to original directory

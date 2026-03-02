@@ -185,11 +185,11 @@ pushd $repo_dir > $null
 
 # Build LLVM
 try {
-    $build_dir = 'build_llvm'
-    # Base cmake args shared by all stages (no build-type yet).
+    $build_dir_stage1 = 'build_lld_release'
+    $build_dir_stage2 = 'build_llvm'
+    # Base cmake args shared by all stages (no build-type or build-dir yet).
     $cmake_args_base = @(
         '-S', 'llvm',
-        '-B', $build_dir,
         "-DCMAKE_INSTALL_PREFIX=$install_prefix",
         # Only build the host target to speed up the build and reduce the size of the resulting binaries
         "-DLLVM_TARGETS_TO_BUILD=$host_target",
@@ -223,10 +223,11 @@ try {
         '-DCMAKE_CXX_FLAGS=/W0'
     )
 
-    # Stage 1: build lld only using the system linker, always in Release mode.
-    # Building lld in Release (even for Debug toolchain builds) ensures the
+    # Stage 1: build and install lld using the system linker, always in Release
+    # mode. Building lld in Release (even for Debug toolchain builds) ensures the
     # linker itself is fast.
     $stage1_cmake_args = $cmake_args_base + @(
+        '-B', $build_dir_stage1,
         '-DCMAKE_BUILD_TYPE=Release',
         '-DLLVM_ENABLE_PROJECTS=lld'
     )
@@ -235,18 +236,19 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 cmake configure failed" }
     Write-Done
 
-    Write-Step "Stage 1 – Build lld (Release)"
-    cmake --build $build_dir --target lld --config Release
-    if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld build failed" }
+    Write-Step "Stage 1 – Build and install lld (Release)"
+    cmake --build $build_dir_stage1 --target install-lld --config Release
+    if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld install failed" }
     Write-Done
 
     # Make the stage-1 lld available on PATH so subsequent cmake invocations
     # pick up lld-link as the linker, which is far more memory-efficient
     # than MSVC link.exe.
-    $env:PATH = "$(Join-Path $repo_dir $build_dir bin);$env:PATH"
+    $env:PATH = "$(Join-Path $repo_dir $build_dir_stage1 bin);$env:PATH"
 
-    # Stage 2: reconfigure with lld-link as linker and build+install llvm+mlir.
+    # Stage 2: fresh build dir, lld-link as linker, build+install llvm+mlir only.
     $stage2_cmake_args = $cmake_args_base + @(
+        '-B', $build_dir_stage2,
         "-DCMAKE_BUILD_TYPE=$build_type",
         '-DLLVM_ENABLE_PROJECTS=mlir',
         '-DLLVM_ENABLE_LLD=ON'
@@ -264,18 +266,8 @@ try {
     Write-Done
 
     Write-Step "Stage 2 – Build and install LLVM/MLIR ($build_type)"
-    cmake --build $build_dir --target install --config $build_type
+    cmake --build $build_dir_stage2 --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "Stage 2 install failed" }
-    Write-Done
-
-    # Bundle the Release lld-link into the install tree so consuming projects can
-    # use it as a fast linker regardless of the MLIR build type.
-    Write-Step "Bundling lld-link into install tree"
-    $lld_exe = Join-Path $repo_dir $build_dir "bin" "lld-link.exe"
-    if (-not (Test-Path $lld_exe)) {
-        throw "Expected lld-link.exe not found at '$lld_exe' after build"
-    }
-    Copy-Item -Force $lld_exe (Join-Path $install_prefix "bin" "lld-link.exe")
     Write-Done
 } finally {
     # Return to original directory
