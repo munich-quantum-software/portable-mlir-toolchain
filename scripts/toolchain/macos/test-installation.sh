@@ -32,6 +32,10 @@ done
 [[ -z "${ARCHIVE_PATH:-}" || -z "${ZSTD_INSTALL_PREFIX:-}" ]] && usage
 
 ZSTD_BIN="$ZSTD_INSTALL_PREFIX/bin/zstd"
+if [[ ! -x "$ZSTD_BIN" ]]; then
+  echo "Error: zstd not found or not executable at '$ZSTD_BIN'" >&2
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Logging helpers
