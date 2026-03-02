@@ -236,8 +236,10 @@ build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 # Bundle zstd into the LLVM install so consumers can find it
 log_step "Bundling zstd into install tree"
 mkdir -p "$INSTALL_PREFIX/include"
-# Prefer lib64 if LLVM installed there, otherwise fall back to lib
-if [ -d "$INSTALL_PREFIX/lib64" ]; then
+# Resolve LLVM's actual libdir from the installed toolchain.
+if [[ -x "$INSTALL_PREFIX/bin/llvm-config" ]]; then
+  LLVM_LIB_DIR="$("$INSTALL_PREFIX/bin/llvm-config" --libdir)"
+elif [[ -d "$INSTALL_PREFIX/lib64" && ! -d "$INSTALL_PREFIX/lib" ]]; then
   LLVM_LIB_DIR="$INSTALL_PREFIX/lib64"
 else
   LLVM_LIB_DIR="$INSTALL_PREFIX/lib"
