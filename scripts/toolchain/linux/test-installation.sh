@@ -33,15 +33,39 @@ done
 
 ZSTD_BIN="$ZSTD_INSTALL_PREFIX/bin/zstd"
 
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+_STEP_START=0
+log_step() {
+  local msg="$*"
+  _STEP_START=$(date +%s)
+  echo ""
+  echo "════════════════════════════════════════════════════════════════"
+  echo "  ▶  ${msg}"
+  echo "     $(date '+%Y-%m-%d %H:%M:%S %Z')"
+  echo "════════════════════════════════════════════════════════════════"
+}
+log_done() {
+  local elapsed=$(( $(date +%s) - _STEP_START ))
+  echo "────────────────────────────────────────────────────────────────"
+  echo "  ✔  Done  ($(printf '%dm %02ds' $((elapsed/60)) $((elapsed%60))))"
+  echo "────────────────────────────────────────────────────────────────"
+  echo ""
+}
+# ---------------------------------------------------------------------------
+
 echo "Testing installation from ${ARCHIVE_PATH}..."
 
 TEST_INSTALL_DIR=$(mktemp -d)
 TEST_BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_INSTALL_DIR" "$TEST_BUILD_DIR"' EXIT
 
-# Extract the archive using the bundled zstd
+log_step "Extracting archive"
 tar --use-compress-program="$ZSTD_BIN -d --long=30" -xf "$ARCHIVE_PATH" -C "$TEST_INSTALL_DIR"
+log_done
 
+log_step "Verifying archive structure"
 # Verify basic structure
 for d in bin include; do
   if [ ! -d "$TEST_INSTALL_DIR/$d" ]; then
@@ -65,11 +89,13 @@ fi
 
 echo "Found MLIR cmake dir: $MLIR_CMAKE_DIR"
 echo "Found LLVM cmake dir: $LLVM_CMAKE_DIR"
+log_done
 
-# Verify key binaries run
+log_step "Verifying key binaries"
 export PATH="$TEST_INSTALL_DIR/bin:$PATH"
 mlir-opt --version
 mlir-translate --version
+log_done
 
 # Locate integration test sources relative to this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -81,7 +107,7 @@ if [ ! -d "$INTEGRATION_SRC" ]; then
   exit 1
 fi
 
-# Build the toy project against the installed MLIR
+log_step "CMake configure – integration test"
 cmake -G Ninja \
   -S "$INTEGRATION_SRC" \
   -B "$TEST_BUILD_DIR" \
@@ -89,8 +115,14 @@ cmake -G Ninja \
   "-DCMAKE_PREFIX_PATH=$TEST_INSTALL_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
   "-DLLVM_DIR=$LLVM_CMAKE_DIR"
-cmake --build "$TEST_BUILD_DIR"
+log_done
 
+log_step "CMake build – integration test"
+cmake --build "$TEST_BUILD_DIR"
+log_done
+
+log_step "Running integration test binary"
 "$TEST_BUILD_DIR/hello_mlir"
+log_done
 
 echo "Integration test passed!"

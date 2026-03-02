@@ -40,6 +40,27 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+$_step_sw = [Diagnostics.Stopwatch]::new()
+function Write-Step([string]$msg) {
+    $_step_sw.Restart()
+    Write-Host ""
+    Write-Host "════════════════════════════════════════════════════════════════"
+    Write-Host "  ▶  $msg"
+    Write-Host "     $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    Write-Host "════════════════════════════════════════════════════════════════"
+}
+function Write-Done {
+    $e = $_step_sw.Elapsed
+    Write-Host "────────────────────────────────────────────────────────────────"
+    Write-Host ("  ✔  Done  ({0}m {1:D2}s)" -f [int]$e.TotalMinutes, $e.Seconds)
+    Write-Host "────────────────────────────────────────────────────────────────"
+    Write-Host ""
+}
+# ---------------------------------------------------------------------------
+
 $zstd_version = "1.5.7"
 $root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
 $debug = ($build_type -eq "Debug")
@@ -61,9 +82,10 @@ $vsArch = switch ($arch) {
     'Arm64' { 'arm64' }
     default { throw "Unsupported architecture: $arch" }
 }
-Write-Host "Setting up VS developer environment for $vsArch..."
+Write-Step "Setting up VS developer environment ($vsArch)"
 & $devShell -Arch $vsArch -SkipAutomaticLocation
 if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
+Write-Done
 
 # Determine target
 switch ($arch) {
@@ -82,6 +104,7 @@ switch ($arch) {
 Write-Host "Building MLIR $llvm_project_ref into $install_prefix..."
 
 # Build zstd
+Write-Step "Building zstd v$zstd_version"
 $zstd_install_prefix = Join-Path $root_dir "zstd-install"
 if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
 $zstd_dir = "zstd-$zstd_version"
@@ -124,8 +147,10 @@ cmake @zstd_cmake_args
 cmake --build build --target install --config Release
 popd > $null
 Remove-Item -Recurse -Force $zstd_dir
+Write-Done
 
 # Fetch LLVM project source archive
+Write-Step "Downloading LLVM/MLIR source ($llvm_project_ref)"
 $repo_dir = Join-Path $root_dir "llvm-project"
 if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 New-Item -ItemType Directory -Path $repo_dir -Force | Out-Null
@@ -153,6 +178,7 @@ tar -xzf $temp_archive --strip-components=1 -C $repo_dir `
 
 # Clean up temporary file
 Remove-Item -Path $temp_archive -Force -ErrorAction SilentlyContinue
+Write-Done
 
 # Change to repo directory
 pushd $repo_dir > $null
@@ -208,13 +234,21 @@ try {
     }
 
     # Stage 1: build lld only using the system linker.
+    # Limit parallel link jobs to 1 to avoid OOM – MSVC link.exe can consume
+    # several GB per link job and the stage-1 lld binaries are large.
     $stage1_cmake_args = $cmake_args + @(
-        '-DLLVM_ENABLE_PROJECTS=lld'
+        '-DLLVM_ENABLE_PROJECTS=lld',
+        '-DLLVM_PARALLEL_LINK_JOBS=1'
     )
+    Write-Step "Stage 1 – CMake configure (lld only, system linker)"
     cmake @stage1_cmake_args
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 cmake configure failed" }
+    Write-Done
+
+    Write-Step "Stage 1 – Build lld"
     cmake --build $build_dir --target lld --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld build failed" }
+    Write-Done
 
     # Make the stage-1 lld available on PATH so subsequent cmake invocations
     # pick up lld-link as the linker, which is far more memory-efficient
@@ -225,20 +259,30 @@ try {
     $stage2a_cmake_args = $stage1_cmake_args + @(
         '-DLLVM_ENABLE_LLD=ON'
     )
+    Write-Step "Stage 2a – CMake configure (lld + lld-link linker)"
     cmake @stage2a_cmake_args
     if ($LASTEXITCODE -ne 0) { throw "Stage 2a cmake configure failed" }
+    Write-Done
+
+    Write-Step "Stage 2a – Install lld"
     cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "Stage 2a lld install failed" }
+    Write-Done
 
     # Stage 2b: build and install the rest (mlir + llvm tools).
     $stage2b_cmake_args = $cmake_args + @(
         '-DLLVM_ENABLE_PROJECTS=mlir;lld',
         '-DLLVM_ENABLE_LLD=ON'
     )
+    Write-Step "Stage 2b – CMake configure (mlir + lld, lld-link linker)"
     cmake @stage2b_cmake_args
     if ($LASTEXITCODE -ne 0) { throw "Stage 2b cmake configure failed" }
+    Write-Done
+
+    Write-Step "Stage 2b – Build and install LLVM/MLIR"
     cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "Stage 2b full install failed" }
+    Write-Done
 } finally {
     # Return to original directory
     popd > $null
@@ -246,9 +290,10 @@ try {
 }
 
 # Bundle zstd into the LLVM install so consuming projects can find it
-Write-Host "Bundling zstd into LLVM install..."
+Write-Step "Bundling zstd into install tree"
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
+Write-Done
 
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
@@ -259,16 +304,19 @@ $archive_path = Join-Path $root_dir $archive_name
 pushd $install_prefix > $null
 
 # Emit compressed archive (.tar.zst)
+Write-Step "Creating archive: $archive_name"
 try {
    $zstd_exe = Join-Path $zstd_install_prefix "bin\zstd.exe"
    tar -cf - . | & $zstd_exe -19 --long=30 --threads=0 -o $archive_path
    if ($LASTEXITCODE -ne 0) { throw "Archive creation failed" }
+   Write-Done
 
    # Package zstd executable
    $zstd_archive_name = "zstd-$($zstd_version)_windows_$($arch)_$($host_target).zip"
    $zstd_archive_path = Join-Path $root_dir $zstd_archive_name
-   Write-Host "Packaging zstd into $zstd_archive_name..."
+   Write-Step "Packaging zstd: $zstd_archive_name"
    Compress-Archive -Path (Join-Path $zstd_install_prefix "bin\zstd.exe") -DestinationPath $zstd_archive_path
+   Write-Done
 } catch {
     Write-Error "Failed to create archive: $($_.Exception.Message)"
     exit 1

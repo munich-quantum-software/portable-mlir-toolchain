@@ -37,12 +37,36 @@ ZSTD_VERSION="1.5.7"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
 : "${BUILD_WORKSPACE:=/work}"
 
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+_STEP_START=0
+log_step() {
+  local msg="$*"
+  _STEP_START=$(date +%s)
+  echo ""
+  echo "════════════════════════════════════════════════════════════════"
+  echo "  ▶  ${msg}"
+  echo "     $(date '+%Y-%m-%d %H:%M:%S %Z')"
+  echo "════════════════════════════════════════════════════════════════"
+}
+log_done() {
+  local elapsed=$(( $(date +%s) - _STEP_START ))
+  echo "────────────────────────────────────────────────────────────────"
+  echo "  ✔  Done  ($(printf '%dm %02ds' $((elapsed/60)) $((elapsed%60))))"
+  echo "────────────────────────────────────────────────────────────────"
+  echo ""
+}
+# ---------------------------------------------------------------------------
+
 # Keep large build trees off the container root filesystem when possible.
 mkdir -p "$BUILD_WORKSPACE"
 cd "$BUILD_WORKSPACE"
 
 # Ensure Ninja is available for fast, parallel builds
+log_step "Installing build tools (Ninja)"
 uv tool install ninja
+log_done
 
 # Ensure `uv`-installed tools are on the PATH
 export PATH="$HOME/.local/bin:$PATH"
@@ -63,7 +87,7 @@ fi
 # Build and install zstd
 build_zstd() {
   local install_prefix=$1
-  echo "Building zstd v$ZSTD_VERSION into $install_prefix..."
+  log_step "Building zstd v${ZSTD_VERSION}"
   local zstd_dir="zstd-$ZSTD_VERSION"
   local zstd_tarball="zstd-${ZSTD_VERSION}.tar.gz"
   local zstd_checksum="${zstd_tarball}.sha256"
@@ -109,6 +133,7 @@ build_zstd() {
   popd > /dev/null
 
   rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
+  log_done
 }
 
 # Main LLVM setup function
@@ -116,9 +141,8 @@ build_llvm() {
   local llvm_project_ref=$1
   local install_prefix=$2
 
-  echo "Building MLIR $llvm_project_ref into $install_prefix..."
-
-  # Fetch LLVM project source archive
+  # ── Fetch sources ─────────────────────────────────────────────────────────
+  log_step "Downloading LLVM/MLIR source (${llvm_project_ref})"
   local repo_dir="$PWD/llvm-project"
   rm -rf "$repo_dir"
   mkdir -p "$repo_dir"
@@ -136,11 +160,10 @@ build_llvm() {
       --exclude='mlir/test' \
       --exclude='llvm/unittests' \
       --exclude='mlir/unittests'
+  log_done
 
-  # Change to repo directory
   pushd "$repo_dir" > /dev/null
 
-  # Build LLVM
   local build_dir="build_llvm"
   local cmake_args=(
     -S llvm -B "$build_dir"
@@ -182,21 +205,26 @@ build_llvm() {
     -DLLVM_INSTALL_UTILS=ON
   )
 
-  # Building lld first allows us to use it as a faster, parallel-friendly linker
-  # for the subsequent full LLVM and MLIR build. This significantly reduces
-  # overall build time, especially for large builds like MLIR.
-  # The first stage builds just lld, and the second stage enables both mlir and lld
-  # while using the newly built lld as the linker via LLVM_ENABLE_LLD=ON.
-  # Build lld first to use it as linker
+  # ── Stage 1: build lld with system linker ─────────────────────────────────
+  log_step "Stage 1 – CMake configure (lld only, system linker)"
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
+  log_done
+
+  log_step "Stage 1 – Build lld"
   cmake --build "$build_dir" --target lld
-  # Use the just-built lld as the linker
+  log_done
+
   export PATH="$PWD/$build_dir/bin:$PATH"
+
+  # ── Stage 2: full build with lld as linker ────────────────────────────────
+  log_step "Stage 2 – CMake configure (mlir + lld, lld linker)"
   cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
+  log_done
 
+  log_step "Stage 2 – Build and install LLVM/MLIR"
   cmake --build "$build_dir" --target install
+  log_done
 
-  # Return to original directory
   popd > /dev/null
   rm -rf "$repo_dir"
 }
@@ -206,48 +234,48 @@ build_zstd "$ZSTD_INSTALL_PREFIX"
 build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
 
 # Bundle zstd into the LLVM install so consumers can find it
-echo "Bundling zstd into LLVM install..."
+log_step "Bundling zstd into install tree"
 cp -r "$ZSTD_INSTALL_PREFIX/include/." "$INSTALL_PREFIX/include/"
-# Handle both lib/ and lib64/ install locations
 for lib_dir in "$ZSTD_INSTALL_PREFIX/lib" "$ZSTD_INSTALL_PREFIX/lib64"; do
   if [ -d "$lib_dir" ]; then
     cp -r "$lib_dir/." "$INSTALL_PREFIX/lib/"
   fi
 done
+log_done
 
 # Strip binaries
+log_step "Stripping debug symbols"
 if command -v strip >/dev/null 2>&1; then
   find "$INSTALL_PREFIX/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
   find "$INSTALL_PREFIX/lib" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
 fi
+log_done
 
 # Define archive variables
 ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
 ARCHIVE_PATH="${INSTALL_PREFIX}/${ARCHIVE_NAME}"
 TEMP_ARCHIVE_PATH="/tmp/${ARCHIVE_NAME}"
 
-# Change to installation directory
+log_step "Creating archive: ${ARCHIVE_NAME}"
 pushd "$INSTALL_PREFIX" > /dev/null
-
-# Emit compressed archive (.tar.zst) to temporary location to avoid "file changed as we read it" error
 tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${TEMP_ARCHIVE_PATH}" . || {
   echo "Error: Failed to create archive" >&2
   exit 1
 }
-
-# Return to original directory
 popd > /dev/null
+log_done
 
 # Package zstd executable
 ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.gz"
 ZSTD_ARCHIVE_PATH="${INSTALL_PREFIX}/${ZSTD_ARCHIVE_NAME}"
-echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
+log_step "Packaging zstd: ${ZSTD_ARCHIVE_NAME}"
 pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
 tar -czf "${ZSTD_ARCHIVE_PATH}" zstd || {
   echo "Error: Failed to create zstd archive" >&2
   exit 1
 }
 popd > /dev/null
+log_done
 
 # Move archive to final location
 mv "${TEMP_ARCHIVE_PATH}" "${ARCHIVE_PATH}" || {

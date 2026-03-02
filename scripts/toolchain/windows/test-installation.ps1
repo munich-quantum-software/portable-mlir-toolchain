@@ -20,6 +20,27 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+$_step_sw = [Diagnostics.Stopwatch]::new()
+function Write-Step([string]$msg) {
+    $_step_sw.Restart()
+    Write-Host ""
+    Write-Host "════════════════════════════════════════════════════════════════"
+    Write-Host "  ▶  $msg"
+    Write-Host "     $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    Write-Host "════════════════════════════════════════════════════════════════"
+}
+function Write-Done {
+    $e = $_step_sw.Elapsed
+    Write-Host "────────────────────────────────────────────────────────────────"
+    Write-Host ("  ✔  Done  ({0}m {1:D2}s)" -f [int]$e.TotalMinutes, $e.Seconds)
+    Write-Host "────────────────────────────────────────────────────────────────"
+    Write-Host ""
+}
+# ---------------------------------------------------------------------------
+
 $ZstdExe = Join-Path $ZstdInstallPrefix "zstd.exe"
 
 Write-Host "Testing installation from $ArchivePath..."
@@ -30,10 +51,13 @@ New-Item -ItemType Directory -Force -Path $TestInstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $TestBuildDir   | Out-Null
 
 try {
+    Write-Step "Extracting archive"
     # Extract the archive using the bundled zstd
     & $ZstdExe -d --long=30 $ArchivePath -c | tar -xf - -C $TestInstallDir
     if ($LASTEXITCODE -ne 0) { throw "Extraction failed" }
+    Write-Done
 
+    Write-Step "Verifying archive structure"
     # Verify basic structure
     foreach ($d in @("bin", "include")) {
         $p = Join-Path $TestInstallDir $d
@@ -55,13 +79,15 @@ try {
 
     Write-Host "Found MLIR cmake dir: $MLIRCMakeDir"
     Write-Host "Found LLVM cmake dir: $LLVMCMakeDir"
+    Write-Done
 
-    # Verify key binaries run
+    Write-Step "Verifying key binaries"
     $env:PATH = "$TestInstallDir\bin;$env:PATH"
     & "$TestInstallDir\bin\mlir-opt.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-opt --version failed" }
     & "$TestInstallDir\bin\mlir-translate.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-translate --version failed" }
+    Write-Done
 
     # Locate integration test sources relative to this script
     $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -72,6 +98,7 @@ try {
         throw "Error: integration test sources not found at $IntegrationSrc"
     }
 
+    Write-Step "CMake configure – integration test"
     cmake -G Ninja `
     -S $IntegrationSrc `
     -B $TestBuildDir `
@@ -80,12 +107,17 @@ try {
     "-DMLIR_DIR=$MLIRCMakeDir" `
     "-DLLVM_DIR=$LLVMCMakeDir"
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
+    Write-Done
 
+    Write-Step "CMake build – integration test"
     cmake --build $TestBuildDir
     if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
+    Write-Done
 
+    Write-Step "Running integration test binary"
     & "$TestBuildDir\hello_mlir.exe"
     if ($LASTEXITCODE -ne 0) { throw "hello_mlir failed" }
+    Write-Done
 
     Write-Host "Integration test passed!"
 } finally {
