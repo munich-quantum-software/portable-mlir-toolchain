@@ -79,9 +79,10 @@ log_done() {
 }
 # ---------------------------------------------------------------------------
 
-# Ensure Ninja is available for fast, parallel builds
-log_step "Installing build tools (Ninja)"
+# Ensure Ninja and sccache are available for fast, parallel builds
+log_step "Installing build tools (Ninja, sccache)"
 uv tool install ninja
+uv tool install sccache
 log_done
 
 # Ensure `uv`-installed tools are on the PATH
@@ -220,6 +221,9 @@ build_llvm() {
     -DLLVM_ENABLE_LIBXML2=OFF
     -DLLVM_ENABLE_LIBEDIT=OFF
     -DLLVM_ENABLE_LIBPFM=OFF
+    # Use sccache to cache compilation results and speed up repeated builds
+    -DCMAKE_C_COMPILER_LAUNCHER=sccache
+    -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
     # Tools include FileCheck, not, and others that are useful to have in the install
     -DLLVM_INSTALL_UTILS=ON
   )
@@ -297,3 +301,8 @@ log_done
 
 # Clean up zstd installation
 rm -rf "$ZSTD_INSTALL_PREFIX"
+
+# Show sccache statistics
+log_step "sccache stats"
+sccache --show-stats
+log_done
