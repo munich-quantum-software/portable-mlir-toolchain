@@ -176,7 +176,7 @@ build_llvm() {
     -DCMAKE_C_COMPILER=gcc
     -DCMAKE_CXX_COMPILER=g++
     # Suppress noisy warnings that heavily pollute the log
-    -DCMAKE_CXX_FLAGS="-w"
+    -DLLVM_ENABLE_WARNINGS=OFF
     # Use Ninja for fast, parallel builds
     -G Ninja
     # No need to build examples, tests, or benchmarks

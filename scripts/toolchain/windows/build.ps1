@@ -228,10 +228,10 @@ try {
         # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         # Suppress noisy MSVC warnings that heavily pollutes the log
-        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
+        '-DLLVM_ENABLE_WARNINGS=OFF'
     )
 
-    # Stage 1: build and install lld using the system linker, always in Release
+    # Stage 1: build lld using the system linker, always in Release
     # mode. Building lld in Release (even for Debug toolchain builds) ensures the
     # linker itself is fast.
     $stage1_cmake_args = $cmake_args_base + @(
@@ -244,8 +244,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 cmake configure failed" }
     Write-Done
 
-    Write-Step "Stage 1 – Build and install lld (Release)"
-    cmake --build $build_dir_stage1 --target install-lld --config Release
+    Write-Step "Stage 1 – Build lld (Release)"
+    cmake --build $build_dir_stage1 --target lld --config Release
     if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld install failed" }
     Write-Done
 
