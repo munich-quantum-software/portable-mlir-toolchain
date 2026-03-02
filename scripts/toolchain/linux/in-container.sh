@@ -207,20 +207,20 @@ build_llvm() {
     -DLLVM_INSTALL_UTILS=ON
   )
 
-  # ── Stage 1: build and install lld with system linker ────────────────────
+  # ── Stage 1: build lld with system linker ────────────────────
   log_step "Stage 1 – CMake configure (lld only, Release, system linker)"
   cmake "${cmake_args[@]}" -B "$build_dir_stage1" -DLLVM_ENABLE_PROJECTS="lld"
   log_done
 
-  log_step "Stage 1 – Build and install lld"
-  cmake --build "$build_dir_stage1" --target install-lld
+  log_step "Stage 1 – Build lld"
+  cmake --build "$build_dir_stage1" --target lld
   log_done
 
   export PATH="$PWD/$build_dir_stage1/bin:$PATH"
 
-  # ── Stage 2: build mlir only, using the stage-1 lld as linker ────────────
-  log_step "Stage 2 – CMake configure (mlir only, lld linker)"
-  cmake "${cmake_args[@]}" -B "$build_dir_stage2" -DLLVM_ENABLE_PROJECTS="mlir" -DLLVM_ENABLE_LLD=ON
+  # ── Stage 2: build mlir + lld, using the stage-1 lld as linker ────────────
+  log_step "Stage 2 – CMake configure (mlir + lld, Release, stage-1 lld linker)"
+  cmake "${cmake_args[@]}" -B "$build_dir_stage2" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
   log_done
 
   log_step "Stage 2 – Build and install LLVM/MLIR"
