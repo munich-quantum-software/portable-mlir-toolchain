@@ -118,7 +118,8 @@ cmake -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   "-DCMAKE_PREFIX_PATH=$TEST_INSTALL_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
-  "-DLLVM_DIR=$LLVM_CMAKE_DIR"
+  "-DLLVM_DIR=$LLVM_CMAKE_DIR" \
+  -DLLVM_ENABLE_LLD=ON
 log_done
 
 log_step "CMake build – integration test"

@@ -110,7 +110,8 @@ try {
     -DCMAKE_BUILD_TYPE=$BuildType `
     "-DCMAKE_PREFIX_PATH=$TestInstallDir" `
     "-DMLIR_DIR=$MLIRCMakeDir" `
-    "-DLLVM_DIR=$LLVMCMakeDir"
+    "-DLLVM_DIR=$LLVMCMakeDir" `
+    "-DLLVM_ENABLE_LLD=ON"
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
     Write-Done
 
