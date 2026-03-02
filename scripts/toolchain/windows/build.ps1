@@ -211,10 +211,6 @@ try {
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
         # Enabling assertions is generally recommended to build LLVM
         '-DLLVM_ENABLE_ASSERTIONS=ON',
-        # We want to use the zstd we just built, so force LLVM to use it and not any system version
-        "-DLLVM_ENABLE_ZSTD=FORCE_ON",
-        '-DLLVM_USE_STATIC_ZSTD=ON',
-        "-DCMAKE_PREFIX_PATH=$zstd_install_prefix",
         # Disable LTO to avoid downstream consumers needing to have the same LTO configuration
         '-DLLVM_ENABLE_LTO=OFF',
         # Enable RTTI because we rely on it downstream
@@ -282,12 +278,6 @@ try {
     popd > $null
     if (Test-Path $repo_dir) { Remove-Item -Recurse -Force $repo_dir }
 }
-
-# Bundle zstd into the LLVM install so consuming projects can find it
-Write-Step "Bundling zstd into install tree"
-Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
-Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
-Write-Done
 
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
