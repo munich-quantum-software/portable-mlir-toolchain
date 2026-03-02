@@ -55,6 +55,14 @@ log_done() {
 }
 # ---------------------------------------------------------------------------
 
+# Ensure Ninja is available for fast, parallel builds
+log_step "Installing build tools (Ninja)"
+uv tool install ninja
+log_done
+
+# Ensure `uv`-installed tools are on the PATH
+export PATH="$HOME/.local/bin:$PATH"
+
 echo "Testing installation from ${ARCHIVE_PATH}..."
 
 TEST_INSTALL_DIR=$(mktemp -d)
@@ -62,7 +70,6 @@ TEST_BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_INSTALL_DIR" "$TEST_BUILD_DIR"' EXIT
 
 log_step "Extracting archive"
-# macOS ships BSD tar; use explicit decompress + pipe instead of --use-compress-program
 "$ZSTD_BIN" -d --long=30 "$ARCHIVE_PATH" -c | tar -xf - -C "$TEST_INSTALL_DIR"
 log_done
 
