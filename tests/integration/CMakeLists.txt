@@ -14,7 +14,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 cmake_minimum_required(VERSION 3.24...4.2)
-project(mlir_integration_test CXX)
+project(mlir_integration_test C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,6 +29,11 @@ list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 
 include(AddLLVM)
 include(AddMLIR)
+include(HandleLLVMOptions)
+
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS} ${MLIR_INCLUDE_DIRS})
+link_directories(${LLVM_BUILD_LIBRARY_DIR})
+add_definitions(${LLVM_DEFINITIONS})
 
 add_llvm_executable(hello_mlir main.cpp)
 target_link_libraries(hello_mlir PRIVATE
