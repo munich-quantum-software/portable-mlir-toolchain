@@ -87,12 +87,10 @@ Write-Step "Setting up VS developer environment ($vsArch)"
 if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
 Write-Done
 
-# Ensure Ninja and sccache are available for fast, parallel builds
-Write-Step "Installing build tools (Ninja, sccache)"
+# Ensure Ninja is available for fast, parallel builds
+Write-Step "Installing build tools (Ninja)"
 uv tool install ninja
 if ($LASTEXITCODE -ne 0) { throw "Failed to install Ninja via uv" }
-uv tool install sccache
-if ($LASTEXITCODE -ne 0) { throw "Failed to install sccache via uv" }
 # Ensure uv-installed tools are on the PATH
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 Write-Done
@@ -229,9 +227,6 @@ try {
         '-DLLVM_INSTALL_UTILS=ON',
         # We want an optimized TableGen build even during Debug builds
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
-        # Use sccache to cache compilation results and speed up repeated builds
-        '-DCMAKE_C_COMPILER_LAUNCHER=sccache',
-        '-DCMAKE_CXX_COMPILER_LAUNCHER=sccache',
         # Suppress noisy MSVC warnings that heavily pollutes the log
         '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
     )
@@ -324,8 +319,3 @@ try {
     popd > $null
     if (Test-Path $zstd_install_prefix) { Remove-Item -Recurse -Force $zstd_install_prefix }
 }
-
-# Show sccache statistics
-Write-Step "sccache stats"
-sccache --show-stats
-Write-Done
