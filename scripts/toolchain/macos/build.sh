@@ -57,19 +57,6 @@ if [ -z "${INSTALL_PREFIX:-}" ]; then
   exit 1
 fi
 
-# Determine architecture
-UNAME_ARCH=$(uname -m)
-
-# Determine target
-if [[ "$UNAME_ARCH" == "arm64" || "$UNAME_ARCH" == "aarch64" ]]; then
-  HOST_TARGET="AArch64"
-elif [[ "$UNAME_ARCH" == "x86_64" ]]; then
-  HOST_TARGET="X86"
-else
-  echo "Error: Unsupported architecture: ${UNAME_ARCH}. Only x86_64 and arm64 are supported." >&2
-  exit 1
-fi
-
 # ---------------------------------------------------------------------------
 # Logging helpers
 # ---------------------------------------------------------------------------
@@ -91,6 +78,27 @@ log_done() {
   echo ""
 }
 # ---------------------------------------------------------------------------
+
+# Ensure Ninja is available for fast, parallel builds
+log_step "Installing build tools (Ninja)"
+uv tool install ninja
+log_done
+
+# Ensure `uv`-installed tools are on the PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+# Determine architecture
+UNAME_ARCH=$(uname -m)
+
+# Determine target
+if [[ "$UNAME_ARCH" == "arm64" || "$UNAME_ARCH" == "aarch64" ]]; then
+  HOST_TARGET="AArch64"
+elif [[ "$UNAME_ARCH" == "x86_64" ]]; then
+  HOST_TARGET="X86"
+else
+  echo "Error: Unsupported architecture: ${UNAME_ARCH}. Only x86_64 and arm64 are supported." >&2
+  exit 1
+fi
 
 # Main LLVM setup function
 build_zstd() {
