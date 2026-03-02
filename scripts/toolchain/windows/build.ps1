@@ -233,7 +233,7 @@ try {
         '-DCMAKE_C_COMPILER_LAUNCHER=sccache',
         '-DCMAKE_CXX_COMPILER_LAUNCHER=sccache',
         # Suppress noisy MSVC warnings that heavily pollutes the log
-        '-DCMAKE_CXX_FLAGS=/W0'
+        '-DCMAKE_CXX_FLAGS=/D_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING'
     )
 
     # Stage 1: build and install lld using the system linker, always in Release
