@@ -65,6 +65,14 @@ Write-Step "Setting up VS developer environment ($vsArch)"
 if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
 Write-Done
 
+# Ensure Ninja is available for fast, parallel builds
+Write-Step "Installing build tools (Ninja)"
+uv tool install ninja
+if ($LASTEXITCODE -ne 0) { throw "Failed to install Ninja via uv" }
+# Ensure uv-installed tools are on the PATH
+$env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
+Write-Done
+
 $ZstdExe = Join-Path $ZstdInstallPrefix "zstd.exe"
 if (-not (Test-Path $ZstdExe)) {
     throw "zstd.exe not found at '$ZstdExe'"
