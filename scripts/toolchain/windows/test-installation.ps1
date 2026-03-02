@@ -76,6 +76,7 @@ try {
     -S $IntegrationSrc `
     -B $TestBuildDir `
     -DCMAKE_BUILD_TYPE=Release `
+    "-DCMAKE_PREFIX_PATH=$TestInstallDir" `
     "-DMLIR_DIR=$MLIRCMakeDir" `
     "-DLLVM_DIR=$LLVMCMakeDir"
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
