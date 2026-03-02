@@ -270,6 +270,16 @@ try {
     cmake --build $build_dir --target install --config $build_type
     if ($LASTEXITCODE -ne 0) { throw "Stage 2 install failed" }
     Write-Done
+
+    # Bundle the Release lld-link into the install tree so consuming projects can
+    # use it as a fast linker regardless of the MLIR build type.
+    Write-Step "Bundling lld-link into install tree"
+    $lld_exe = Join-Path $repo_dir $build_dir "bin" "lld-link.exe"
+    if (-not (Test-Path $lld_exe)) {
+        throw "Expected lld-link.exe not found at '$lld_exe' after build"
+    }
+    Copy-Item -Force $lld_exe (Join-Path $install_prefix "bin" "lld-link.exe")
+    Write-Done
 } finally {
     # Return to original directory
     popd > $null
@@ -281,14 +291,6 @@ Write-Step "Bundling zstd into install tree"
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "include\*") (Join-Path $install_prefix "include")
 Copy-Item -Recurse -Force (Join-Path $zstd_install_prefix "lib\*")     (Join-Path $install_prefix "lib")
 Write-Done
-
-# Bundle the Release lld-link into the install tree so consuming projects can
-# use it as a fast linker regardless of the MLIR build type.
-$lld_exe = Join-Path $repo_dir $build_dir "bin" "lld-link.exe"
-if (-not (Test-Path $lld_exe)) {
-    throw "Expected lld-link.exe not found at '$lld_exe' after build"
-}
-Copy-Item -Force $lld_exe (Join-Path $install_prefix "bin" "lld-link.exe")
 
 # Define archive variables
 $build_type_suffix = if ($debug) { "_debug" } else { "" }
