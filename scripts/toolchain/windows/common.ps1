@@ -136,8 +136,7 @@ function Ensure-Ninja {
     }
 
     Write-Step "Installing build tools (Ninja $Version)"
-    uv tool install "ninja==$Version"
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to install Ninja' }
+    Invoke-Checked -Command 'uv' -Arguments @('tool', 'install', "ninja==$Version") -ErrorMessage 'Failed to install Ninja via uv'
     Write-Done
 }
 
