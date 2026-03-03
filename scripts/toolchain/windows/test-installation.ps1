@@ -137,7 +137,7 @@ try {
     cmake -G Ninja `
     -S $IntegrationSrc `
     -B $TestBuildDir `
-    -DCMAKE_BUILD_TYPE=$BuildType `
+    "-DCMAKE_BUILD_TYPE=$BuildType" `
     "-DCMAKE_PREFIX_PATH=$TestInstallDir" `
     "-DMLIR_DIR=$MLIRCMakeDir" `
     "-DLLVM_DIR=$LLVMCMakeDir" `
@@ -146,7 +146,7 @@ try {
     Write-Done
 
     Write-Step "CMake build – integration test"
-    cmake --build $TestBuildDir
+    cmake --build $TestBuildDir -- config $BuildType
     if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
     Write-Done
 
