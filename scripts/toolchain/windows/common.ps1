@@ -107,27 +107,11 @@ function Enter-VsDevShell {
     $vsPath = & $vsInstaller -latest -property installationPath 2>$null
     if (-not $vsPath) { throw 'Visual Studio installation not found' }
 
-    $devShell = Join-Path $vsPath 'Common7\Tools\Launch-VsDevShell.ps1'
+    $devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
 
-    Write-Step "Setting up VS developer environment ($VsArch)"
-
-    $started = $false
-
-    # Newer VS dev shell launchers may need explicit install path when auto-location is skipped.
-    try {
-        & $devShell -Arch $VsArch -VsInstallPath $vsPath -SkipAutomaticLocation
-        $started = $?
-    } catch {
-        $started = $false
-    }
-
-    # Fallback for environments where the launcher signature differs.
-    if (-not $started) {
-        & $devShell -Arch $VsArch
-        $started = $?
-    }
-
-    if (-not $started) { throw 'Failed to set up VS developer environment' }
+    Write-Step "Setting up VS developer environment ($vsArch)"
+    & $devShell -Arch $vsArch -SkipAutomaticLocation
+    if (-not $?) { throw "Failed to set up VS developer environment" }
     Write-Done
 }
 
