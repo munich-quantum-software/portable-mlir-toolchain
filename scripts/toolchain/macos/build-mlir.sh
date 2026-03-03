@@ -106,7 +106,8 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_ENABLE_ZSTD=FORCE_ON \
   -DLLVM_USE_STATIC_ZSTD=ON \
   -DCMAKE_PREFIX_PATH="$zstd_extract_dir" \
-  -DLLVM_USE_LINKER=mold
+  -DLLVM_USE_LINKER=mold \
+  -DCMAKE_LINKER_TYPE=MOLD
 log_done
 
 log_step "Build and install MLIR (${BUILD_TYPE})"

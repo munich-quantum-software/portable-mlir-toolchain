@@ -147,18 +147,13 @@ build_zstd() {
 
 build_mold() {
   local zstd_exe="$IO_DIR/zstd"
-  local zstd_archive="$IO_DIR/zstd.tar.zst"
-
   [[ -x "$zstd_exe" ]] || { echo "Error: missing zstd executable artifact" >&2; exit 1; }
-  [[ -f "$zstd_archive" ]] || { echo "Error: missing zstd archive artifact" >&2; exit 1; }
 
-  local zstd_extract_dir="$BUILD_WORKSPACE/zstd-extract"
   local mold_src_dir="$BUILD_WORKSPACE/mold-${MOLD_VERSION}"
   local mold_install_dir="$BUILD_WORKSPACE/mold-install"
   local mold_tarball="$BUILD_WORKSPACE/mold-${MOLD_VERSION}.tar.gz"
 
   log_step "Building mold v${MOLD_VERSION}"
-  decompress_archive_to_dir "$zstd_archive" "$zstd_extract_dir" "$zstd_exe"
   rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
 
   curl -fL --retry 5 --retry-delay 5 \
@@ -168,7 +163,6 @@ build_mold() {
   cmake -S "$mold_src_dir" -B "$mold_src_dir/build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$mold_install_dir" \
-    -DCMAKE_PREFIX_PATH="$zstd_extract_dir" \
     -DMOLD_LTO=ON \
     -DMOLD_USE_SYSTEM_TBB=OFF \
     -DMOLD_USE_SYSTEM_MIMALLOC=OFF \
@@ -180,7 +174,7 @@ build_mold() {
   fi
   compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"
 
-  rm -rf "$zstd_extract_dir" "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
+  rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
   log_done
 }
 

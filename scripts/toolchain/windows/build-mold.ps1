@@ -15,7 +15,6 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MoldArchivePath,
     [string]$MoldVersion = '2.40.4',
     [string]$NinjaVersion = '1.13.0'
@@ -32,18 +31,6 @@ Ensure-Ninja -Version $NinjaVersion
 $ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
 if (-not (Test-Path $ZstdExePath)) {
     throw "zstd executable not found: $ZstdExePath"
-}
-
-$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
-if (-not (Test-Path $ZstdArchivePath)) {
-    throw "zstd archive not found: $ZstdArchivePath"
-}
-$tempExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempExtractDir | Out-Null
-try {
-    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempExtractDir -ZstdExePath $ZstdExePath
-} catch {
-    throw "Failed to extract zstd archive: $($_.Exception.Message)"
 }
 
 $rootDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.')
@@ -74,7 +61,6 @@ try {
             '-DCMAKE_CXX_COMPILER=clang-cl',
             "-DCMAKE_BUILD_TYPE=Release",
             "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
-            "-DZSTD_ROOT=$tempExtractDir",
             '-DMOLD_LTO=ON',
             '-DMOLD_USE_SYSTEM_TBB=OFF',
             '-DMOLD_USE_SYSTEM_MIMALLOC=OFF',
@@ -90,7 +76,6 @@ try {
         throw "mold.exe was not found at expected path: $moldExe"
     }
 } finally {
-    Remove-PathIfExists -Path $tempExtractDir
     Remove-PathIfExists -Path $moldDir
     Remove-PathIfExists -Path $tempBuildDir
 }

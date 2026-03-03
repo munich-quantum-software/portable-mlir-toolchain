@@ -74,16 +74,10 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Build mold
         run: |
           bash ${{ github.workspace }}/scripts/toolchain/macos/build-mold.sh \
             -e ${{ env.ZSTD_EXE_PATH }} \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
             -a ${{ env.MOLD_ARCHIVE_PATH }} \
             -v ${{ env.MOLD_VERSION }} \
             -n ${{ env.NINJA_VERSION }}
@@ -95,7 +89,7 @@ jobs:
           archive: false
 
   build-mlir-release:
-    needs: build-mold
+    needs: [build-zstd, build-mold]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     steps:
@@ -138,7 +132,7 @@ jobs:
           archive: false
 
   test-release:
-    needs: [build-zstd, build-mlir-release]
+    needs: [build-mlir-release]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
     steps:

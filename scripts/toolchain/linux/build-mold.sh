@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -e <zstd_exe_path> -z <zstd_archive_path> -a <mold_archive_path> [-v <mold_version>]"
+  echo "Usage: $0 -e <zstd_exe_path> -a <mold_archive_path> [-v <mold_version>]"
   exit 1
 }
 
@@ -26,20 +26,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 MOLD_VERSION="2.40.4"
-while getopts ":e:z:a:v:" opt; do
+while getopts ":e:a:v:" opt; do
   case "$opt" in
     e) ZSTD_EXE_PATH="$OPTARG" ;;
-    z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
     a) MOLD_ARCHIVE_PATH="$OPTARG" ;;
     v) MOLD_VERSION="$OPTARG" ;;
     *) usage ;;
   esac
 done
 
-[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" ]] && usage
 
 ZSTD_EXE_PATH="$(resolve_abs_path "$ZSTD_EXE_PATH")"
-ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 MOLD_ARCHIVE_PATH="$(resolve_abs_path "$MOLD_ARCHIVE_PATH")"
 
 if [[ ! -f "$ZSTD_EXE_PATH" ]]; then
@@ -55,9 +53,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cp "$ZSTD_EXE_PATH" "$io_dir/zstd"
-cp "$ZSTD_ARCHIVE_PATH" "$io_dir/zstd.tar.zst"
 echo "$MOLD_VERSION" > "$io_dir/mold.version"
+
+cp "$ZSTD_EXE_PATH" "$io_dir/zstd"
 
 run_manylinux_stage "build-mold" "$io_dir"
 
