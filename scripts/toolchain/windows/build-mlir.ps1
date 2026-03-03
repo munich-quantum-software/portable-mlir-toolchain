@@ -84,7 +84,7 @@ try {
     Write-Done
 
     Write-Step "Build and install MLIR ($BuildType)"
-    Invoke-Checked -Command 'cmake' -Arguments @('--build', $buildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
+    Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
     Write-Done
 } finally {
     popd > $null
