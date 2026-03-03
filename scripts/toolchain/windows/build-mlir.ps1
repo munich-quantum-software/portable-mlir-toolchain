@@ -14,59 +14,88 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory = $true)][string]$llvm_project_ref,
-    [Parameter(Mandatory = $true)][string]$install_prefix,
-    [Parameter(Mandatory = $true)][string]$lld_install_prefix,
-    [ValidateSet('Release', 'Debug')][string]$build_type = 'Release',
-    [string]$NinjaVersion = '1.13.0'
+    [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
+    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
+    [Parameter(Mandatory = $true)][string]$LldArchivePath,
+    [Parameter(Mandatory = $true)][string]$MlirArchivePath,
+    [string]$NinjaVersion = '1.13.0',
+    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-$install_prefix = Resolve-AbsolutePath -Path $install_prefix
-$lld_install_prefix = Resolve-AbsolutePath -Path $lld_install_prefix
-
 $archInfo = Get-ArchInfo
-
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-$lldLink = Join-Path $lld_install_prefix 'bin\lld-link.exe'
-if (-not (Test-Path $lldLink)) {
-    throw "lld-link.exe not found in lld install prefix: $lld_install_prefix"
+$ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
+if (-not (Test-Path $ZstdExePath)) {
+    throw "zstd executable not found: $ZstdExePath"
 }
-$env:PATH = "$(Join-Path $lld_install_prefix 'bin');$env:PATH"
 
-$repoDir = Initialize-LlvmSourceTree -llvm_project_ref $llvm_project_ref -ExcludeMlirTests
-
-Remove-PathIfExists -Path $install_prefix
-
-pushd $repoDir > $null
+$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
+if (-not (Test-Path $ZstdArchivePath)) {
+    throw "zstd archive not found: $ZstdArchivePath"
+}
+$tempZstdExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempZstdExtractDir | Out-Null
 try {
-    $buildDir = 'build_mlir'
+    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract zstd archive: $($_.Exception.Message)"
+}
+
+$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
+if (-not (Test-Path $LldArchivePath)) {
+    throw "lld archive not found: $LldArchivePath"
+}
+$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
+try {
+    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract lld archive: $($_.Exception.Message)"
+}
+
+$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mlir-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
+
+$tempBuildDir = Join-Path ([IO.Path]::GetTempPath()) ("mlir-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+
+try {
+    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+
+    pushd $repoDir > $null
     $cmakeArgs = Get-LlvmCommonCMakeArgs `
-        -BuildDir $buildDir `
-        -BuildType $build_type `
-        -InstallPrefix $install_prefix `
+        -BuildDir $tempBuildDir `
+        -BuildType $BuildType `
+        -InstallPrefix $tempInstallDir `
         -HostTarget $archInfo.HostTarget `
         -Projects 'mlir' `
-        -PrefixPath $lld_install_prefix `
+        -PrefixPath $tempZstdExtractDir `
         -EnableLld
 
-    Write-Step "CMake configure MLIR ($build_type)"
+    Write-Step "CMake configure MLIR ($BuildType)"
     Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
     Write-Done
 
-    Write-Step "Build and install MLIR ($build_type)"
-    Invoke-Checked -Command 'cmake' -Arguments @('--build', $buildDir, '--target', 'install', '--config', $build_type) -ErrorMessage 'MLIR build/install failed'
+    Write-Step "Build and install MLIR ($BuildType)"
+    Invoke-Checked -Command 'cmake' -Arguments @('--build', $buildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
     Write-Done
 } finally {
     popd > $null
     Remove-PathIfExists -Path $repoDir
+    Remove-PathIfExists -Path $tempZstdExtractDir
+    Remove-PathIfExists -Path $tempLldExtractDir
+    Remove-PathIfExists -Path $tempBuildDir
 }
 
-Write-Step 'Bundling lld+zstd into the MLIR installation'
-Copy-Item -Path (Join-Path $lld_install_prefix '*') -Destination $install_prefix -Recurse -Force
-Write-Done
+try {
+    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $ZstdExePath
+} finally {
+    Remove-PathIfExists -Path $tempInstallDir
+}

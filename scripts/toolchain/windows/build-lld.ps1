@@ -14,9 +14,10 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory = $true)][string]$llvm_project_ref,
-    [Parameter(Mandatory = $true)][string]$install_prefix,
-    [Parameter(Mandatory = $true)][string]$zstd_prefix,
+    [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
+    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
+    [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [string]$NinjaVersion = '1.13.0'
 )
 
@@ -24,46 +25,61 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-$install_prefix = Resolve-AbsolutePath -Path $install_prefix
-$zstd_prefix = Resolve-AbsolutePath -Path $zstd_prefix
-
 $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-if (-not (Test-Path (Join-Path $zstd_prefix 'lib'))) {
-    throw "zstd install prefix does not look valid: $zstd_prefix"
+$ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
+if (-not (Test-Path $ZstdExePath)) {
+    throw "zstd executable not found: $ZstdExePath"
 }
 
-Remove-PathIfExists -Path $install_prefix
-$repoDir = Initialize-LlvmSourceTree -llvm_project_ref $llvm_project_ref
-
-pushd $repoDir > $null
+$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
+if (-not (Test-Path $ZstdArchivePath)) {
+    throw "zstd archive not found: $ZstdArchivePath"
+}
+$tempExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempExtractDir | Out-Null
 try {
-    $buildDir = 'build_lld_release'
+    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract zstd archive: $($_.Exception.Message)"
+}
+
+$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("lld-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
+
+$tempBuildDir = Join-Path ([IO.Path]::GetTempPath()) ("lld-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+
+try {
+    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+
+    pushd $repoDir > $null
     $cmakeArgs = Get-LlvmCommonCMakeArgs `
-        -BuildDir $buildDir `
+        -BuildDir $tempBuildDir `
         -BuildType 'Release' `
-        -InstallPrefix $install_prefix `
+        -InstallPrefix $tempInstallDir `
         -HostTarget $archInfo.HostTarget `
         -Projects 'lld' `
-        -PrefixPath $zstd_prefix
+        -PrefixPath $tempExtractDir
 
     Write-Step 'CMake configure (lld only, Release)'
     Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'lld cmake configure failed'
     Write-Done
 
     Write-Step 'Build and install lld (Release)'
-    Invoke-Checked -Command 'cmake' -Arguments @('--build', $buildDir, '--target', 'install-lld', '--config', 'Release') -ErrorMessage 'lld build/install failed'
+    Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install-lld', '--config', 'Release') -ErrorMessage 'lld build/install failed'
     Write-Done
 } finally {
     popd > $null
     Remove-PathIfExists -Path $repoDir
+    Remove-PathIfExists -Path $tempExtractDir
+    Remove-PathIfExists -Path $tempBuildDir
 }
 
-Write-Step 'Vendoring zstd installation into lld installation'
-if (-not (Test-Path $install_prefix)) {
-    throw "lld install prefix does not exist: $install_prefix"
+try {
+    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $LldArchivePath -ZstdExePath $ZstdExePath
+} finally {
+    Remove-PathIfExists -Path $tempInstallDir
 }
-Copy-Item -Path (Join-Path $zstd_prefix '*') -Destination $install_prefix -Recurse -Force
-Write-Done

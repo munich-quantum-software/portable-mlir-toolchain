@@ -17,11 +17,17 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
+  ZSTD_VERSION: 1.5.7
+  NINJA_VERSION: 1.13.0
 
 jobs:
   build-zstd:
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build zstd"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -33,26 +39,33 @@ jobs:
       - name: Build zstd (Release)
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 -InstallPrefix ${{ github.workspace }}\zstd-install
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -ZstdVersion ${{ env.ZSTD_VERSION }}
       - name: Upload zstd installation (temporary)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-install
-          path: zstd-install/**
+          path: ${{ env.ZSTD_ARCHIVE_PATH }}
           if-no-files-found: error
-          overwrite: true
+          archive: false
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-exe
-          path: zstd-install/bin/zstd.exe
+          path: ${{ env.ZSTD_EXE_PATH }}
+          name: ${{ env.ZSTD_EXE_NAME }}
           if-no-files-found: error
-          overwrite: true
 
   build-lld:
     needs: build-zstd
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build lld"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
+      LLD_ARCHIVE_PATH: ${{ github.workspace }}\lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -61,30 +74,42 @@ jobs:
           python-version: 3.14
           activate-environment: true
           enable-cache: false
-      - name: Download zstd installation
+      - name: Download zstd executable
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-install
-          path: ${{ github.workspace }}\zstd-install
+          name: ${{ env.ZSTD_EXE_NAME }}
+          path: ${{ env.ZSTD_EXE_PATH }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Build lld (Release) with zstd
         shell: pwsh
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
-            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
-            -install_prefix ${{ github.workspace }}\lld-install `
-            -zstd_prefix ${{ github.workspace }}\zstd-install
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }}
       - name: Upload lld installation (temporary)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ${{ inputs.runs-on }}-lld-install
-          path: lld-install/**
+          path: ${{ env.LLD_ARCHIVE_PATH }}
           if-no-files-found: error
-          overwrite: true
+          archive: false
 
   build-mlir-release:
     needs: build-lld
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
+      LLD_ARCHIVE_PATH: ${{ github.workspace }}\lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
+      MLIR_ARCHIVE_PATH: ${{ github.workspace }}\llvm-mlir_${{ inputs.llvm-project-ref }}_release.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -93,43 +118,49 @@ jobs:
           python-version: 3.14
           activate-environment: true
           enable-cache: false
-      - name: Download lld installation
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ inputs.runs-on }}-lld-install
-          path: ${{ github.workspace }}\lld-install
       - name: Download zstd executable
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-exe
-          path: ${{ github.workspace }}\zstd-bin
+          name: ${{ env.ZSTD_EXE_NAME }}
+          path: ${{ env.ZSTD_EXE_PATH }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ environment.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Build and package MLIR (Release)
         shell: pwsh
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
-            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
-            -install_prefix ${{ github.workspace }}\llvm-install-release `
-            -lld_install_prefix ${{ github.workspace }}\lld-install `
-            -build_type Release
-
-          & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
-            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
-            -install_prefix ${{ github.workspace }}\llvm-install-release `
-            -zstd_exe ${{ github.workspace }}\zstd-bin\zstd.exe `
-            -build_type Release `
-            -output_dir ${{ github.workspace }}
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -BuildType Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ${{ inputs.runs-on }}-release-mlir-archive
-          path: llvm-mlir_*.tar.zst
+          path: ${{ env.MLIR_ARCHIVE_PATH }}
           if-no-files-found: error
-          overwrite: true
+          archive: false
 
   build-mlir-debug:
     needs: build-lld
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Debug)"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
+      LLD_ARCHIVE_PATH: ${{ github.workspace }}\lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
+      MLIR_ARCHIVE_PATH: ${{ github.workspace }}\llvm-mlir_${{ inputs.llvm-project-ref }}_debug.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -152,29 +183,30 @@ jobs:
         shell: pwsh
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
-            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
-            -install_prefix ${{ github.workspace }}\llvm-install-debug `
-            -lld_install_prefix ${{ github.workspace }}\lld-install `
-            -build_type Debug
-
-          & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
-            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
-            -install_prefix ${{ github.workspace }}\llvm-install-debug `
-            -zstd_exe ${{ github.workspace }}\zstd-bin\zstd.exe `
-            -build_type Debug `
-            -output_dir ${{ github.workspace }}
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -BuildType Debug
       - name: Upload MLIR archive (Debug)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ${{ inputs.runs-on }}-debug-mlir-archive
-          path: llvm-mlir_*.tar.zst
+          path: ${{ env.MLIR_ARCHIVE_PATH }}
           if-no-files-found: error
-          overwrite: true
+          archive: false
 
   test-release:
     needs: [build-zstd, build-mlir-release]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
+      LLD_ARCHIVE_PATH: ${{ github.workspace }}\lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
+      MLIR_ARCHIVE_PATH: ${{ github.workspace }}\llvm-mlir_${{ inputs.llvm-project-ref }}_release.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -186,26 +218,44 @@ jobs:
       - name: Download zstd executable
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-exe
-          path: ${{ github.workspace }}\zstd-bin
+          name: ${{ env.ZSTD_EXE_NAME }}
+          path: ${{ env.ZSTD_EXE_PATH }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ environment.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Download MLIR archive (Release)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-release-mlir-archive
+          name: ${{ environment.MLIR_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Test installation (Release)
         shell: pwsh
         run: |
-          $archive = Get-Item llvm-mlir_*.tar.zst | Select-Object -First 1
-
-          & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
-            -ArchivePath $archive.FullName `
-            -ZstdExePath "${{ github.workspace }}\zstd-bin\zstd.exe" `
+          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Release
 
   test-debug:
     needs: [build-zstd, build-mlir-debug]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Debug)"
+    env:
+      ZSTD_ARCHIVE_PATH: ${{ github.workspace }}\zstd-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}.tar.zst
+      ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
+      ZSTD_EXE_NAME: zstd-exe-${{ env.ZSTD_VERSION }}-${{ inputs.runs-on }}
+      LLD_ARCHIVE_PATH: ${{ github.workspace }}\lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
+      MLIR_ARCHIVE_PATH: ${{ github.workspace }}\llvm-mlir_${{ inputs.llvm-project-ref }}_debug.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -217,18 +267,30 @@ jobs:
       - name: Download zstd executable
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-exe
-          path: ${{ github.workspace }}\zstd-bin
+          name: ${{ env.ZSTD_EXE_NAME }}
+          path: ${{ env.ZSTD_EXE_PATH }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ environment.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Download MLIR archive (Debug)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-debug-mlir-archive
+          name: ${{ environment.MLIR_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Test installation (Debug)
         shell: pwsh
         run: |
-          $archive = Get-Item llvm-mlir_*.tar.zst | Select-Object -First 1
-
-          & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
-            -ArchivePath $archive.FullName `
-            -ZstdExePath "${{ github.workspace }}\zstd-bin\zstd.exe" `
+          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Debug

@@ -144,17 +144,66 @@ function Get-RepoRootFromScript([string]$ScriptPath) {
     return (Resolve-Path (Join-Path (Split-Path -Parent $ScriptPath) '..\..\..')).Path
 }
 
-function Initialize-LlvmSourceTree {
+function Compress-DirectoryToArchive {
     param(
-        [Parameter(Mandatory = $true)][string]$llvm_project_ref,
-        [string]$RepoDir = (Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.') 'llvm-project'),
-        [switch]$ExcludeMlirTests
+        [Parameter(Mandatory = $true)][string]$SourceDir,
+        [Parameter(Mandatory = $true)][string]$ArchivePath,
+        [string]$ZstdExePath,
+        [int]$CompressionLevel = 19,
+        [long]$LongWindow = 30
     )
 
-    $archiveUrl = "https://github.com/llvm/llvm-project/archive/$llvm_project_ref.tar.gz"
-    $tempArchive = Join-Path ([IO.Path]::GetTempPath()) ("llvm-project-$llvm_project_ref.tar.gz")
+    if (-not (Test-Path $ZstdExePath)) {
+        throw "zstd executable not found: $ZstdExePath"
+    }
 
-    Write-Step "Downloading LLVM/MLIR source ($llvm_project_ref)"
+    if (Test-Path $ArchivePath) {
+        Remove-Item -Path $ArchivePath -Force
+    }
+
+    Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd (level $CompressionLevel, long window $LongWindow)"
+    & $ZstdExePath -c -q --long=30 -$CompressionLevel $SourceDir | Out-File -FilePath $ArchivePath -Encoding Byte
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to compress directory with zstd: $ZstdExePath"
+    }
+    Write-Done
+}
+
+function Decompress-ArchiveToDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$ArchivePath,
+        [Parameter(Mandatory = $true)][string]$DestinationDir,
+        [string]$ZstdExePath,
+        [int]$LongWindow = 30
+    )
+
+    if (-not (Test-Path $ZstdExePath)) {
+        throw "zstd executable not found: $ZstdExePath"
+    }
+
+    if (Test-Path $DestinationDir) {
+        Remove-Item -Path $DestinationDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+
+    Write-Step "Decompressing archive $ArchivePath to directory $DestinationDir with zstd (long window $LongWindow)"
+    & $ZstdExePath -d --long=$LongWindow $ArchivePath -c | tar -xf - -C $DestinationDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to decompress archive with zstd: $ZstdExePath"
+    }
+    Write-Done
+}
+
+function Initialize-LlvmSourceTree {
+    param(
+        [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
+        [string]$RepoDir = (Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.') 'llvm-project')
+    )
+
+    $archiveUrl = "https://github.com/llvm/llvm-project/archive/$LlvmProjectRef.tar.gz"
+    $tempArchive = Join-Path ([IO.Path]::GetTempPath()) ("llvm-project-$LlvmProjectRef.tar.gz")
+
+    Write-Step "Downloading LLVM/MLIR source ($LlvmProjectRef)"
     Remove-PathIfExists -Path $RepoDir
     New-Item -ItemType Directory -Path $RepoDir -Force | Out-Null
 
@@ -173,15 +222,10 @@ function Initialize-LlvmSourceTree {
             '--exclude=libclc',
             '--exclude=libc',
             '--exclude=llvm/test',
-            '--exclude=llvm/unittests'
+            '--exclude=llvm/unittests',
+            '--exclude=mlir/test',
+            '--exclude=mlir/unittests'
         )
-        if ($ExcludeMlirTests) {
-            $excludeArgs += @(
-                '--exclude=mlir/test',
-                '--exclude=mlir/unittests'
-            )
-        }
-
         Invoke-Checked -Command 'tar' -Arguments $excludeArgs -ErrorMessage 'Failed to extract llvm-project archive'
     } finally {
         Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue

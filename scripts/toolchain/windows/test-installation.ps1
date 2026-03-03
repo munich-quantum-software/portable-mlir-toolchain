@@ -14,11 +14,12 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory)][string]$ArchivePath,
-    [string]$ZstdInstallPrefix,
-    [string]$ZstdExePath,
-    [ValidateSet("Release", "Debug")]
-    [string]$BuildType = "Release"
+    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$LldArchivePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
+    [Parameter(Mandatory = $true)][string]$MlirArchivePath,
+    [string]$NinjaVersion = '1.13.0',
+    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,54 +28,61 @@ $ErrorActionPreference = 'Stop'
 
 $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
-Ensure-Ninja -Version '1.13.0'
+Ensure-Ninja -Version $NinjaVersion
 
-$ZstdExe = if ($ZstdExePath) {
-    $ZstdExePath
-} elseif ($ZstdInstallPrefix) {
-    $candidateA = Join-Path $ZstdInstallPrefix 'zstd.exe'
-    $candidateB = Join-Path $ZstdInstallPrefix 'bin\zstd.exe'
-    if (Test-Path $candidateA) {
-        $candidateA
-    } else {
-        $candidateB
-    }
-} else {
-    throw 'Either -ZstdExePath or -ZstdInstallPrefix must be provided.'
+$ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
+if (-not (Test-Path $ZstdExePath)) {
+    throw "zstd executable not found: $ZstdExePath"
 }
 
-if (-not (Test-Path $ZstdExe)) {
-    throw "zstd.exe not found at '$ZstdExe'"
+$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
+if (-not (Test-Path $ZstdArchivePath)) {
+    throw "zstd archive not found: $ZstdArchivePath"
 }
+$tempZstdExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempZstdExtractDir | Out-Null
+try {
+    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract zstd archive: $($_.Exception.Message)"
+}
+
+$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
+if (-not (Test-Path $LldArchivePath)) {
+    throw "lld archive not found: $LldArchivePath"
+}
+$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
+try {
+    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract lld archive: $($_.Exception.Message)"
+}
+
+$MlirArchivePath = Resolve-AbsolutePath -Path $MlirArchivePath
+if (-not (Test-Path $MlirArchivePath)) {
+    throw "MLIR archive not found: $MlirArchivePath"
+}
+$tempMlirExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempMlirExtractDir | Out-Null
+try {
+    Decompress-ArchiveToDirectory -ArchivePath $MlirArchivePath -DestinationDir $tempMlirExtractDir -ZstdExePath $ZstdExePath
+} catch {
+    throw "Failed to extract MLIR archive: $($_.Exception.Message)"
+}
+
 
 Write-Host "Testing installation from $ArchivePath..."
 
-$TestInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 $TestBuildDir   = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $TestInstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $TestBuildDir   | Out-Null
 
 try {
-    Write-Step "Extracting archive"
-    # Extract the archive using the bundled zstd
-    & $ZstdExe -d --long=30 $ArchivePath -c | tar -xf - -C $TestInstallDir
-    if ($LASTEXITCODE -ne 0) { throw "Extraction failed" }
-    Write-Done
-
-    Write-Step "Verifying archive structure"
-    # Verify basic structure
-    foreach ($d in @("bin", "include")) {
-        $p = Join-Path $TestInstallDir $d
-        if (-not (Test-Path $p)) {
-            throw "Error: $d not found in installation"
-        }
-    }
-
     # Find cmake config directories
-    $MLIRCMakeDir = Get-ChildItem -Recurse -Directory -Path $TestInstallDir |
+    $MLIRCMakeDir = Get-ChildItem -Recurse -Directory -Path $tempMlirExtractDir |
             Where-Object { $_.Name -eq "mlir" -and $_.FullName -match "cmake" } |
             Select-Object -First 1 -ExpandProperty FullName
-    $LLVMCMakeDir = Get-ChildItem -Recurse -Directory -Path $TestInstallDir |
+    $LLVMCMakeDir = Get-ChildItem -Recurse -Directory -Path $tempMlirExtractDir |
             Where-Object { $_.Name -eq "llvm" -and $_.FullName -match "cmake" } |
             Select-Object -First 1 -ExpandProperty FullName
 
@@ -86,10 +94,10 @@ try {
     Write-Done
 
     Write-Step "Verifying key binaries"
-    $env:PATH = "$TestInstallDir\bin;$env:PATH"
-    & "$TestInstallDir\bin\mlir-opt.exe" --version
+    $env:PATH = "$tempMlirExtractDir\bin;$env:PATH"
+    & "$tempMlirExtractDir\bin\mlir-opt.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-opt --version failed" }
-    & "$TestInstallDir\bin\mlir-translate.exe" --version
+    & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-translate --version failed" }
     Write-Done
 
@@ -104,13 +112,13 @@ try {
 
     Write-Step "CMake configure – integration test"
     cmake -G Ninja `
-    -S $IntegrationSrc `
-    -B $TestBuildDir `
-    "-DCMAKE_BUILD_TYPE=$BuildType" `
-    "-DCMAKE_PREFIX_PATH=$TestInstallDir" `
-    "-DMLIR_DIR=$MLIRCMakeDir" `
-    "-DLLVM_DIR=$LLVMCMakeDir" `
-    "-DLLVM_ENABLE_LLD=ON"
+        -S $IntegrationSrc `
+        -B $TestBuildDir `
+        "-DCMAKE_BUILD_TYPE=$BuildType" `
+        "-DCMAKE_PREFIX_PATH=$tempZstdExtractDir;$tempLldExtractDir" `
+        "-DMLIR_DIR=$MLIRCMakeDir" `
+        "-DLLVM_DIR=$LLVMCMakeDir" `
+        "-DLLVM_ENABLE_LLD=ON"
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
     Write-Done
 
@@ -126,6 +134,6 @@ try {
 
     Write-Host "Integration test passed!"
 } finally {
-    Remove-Item -Recurse -Force $TestInstallDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $tempMlirExtractDir -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $TestBuildDir   -ErrorAction SilentlyContinue
 }

@@ -14,7 +14,8 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory = $true)][string]$InstallPrefix,
+    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [string]$ZstdVersion = '1.5.7',
     [string]$NinjaVersion = '1.13.0'
 )
@@ -23,25 +24,25 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-$InstallPrefix = Resolve-AbsolutePath -Path $InstallPrefix
 $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
 $rootDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.')
 $zstdDir = Join-Path $rootDir "zstd-$ZstdVersion"
-$tempDir = Join-Path ([IO.Path]::GetTempPath()) ("zstd-$ZstdVersion-$([Guid]::NewGuid().ToString('N'))")
-New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+Remove-PathIfExists -Path $zstdDir
 
-$zstdTarball = Join-Path $tempDir "zstd-$ZstdVersion.tar.gz"
+$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("zstd-install-$ZstdVersion-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
+$tempBuildDir = Join-Path ([IO.Path]::GetTempPath()) ("zstd-$ZstdVersion-$([Guid]::NewGuid().ToString('N'))")
+New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+
+$zstdTarball = Join-Path $tempBuildDir "zstd-$ZstdVersion.tar.gz"
 $zstdChecksumFile = "$zstdTarball.sha256"
 $zstdUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdTarball)"
 $zstdChecksumUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdChecksumFile)"
 
 Write-Step "Building zstd v$ZstdVersion"
-Remove-PathIfExists -Path $InstallPrefix
-Remove-PathIfExists -Path $zstdDir
-
 try {
     Invoke-WebRequest -Uri $zstdUrl -OutFile $zstdTarball
     Invoke-WebRequest -Uri $zstdChecksumUrl -OutFile $zstdChecksumFile
@@ -62,7 +63,7 @@ try {
             '-B', 'build',
             '-G', 'Ninja',
             '-DCMAKE_BUILD_TYPE=Release',
-            "-DCMAKE_INSTALL_PREFIX=$InstallPrefix",
+            "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
             '-DZSTD_BUILD_STATIC=ON',
             '-DZSTD_BUILD_SHARED=OFF'
         ) -ErrorMessage 'zstd cmake configure failed'
@@ -75,13 +76,21 @@ try {
     } finally {
         popd > $null
     }
+    $zstdExe = Join-Path $tempInstallDir 'bin\zstd.exe'
+    if (-not (Test-Path $zstdExe)) {
+        throw "zstd.exe was not found at expected path: $zstdExe"
+    }
 } finally {
     Remove-PathIfExists -Path $zstdDir
-    Remove-PathIfExists -Path $tempDir
-}
-
-$zstdExe = Join-Path $InstallPrefix 'bin\zstd.exe'
-if (-not (Test-Path $zstdExe)) {
-    throw "zstd.exe was not found at expected path: $zstdExe"
+    Remove-PathIfExists -Path $tempBuildDir
 }
 Write-Done
+
+try {
+  Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $ZstdArchivePath -ZstdExePath $zstdExe
+  Write-Step "Copying zstd executable to $ZstdExePath"
+  Copy-Item -Path $zstdExe -Destination $ZstdExePath -Force
+  Write-Done
+} finally {
+  Remove-PathIfExists -Path $tempInstallDir
+}
