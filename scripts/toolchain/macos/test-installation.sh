@@ -37,27 +37,8 @@ if [[ ! -x "$ZSTD_BIN" ]]; then
   exit 1
 fi
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-_STEP_START=0
-log_step() {
-  local msg="$*"
-  _STEP_START=$(date +%s)
-  echo ""
-  echo "════════════════════════════════════════════════════════════════"
-  echo "  ▶  ${msg}"
-  echo "     $(date '+%Y-%m-%d %H:%M:%S %Z')"
-  echo "════════════════════════════════════════════════════════════════"
-}
-log_done() {
-  local elapsed=$(( $(date +%s) - _STEP_START ))
-  echo "────────────────────────────────────────────────────────────────"
-  echo "  ✔  Done  ($(printf '%dm %02ds' $((elapsed/60)) $((elapsed%60))))"
-  echo "────────────────────────────────────────────────────────────────"
-  echo ""
-}
-# ---------------------------------------------------------------------------
+# shellcheck source=../common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 # Ensure Ninja is available for fast, parallel builds
 log_step "Installing build tools (Ninja)"
@@ -126,8 +107,7 @@ cmake -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   "-DCMAKE_PREFIX_PATH=$TEST_INSTALL_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
-  "-DLLVM_DIR=$LLVM_CMAKE_DIR" \
-  -DLLVM_ENABLE_LLD=ON
+  "-DLLVM_DIR=$LLVM_CMAKE_DIR"
 log_done
 
 log_step "CMake build – integration test"

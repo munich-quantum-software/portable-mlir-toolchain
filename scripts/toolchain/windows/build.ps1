@@ -62,6 +62,7 @@ function Write-Done {
 # ---------------------------------------------------------------------------
 
 $zstd_version = "1.5.7"
+$ninja_version = "1.14.0"
 $root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
 $debug = ($build_type -eq "Debug")
 
@@ -84,12 +85,12 @@ $vsArch = switch ($arch) {
 }
 Write-Step "Setting up VS developer environment ($vsArch)"
 & $devShell -Arch $vsArch -SkipAutomaticLocation
-if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
+if (-not $?) { throw "Failed to set up VS developer environment" }
 Write-Done
 
 # Ensure Ninja is available for fast, parallel builds
-Write-Step "Installing build tools (Ninja)"
-uv tool install ninja
+Write-Step "Installing build tools (Ninja $ninja_version)"
+uv tool install "ninja==$ninja_version"
 if ($LASTEXITCODE -ne 0) { throw "Failed to install Ninja via uv" }
 # Ensure uv-installed tools are on the PATH
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
@@ -242,7 +243,7 @@ try {
 
     Write-Step "Stage 1 – Build lld (Release)"
     cmake --build $build_dir_stage1 --target lld --config Release
-    if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld install failed" }
+    if ($LASTEXITCODE -ne 0) { throw "Stage 1 lld build failed" }
     Write-Done
 
     # Make the stage-1 lld available on PATH so subsequent cmake invocations

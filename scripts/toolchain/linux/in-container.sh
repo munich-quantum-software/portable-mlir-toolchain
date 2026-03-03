@@ -32,40 +32,22 @@
 set -euo pipefail
 
 ZSTD_VERSION="1.5.7"
+NINJA_VERSION="1.14.0"
 
 : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
 : "${BUILD_WORKSPACE:=/work}"
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-_STEP_START=0
-log_step() {
-  local msg="$*"
-  _STEP_START=$(date +%s)
-  echo ""
-  echo "════════════════════════════════════════════════════════════════"
-  echo "  ▶  ${msg}"
-  echo "     $(date '+%Y-%m-%d %H:%M:%S %Z')"
-  echo "════════════════════════════════════════════════════════════════"
-}
-log_done() {
-  local elapsed=$(( $(date +%s) - _STEP_START ))
-  echo "────────────────────────────────────────────────────────────────"
-  echo "  ✔  Done  ($(printf '%dm %02ds' $((elapsed/60)) $((elapsed%60))))"
-  echo "────────────────────────────────────────────────────────────────"
-  echo ""
-}
-# ---------------------------------------------------------------------------
+# shellcheck source=../common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 # Keep large build trees off the container root filesystem when possible.
 mkdir -p "$BUILD_WORKSPACE"
 cd "$BUILD_WORKSPACE"
 
 # Ensure Ninja is available for fast, parallel builds
-log_step "Installing build tools (Ninja)"
-uv tool install ninja
+log_step "Installing build tools (Ninja ${NINJA_VERSION})"
+uv tool install "ninja==${NINJA_VERSION}"
 log_done
 
 # Ensure `uv`-installed tools are on the PATH

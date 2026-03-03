@@ -62,7 +62,7 @@ $vsArch = switch ($arch) {
 }
 Write-Step "Setting up VS developer environment ($vsArch)"
 & $devShell -Arch $vsArch -SkipAutomaticLocation
-if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
+if (-not $?) { throw "Failed to set up VS developer environment" }
 Write-Done
 
 # Ensure Ninja is available for fast, parallel builds
@@ -146,7 +146,7 @@ try {
     Write-Done
 
     Write-Step "CMake build – integration test"
-    cmake --build $TestBuildDir -- config $BuildType
+    cmake --build $TestBuildDir --config $BuildType
     if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
     Write-Done
 
