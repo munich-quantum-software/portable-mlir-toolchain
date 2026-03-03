@@ -148,7 +148,7 @@ function Compress-DirectoryToArchive {
     param(
         [Parameter(Mandatory = $true)][string]$SourceDir,
         [Parameter(Mandatory = $true)][string]$ArchivePath,
-        [string]$ZstdExePath,
+        [Parameter(Mandatory = $true)][string]$ZstdExePath,
         [int]$CompressionLevel = 19,
         [long]$LongWindow = 30
     )
@@ -156,15 +156,28 @@ function Compress-DirectoryToArchive {
     if (-not (Test-Path $ZstdExePath)) {
         throw "zstd executable not found: $ZstdExePath"
     }
-
-    if (Test-Path $ArchivePath) {
-        Remove-Item -Path $ArchivePath -Force
+    if (-not (Test-Path $SourceDir)) {
+        throw "source directory not found: $SourceDir"
     }
 
+    $ArchivePath = Resolve-AbsolutePath -Path $ArchivePath
+    $sourceFullPath = Resolve-AbsolutePath -Path $SourceDir
+    $archiveParent = Split-Path -Parent $ArchivePath
+    if ($archiveParent -and -not (Test-Path $archiveParent)) {
+        New-Item -ItemType Directory -Path $archiveParent -Force | Out-Null
+    }
+
+    Remove-Item -Path $ArchivePath -Force -ErrorAction SilentlyContinue
+
     Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd (level $CompressionLevel, long window $LongWindow)"
-    & $ZstdExePath -c -q --long=30 -$CompressionLevel $SourceDir | Out-File -FilePath $ArchivePath -Encoding Byte
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to compress directory with zstd: $ZstdExePath"
+    pushd $sourceFullPath > $null
+    try {
+        tar -cf - . | & $ZstdExePath "-$CompressionLevel" "--long=$LongWindow" '--threads=0' '-f' '-o' $ArchivePath '-'
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to compress directory with zstd: $ZstdExePath"
+        }
+    } finally {
+        popd > $null
     }
     Write-Done
 }
@@ -173,10 +186,13 @@ function Decompress-ArchiveToDirectory {
     param(
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$DestinationDir,
-        [string]$ZstdExePath,
+        [Parameter(Mandatory = $true)][string]$ZstdExePath,
         [int]$LongWindow = 30
     )
 
+    if (-not (Test-Path $ArchivePath)) {
+        throw "archive not found: $ArchivePath"
+    }
     if (-not (Test-Path $ZstdExePath)) {
         throw "zstd executable not found: $ZstdExePath"
     }
@@ -186,10 +202,11 @@ function Decompress-ArchiveToDirectory {
     }
     New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
 
-    Write-Step "Decompressing archive $ArchivePath to directory $DestinationDir with zstd (long window $LongWindow)"
-    & $ZstdExePath -d --long=$LongWindow $ArchivePath -c | tar -xf - -C $DestinationDir
+    Write-Step "Decompressing tar.zst archive $ArchivePath to directory $DestinationDir"
+    # Stream: zstd decompression -> tar extraction.
+    & $ZstdExePath '-d' "--long=$LongWindow" $ArchivePath '-c' | tar '-xf' '-' '-C' $DestinationDir
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to decompress archive with zstd: $ZstdExePath"
+        throw "Failed to extract tar stream from archive: $ArchivePath"
     }
     Write-Done
 }
