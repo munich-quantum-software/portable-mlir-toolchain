@@ -148,6 +148,7 @@ $zstd_cmake_args = @(
     '-S', '.',
     '-B', 'build',
     '-G', 'Ninja',
+    '-DCMAKE_BUILD_TYPE=Release',
     "-DCMAKE_INSTALL_PREFIX=$zstd_install_prefix",
     '-DZSTD_BUILD_STATIC=ON',
     '-DZSTD_BUILD_SHARED=OFF'
