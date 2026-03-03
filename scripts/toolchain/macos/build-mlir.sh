@@ -51,6 +51,12 @@ ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 MOLD_ARCHIVE_PATH="$(resolve_abs_path "$MOLD_ARCHIVE_PATH")"
 MLIR_ARCHIVE_PATH="$(resolve_abs_path "$MLIR_ARCHIVE_PATH")"
 
+if [[ ! -f "$ZSTD_EXE_PATH" ]]; then
+  echo "Error: zstd executable not found at $ZSTD_EXE_PATH" >&2
+  exit 1
+fi
+chmod +x "$ZSTD_EXE_PATH"
+
 tmp_dir="$(mktemp -d)"
 zstd_extract_dir="$tmp_dir/zstd"
 mold_extract_dir="$tmp_dir/mold"

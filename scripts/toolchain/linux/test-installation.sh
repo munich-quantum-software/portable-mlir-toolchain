@@ -37,6 +37,11 @@ done
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 if [[ ! -x "$ZSTD_EXE_PATH" ]]; then
+  if [[ -f "$ZSTD_EXE_PATH" ]]; then
+    chmod +x "$ZSTD_EXE_PATH"
+  fi
+fi
+if [[ ! -x "$ZSTD_EXE_PATH" ]]; then
   echo "Error: zstd not found or not executable at '$ZSTD_EXE_PATH'" >&2
   exit 1
 fi
