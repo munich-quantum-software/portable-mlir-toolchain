@@ -28,7 +28,7 @@ $install_prefix = Resolve-AbsolutePath -Path $install_prefix
 $zstd_prefix = Resolve-AbsolutePath -Path $zstd_prefix
 
 $archInfo = Get-ArchInfo
-Enter-VsDevShell
+Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
 if (-not (Test-Path (Join-Path $zstd_prefix 'lib'))) {

@@ -95,27 +95,23 @@ function Get-ArchInfo {
     }
 }
 
-function Enter-VsDevShell {
-    # Detect architecture
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+function Enter-VisualStudioDevShell {
+    param([Parameter(Mandatory = $true)][string]$VsArch)
 
-    # Find and enter VS developer shell to set up MSVC environment for Ninja
     $vsInstaller = if (Test-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe") {
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     } else {
         "C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"
     }
+
     $vsPath = & $vsInstaller -latest -property installationPath 2>$null
-    if (-not $vsPath) { throw "Visual Studio installation not found" }
+    if (-not $vsPath) { throw 'Visual Studio installation not found' }
+
     $devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
-    $vsArch = switch ($arch) {
-        'X64'   { 'amd64' }
-        'Arm64' { 'arm64' }
-        default { throw "Unsupported architecture: $arch" }
-    }
-    Write-Step "Setting up VS developer environment ($vsArch)"
-    & $devShell -Arch $vsArch -SkipAutomaticLocation
-    if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
+
+    Write-Step "Setting up VS developer environment ($VsArch)"
+    & $devShell -Arch $VsArch -SkipAutomaticLocation
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to set up VS developer environment' }
     Write-Done
 }
 
@@ -140,7 +136,8 @@ function Ensure-Ninja {
     }
 
     Write-Step "Installing build tools (Ninja $Version)"
-    Invoke-Checked -Command 'uv.exe' -Arguments @('tool', 'install', "ninja==$Version") -ErrorMessage 'Failed to install Ninja via uv'
+    uv tool install "ninja==$Version"
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to install Ninja' }
     Write-Done
 }
 

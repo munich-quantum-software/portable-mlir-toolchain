@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'common.ps1')
 
 $archInfo = Get-ArchInfo
-Enter-VsDevShell -VsArch $archInfo.VsArch
+Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version '1.13.0'
 
 $ZstdExe = if ($ZstdExePath) {
