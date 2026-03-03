@@ -21,7 +21,7 @@ env:
   ZSTD_VERSION: 1.5.7
   MOLD_VERSION: 2.40.4
   ZSTD_ARCHIVE_PATH: zstd-1.5.7-${{ inputs.runs-on }}.tar.zst
-  ZSTD_EXE_PATH: ${{ github.workspace }}/zstd-${{ inputs.runs-on }}
+  ZSTD_EXE_PATH: ${{ github.workspace }}/zstd
   ZSTD_EXE_NAME: zstd-exe-1.5.7-${{ inputs.runs-on }}
   MOLD_ARCHIVE_PATH: mold-2.40.4-${{ inputs.runs-on }}.tar.zst
   MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_release_${{ inputs.runs-on }}.tar.zst
