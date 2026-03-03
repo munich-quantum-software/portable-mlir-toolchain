@@ -15,7 +15,8 @@
 
 param(
     [Parameter(Mandatory)][string]$ArchivePath,
-    [Parameter(Mandatory)][string]$ZstdInstallPrefix,
+    [string]$ZstdInstallPrefix,
+    [string]$ZstdExePath,
     [ValidateSet("Release", "Debug")]
     [string]$BuildType = "Release"
 )
@@ -73,7 +74,20 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to install Ninja via uv" }
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 Write-Done
 
-$ZstdExe = Join-Path $ZstdInstallPrefix "zstd.exe"
+$ZstdExe = if ($ZstdExePath) {
+    $ZstdExePath
+} elseif ($ZstdInstallPrefix) {
+    $candidateA = Join-Path $ZstdInstallPrefix 'zstd.exe'
+    $candidateB = Join-Path $ZstdInstallPrefix 'bin\zstd.exe'
+    if (Test-Path $candidateA) {
+        $candidateA
+    } else {
+        $candidateB
+    }
+} else {
+    throw 'Either -ZstdExePath or -ZstdInstallPrefix must be provided.'
+}
+
 if (-not (Test-Path $ZstdExe)) {
     throw "zstd.exe not found at '$ZstdExe'"
 }

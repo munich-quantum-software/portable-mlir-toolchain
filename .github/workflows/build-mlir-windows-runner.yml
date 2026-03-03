@@ -1,0 +1,182 @@
+name: Build Portable MLIR Toolchain (Windows Runner)
+
+on:
+  workflow_call:
+    inputs:
+      llvm-project-ref:
+        description: "llvm-project ref or tag (e.g., llvmorg-22.1.0)"
+        required: true
+        type: string
+      runs-on:
+        description: "GitHub runner label (e.g., windows-2025)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+jobs:
+  build-zstd:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Build zstd (Release)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 -InstallPrefix ${{ github.workspace }}\zstd-install
+      - name: Upload zstd installation (temporary)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-install
+          path: zstd-install/**
+          if-no-files-found: error
+          overwrite: true
+      - name: Upload zstd executable (final payload)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-exe
+          path: zstd-install/bin/zstd.exe
+          if-no-files-found: error
+          overwrite: true
+
+  build-lld:
+    needs: build-zstd
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download zstd installation
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-install
+          path: ${{ github.workspace }}\zstd-install
+      - name: Build lld (Release) with zstd
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
+            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
+            -install_prefix ${{ github.workspace }}\lld-install `
+            -zstd_prefix ${{ github.workspace }}\zstd-install
+      - name: Upload lld installation (temporary)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.runs-on }}-lld-install
+          path: lld-install/**
+          if-no-files-found: error
+          overwrite: true
+
+  build-mlir-release:
+    needs: build-lld
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download lld installation
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-lld-install
+          path: ${{ github.workspace }}\lld-install
+      - name: Build and package MLIR (Release)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
+            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
+            -install_prefix ${{ github.workspace }}\llvm-install-release `
+            -lld_install_prefix ${{ github.workspace }}\lld-install `
+            -build_type Release
+
+          & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
+            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
+            -install_prefix ${{ github.workspace }}\llvm-install-release `
+            -zstd_exe ${{ github.workspace }}\lld-install\bin\zstd.exe `
+            -build_type Release `
+            -output_dir ${{ github.workspace }}
+      - name: Upload MLIR archive (Release)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.runs-on }}-release-mlir-archive
+          path: llvm-mlir_*.tar.zst
+          if-no-files-found: error
+          overwrite: true
+
+  build-mlir-debug:
+    needs: build-lld
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download lld installation
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-lld-install
+          path: ${{ github.workspace }}\lld-install
+      - name: Build and package MLIR (Debug)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
+            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
+            -install_prefix ${{ github.workspace }}\llvm-install-debug `
+            -lld_install_prefix ${{ github.workspace }}\lld-install `
+            -build_type Debug
+
+          & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
+            -llvm_project_ref ${{ inputs.llvm-project-ref }} `
+            -install_prefix ${{ github.workspace }}\llvm-install-debug `
+            -zstd_exe ${{ github.workspace }}\lld-install\bin\zstd.exe `
+            -build_type Debug `
+            -output_dir ${{ github.workspace }}
+      - name: Upload MLIR archive (Debug)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ inputs.runs-on }}-debug-mlir-archive
+          path: llvm-mlir_*.tar.zst
+          if-no-files-found: error
+          overwrite: true
+
+  test-release:
+    needs: [build-zstd, build-mlir-release]
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-exe
+          path: ${{ github.workspace }}\zstd-bin
+      - name: Download MLIR archive (Release)
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-release-mlir-archive
+      - name: Test installation (Release)
+        shell: pwsh
+        run: |
+          $archive = Get-Item llvm-mlir_*.tar.zst | Select-Object -First 1
+
+          & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
+            -ArchivePath $archive.FullName `
+            -ZstdExePath "${{ github.workspace }}\zstd-bin\zstd.exe" `
+            -BuildType Release
+
+  test-debug:
+    needs: [build-zstd, build-mlir-debug]
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-exe
+          path: ${{ github.workspace }}\zstd-bin
+      - name: Download MLIR archive (Debug)
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-debug-mlir-archive
+      - name: Test installation (Debug)
+        shell: pwsh
+        run: |
+          $archive = Get-Item llvm-mlir_*.tar.zst | Select-Object -First 1
+
+          & "${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1" `
+            -ArchivePath $archive.FullName `
+            -ZstdExePath "${{ github.workspace }}\zstd-bin\zstd.exe" `
+            -BuildType Debug
