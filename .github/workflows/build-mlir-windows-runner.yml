@@ -73,7 +73,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-          path: ${{ env.ZSTD_EXE_PATH }}
       - name: Download zstd installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -113,7 +112,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-          path: ${{ env.ZSTD_EXE_PATH }}
       - name: Download zstd installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -156,16 +154,20 @@ jobs:
           python-version: 3.14
           activate-environment: true
           enable-cache: false
-      - name: Download lld installation
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ inputs.runs-on }}-lld-install
-          path: ${{ github.workspace }}\lld-install
       - name: Download zstd executable
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ inputs.runs-on }}-zstd-exe
-          path: ${{ github.workspace }}\zstd-bin
+          name: ${{ env.ZSTD_EXE_NAME }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
       - name: Build and package MLIR (Debug)
         shell: pwsh
         run: |
@@ -202,7 +204,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-          path: ${{ env.ZSTD_EXE_PATH }}
       - name: Download zstd installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -247,7 +248,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-          path: ${{ env.ZSTD_EXE_PATH }}
       - name: Download zstd installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
