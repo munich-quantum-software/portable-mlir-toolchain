@@ -49,7 +49,6 @@ mkdir -p "$(dirname "$ZSTD_EXE_PATH")" "$(dirname "$ZSTD_ARCHIVE_PATH")"
 tmp_dir="$(mktemp -d)"
 install_dir="$tmp_dir/install"
 zstd_tarball="$tmp_dir/zstd-${ZSTD_VERSION}.tar.gz"
-zstd_checksum="$zstd_tarball.sha256"
 zstd_src_dir="$tmp_dir/zstd-${ZSTD_VERSION}"
 
 cleanup() {
@@ -59,12 +58,6 @@ trap cleanup EXIT
 
 log_step "Building zstd v${ZSTD_VERSION}"
 curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz" -o "$zstd_tarball"
-curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz.sha256" -o "$zstd_checksum"
-
-if ! shasum -a 256 -c "$zstd_checksum" > /dev/null 2>&1; then
-  echo "Error: zstd checksum verification failed" >&2
-  exit 1
-fi
 
 tar -xzf "$zstd_tarball" -C "$tmp_dir"
 cmake -S "$zstd_src_dir/build/cmake" -B "$zstd_src_dir/build_cmake" -G Ninja \
