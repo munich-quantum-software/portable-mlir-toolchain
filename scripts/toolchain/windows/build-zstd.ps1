@@ -25,7 +25,7 @@ $ErrorActionPreference = 'Stop'
 
 $InstallPrefix = Resolve-AbsolutePath -Path $InstallPrefix
 $archInfo = Get-ArchInfo
-Enter-VsDevShell -VsArch $archInfo.VsArch
+Enter-VsDevShell
 Ensure-Ninja -Version $NinjaVersion
 
 $rootDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.')

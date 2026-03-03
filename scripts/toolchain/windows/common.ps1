@@ -96,47 +96,26 @@ function Get-ArchInfo {
 }
 
 function Enter-VsDevShell {
-    param([string]$VsArch)
+    # Detect architecture
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 
+    # Find and enter VS developer shell to set up MSVC environment for Ninja
     $vsInstaller = if (Test-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe") {
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     } else {
         "C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"
     }
-
     $vsPath = & $vsInstaller -latest -property installationPath 2>$null
-    if (-not $vsPath) { throw 'Visual Studio installation not found' }
-
-    $devShell = Join-Path $vsPath 'Common7\Tools\Launch-VsDevShell.ps1'
-    if (-not (Test-Path $devShell)) {
-        throw "Launch-VsDevShell.ps1 not found at expected path: $devShell"
+    if (-not $vsPath) { throw "Visual Studio installation not found" }
+    $devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
+    $vsArch = switch ($arch) {
+        'X64'   { 'amd64' }
+        'Arm64' { 'arm64' }
+        default { throw "Unsupported architecture: $arch" }
     }
-
-    Write-Step "Setting up VS developer environment ($VsArch)"
-
-    $started = $false
-    try {
-        # Prefer explicit install path to avoid Launch-VsDevShell internal rediscovery.
-        & $devShell -Arch $VsArch -VsInstallPath $vsPath -SkipAutomaticLocation
-        $started = $?
-    } catch {
-        $started = $false
-    }
-
-    if (-not $started) {
-        try {
-            # Some runner images reject SkipAutomaticLocation; retry with explicit path only.
-            & $devShell -Arch $VsArch -VsInstallPath $vsPath
-            $started = $?
-        } catch {
-            $started = $false
-        }
-    }
-
-    if (-not $started) {
-        throw 'Failed to set up VS developer environment'
-    }
-
+    Write-Step "Setting up VS developer environment ($vsArch)"
+    & $devShell -Arch $vsArch -SkipAutomaticLocation
+    if ($LASTEXITCODE -ne 0) { throw "Failed to set up VS developer environment" }
     Write-Done
 }
 

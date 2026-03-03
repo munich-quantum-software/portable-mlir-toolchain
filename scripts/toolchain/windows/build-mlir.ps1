@@ -30,7 +30,7 @@ $lld_install_prefix = Resolve-AbsolutePath -Path $lld_install_prefix
 
 $archInfo = Get-ArchInfo
 
-Enter-VsDevShell -VsArch $archInfo.VsArch
+Enter-VsDevShell
 Ensure-Ninja -Version $NinjaVersion
 
 $lldLink = Join-Path $lld_install_prefix 'bin\lld-link.exe'
