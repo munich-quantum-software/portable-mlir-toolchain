@@ -57,7 +57,7 @@ $tempBuildDir = Join-Path ([IO.Path]::GetTempPath()) ("mold-$MoldVersion-$([Guid
 New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
 
 $moldTarball = Join-Path $tempBuildDir "mold-$MoldVersion.tar.gz"
-$moldUrl = "https://github.com/rui314/mold/releases/download/v$MoldVersion/$(Split-Path -Leaf $moldTarball)"
+$moldUrl = "https://github.com/rui314/mold/archives/refs/tags/v$MoldVersion.tar.gz"
 
 Write-Step "Building mold v$MoldVersion"
 try {

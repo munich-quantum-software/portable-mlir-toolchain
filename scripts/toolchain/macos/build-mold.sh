@@ -61,7 +61,7 @@ trap cleanup EXIT
 decompress_archive_to_dir "$ZSTD_ARCHIVE_PATH" "$zstd_extract_dir" "$ZSTD_EXE_PATH"
 
 log_step "Building mold v${MOLD_VERSION}"
-curl -fL --retry 5 --retry-delay 5 "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}.tar.gz" -o "$mold_tarball"
+curl -fL --retry 5 --retry-delay 5 "https://github.com/rui314/mold/archive/refs/tags/v${MOLD_VERSION}.tar.gz" -o "$mold_tarball"
 tar -xzf "$mold_tarball" -C "$tmp_dir"
 
 cmake -S "$mold_src_dir" -B "$mold_src_dir/build" -G Ninja \

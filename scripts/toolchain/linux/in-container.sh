@@ -162,8 +162,7 @@ build_mold() {
   rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
 
   curl -fL --retry 5 --retry-delay 5 \
-    "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}.tar.gz" \
-    -o "$mold_tarball"
+    "https://github.com/rui314/mold/archive/refs/tags/v${MOLD_VERSION}.tar.gz" -o "$mold_tarball"
   tar -xzf "$mold_tarball" -C "$BUILD_WORKSPACE"
 
   cmake -S "$mold_src_dir" -B "$mold_src_dir/build" -G Ninja \
