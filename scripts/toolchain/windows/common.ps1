@@ -121,8 +121,18 @@ function Ensure-Ninja {
     # Ensure uv-installed tools are reachable in this session.
     $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
-    if (Get-Command ninja -ErrorAction SilentlyContinue) {
-        return
+    $ninja = Get-Command ninja -ErrorAction SilentlyContinue
+    if ($ninja) {
+        $currentVersion = ''
+        try {
+            $currentVersion = (& $ninja.Source --version 2>$null | Select-Object -First 1).Trim()
+        } catch {
+            $currentVersion = ''
+        }
+
+        if ($currentVersion -eq $Version) {
+            return
+        }
     }
 
     Write-Step "Installing build tools (Ninja $Version)"

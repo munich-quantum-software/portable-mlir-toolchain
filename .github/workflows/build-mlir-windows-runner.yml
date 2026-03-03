@@ -80,6 +80,11 @@ jobs:
         with:
           name: ${{ inputs.runs-on }}-lld-install
           path: ${{ github.workspace }}\lld-install
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-exe
+          path: ${{ github.workspace }}\zstd-bin
       - name: Build and package MLIR (Release)
         shell: pwsh
         run: |
@@ -92,7 +97,7 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
             -llvm_project_ref ${{ inputs.llvm-project-ref }} `
             -install_prefix ${{ github.workspace }}\llvm-install-release `
-            -zstd_exe ${{ github.workspace }}\lld-install\bin\zstd.exe `
+            -zstd_exe ${{ github.workspace }}\zstd-bin\zstd.exe `
             -build_type Release `
             -output_dir ${{ github.workspace }}
       - name: Upload MLIR archive (Release)
@@ -114,6 +119,11 @@ jobs:
         with:
           name: ${{ inputs.runs-on }}-lld-install
           path: ${{ github.workspace }}\lld-install
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ inputs.runs-on }}-zstd-exe
+          path: ${{ github.workspace }}\zstd-bin
       - name: Build and package MLIR (Debug)
         shell: pwsh
         run: |
@@ -126,7 +136,7 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\package-mlir.ps1 `
             -llvm_project_ref ${{ inputs.llvm-project-ref }} `
             -install_prefix ${{ github.workspace }}\llvm-install-debug `
-            -zstd_exe ${{ github.workspace }}\lld-install\bin\zstd.exe `
+            -zstd_exe ${{ github.workspace }}\zstd-bin\zstd.exe `
             -build_type Debug `
             -output_dir ${{ github.workspace }}
       - name: Upload MLIR archive (Debug)

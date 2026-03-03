@@ -23,56 +23,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-$_step_sw = [Diagnostics.Stopwatch]::new()
-function Write-Step([string]$msg) {
-    $_step_sw.Restart()
-    Write-Host ""
-    Write-Host "════════════════════════════════════════════════════════════════"
-    Write-Host "  ▶  $msg"
-    Write-Host "     $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    Write-Host "════════════════════════════════════════════════════════════════"
-}
-function Write-Done {
-    $e = $_step_sw.Elapsed
-    Write-Host "────────────────────────────────────────────────────────────────"
-    Write-Host ("  ✔  Done  ({0}m {1:D2}s)" -f [int]$e.TotalMinutes, $e.Seconds)
-    Write-Host "────────────────────────────────────────────────────────────────"
-    Write-Host ""
-}
-# ---------------------------------------------------------------------------
+. (Join-Path $PSScriptRoot 'common.ps1')
 
-# Detect architecture
-$arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-
-# Find and enter VS developer shell to set up MSVC environment for Ninja
-$vsInstaller = if (Test-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe") {
-    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-} else {
-    "C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"
-}
-$vsPath = & $vsInstaller -latest -property installationPath 2>$null
-if (-not $vsPath) { throw "Visual Studio installation not found" }
-$devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
-$vsArch = switch ($arch) {
-    'X64'   { 'amd64' }
-    'Arm64' { 'arm64' }
-    default { throw "Unsupported architecture: $arch" }
-}
-Write-Step "Setting up VS developer environment ($vsArch)"
-& $devShell -Arch $vsArch -SkipAutomaticLocation
-if (-not $?) { throw "Failed to set up VS developer environment" }
-Write-Done
-
-# Ensure Ninja is available for fast, parallel builds
-Write-Step "Installing build tools (Ninja)"
-uv tool install ninja
-if ($LASTEXITCODE -ne 0) { throw "Failed to install Ninja via uv" }
-# Ensure uv-installed tools are on the PATH
-$env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
-Write-Done
+$archInfo = Get-ArchInfo
+Enter-VsDevShell -VsArch $archInfo.VsArch
+Ensure-Ninja -Version '1.13.0'
 
 $ZstdExe = if ($ZstdExePath) {
     $ZstdExePath

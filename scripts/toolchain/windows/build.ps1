@@ -40,30 +40,46 @@ Remove-PathIfExists -Path $install_prefix
 Write-Host "Building MLIR $llvm_project_ref into $install_prefix..."
 
 try {
-    & (Join-Path $windowsScripts 'build-zstd.ps1') -InstallPrefix $zstdInstallPrefix
-    if ($LASTEXITCODE -ne 0) { throw 'build-zstd.ps1 failed' }
+    try {
+        & (Join-Path $windowsScripts 'build-zstd.ps1') -InstallPrefix $zstdInstallPrefix
+        if (-not $?) { throw 'build-zstd.ps1 failed' }
+    } catch {
+        throw "build-zstd.ps1 failed: $($_.Exception.Message)"
+    }
 
-    & (Join-Path $windowsScripts 'build-lld.ps1') `
-        -llvm_project_ref $llvm_project_ref `
-        -install_prefix $lldInstallPrefix `
-        -zstd_prefix $zstdInstallPrefix
-    if ($LASTEXITCODE -ne 0) { throw 'build-lld.ps1 failed' }
+    try {
+        & (Join-Path $windowsScripts 'build-lld.ps1') `
+            -llvm_project_ref $llvm_project_ref `
+            -install_prefix $lldInstallPrefix `
+            -zstd_prefix $zstdInstallPrefix
+        if (-not $?) { throw 'build-lld.ps1 failed' }
+    } catch {
+        throw "build-lld.ps1 failed: $($_.Exception.Message)"
+    }
 
-    & (Join-Path $windowsScripts 'build-mlir.ps1') `
-        -llvm_project_ref $llvm_project_ref `
-        -install_prefix $install_prefix `
-        -lld_install_prefix $lldInstallPrefix `
-        -build_type $build_type
-    if ($LASTEXITCODE -ne 0) { throw 'build-mlir.ps1 failed' }
+    try {
+        & (Join-Path $windowsScripts 'build-mlir.ps1') `
+            -llvm_project_ref $llvm_project_ref `
+            -install_prefix $install_prefix `
+            -lld_install_prefix $lldInstallPrefix `
+            -build_type $build_type
+        if (-not $?) { throw 'build-mlir.ps1 failed' }
+    } catch {
+        throw "build-mlir.ps1 failed: $($_.Exception.Message)"
+    }
 
     $zstdExe = Join-Path $zstdInstallPrefix 'bin\zstd.exe'
-    & (Join-Path $windowsScripts 'package-mlir.ps1') `
-        -llvm_project_ref $llvm_project_ref `
-        -install_prefix $install_prefix `
-        -zstd_exe $zstdExe `
-        -build_type $build_type `
-        -output_dir $rootDir
-    if ($LASTEXITCODE -ne 0) { throw 'package-mlir.ps1 failed' }
+    try {
+        & (Join-Path $windowsScripts 'package-mlir.ps1') `
+            -llvm_project_ref $llvm_project_ref `
+            -install_prefix $install_prefix `
+            -zstd_exe $zstdExe `
+            -build_type $build_type `
+            -output_dir $rootDir
+        if (-not $?) { throw 'package-mlir.ps1 failed' }
+    } catch {
+        throw "package-mlir.ps1 failed: $($_.Exception.Message)"
+    }
 
     # Keep publishing zstd.exe as a portable standalone payload.
     $zstdArchiveName = 'zstd-windows.zip'
