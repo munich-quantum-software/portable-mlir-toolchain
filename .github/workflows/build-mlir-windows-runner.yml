@@ -21,6 +21,7 @@ env:
 jobs:
   build-zstd:
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build zstd"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Build zstd (Release)
@@ -45,6 +46,7 @@ jobs:
   build-lld:
     needs: build-zstd
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build lld"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download zstd installation
@@ -70,6 +72,7 @@ jobs:
   build-mlir-release:
     needs: build-lld
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download lld installation
@@ -103,6 +106,7 @@ jobs:
   build-mlir-debug:
     needs: build-lld
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build MLIR (Debug)"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download lld installation
@@ -136,6 +140,7 @@ jobs:
   test-release:
     needs: [build-zstd, build-mlir-release]
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download zstd executable
@@ -160,6 +165,7 @@ jobs:
   test-debug:
     needs: [build-zstd, build-mlir-debug]
     runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Test MLIR Installation (Debug)"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download zstd executable
