@@ -14,7 +14,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 $ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
 
 $_step_sw = [Diagnostics.Stopwatch]::new()
 
@@ -111,8 +110,24 @@ function Enter-VsDevShell {
     $devShell = Join-Path $vsPath 'Common7\Tools\Launch-VsDevShell.ps1'
 
     Write-Step "Setting up VS developer environment ($VsArch)"
-    & $devShell -Arch $VsArch -SkipAutomaticLocation
-    if (-not $?) { throw 'Failed to set up VS developer environment' }
+
+    $started = $false
+
+    # Newer VS dev shell launchers may need explicit install path when auto-location is skipped.
+    try {
+        & $devShell -Arch $VsArch -VsInstallPath $vsPath -SkipAutomaticLocation
+        $started = $?
+    } catch {
+        $started = $false
+    }
+
+    # Fallback for environments where the launcher signature differs.
+    if (-not $started) {
+        & $devShell -Arch $VsArch
+        $started = $?
+    }
+
+    if (-not $started) { throw 'Failed to set up VS developer environment' }
     Write-Done
 }
 
