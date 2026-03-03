@@ -69,19 +69,19 @@ jobs:
         id: windows-changes
         run: echo "run-windows=true" >> "${GITHUB_OUTPUT}"
 
-  #  linux:
-  #    needs: change-detection
-  #    if: fromJson(needs.change-detection.outputs.run-linux)
-  #    uses: ./.github/workflows/build-mlir-linux.yml
-  #    with:
-  #      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.0' }}
-  #
-  #  macos:
-  #    needs: change-detection
-  #    if: fromJson(needs.change-detection.outputs.run-macos)
-  #    uses: ./.github/workflows/build-mlir-macos.yml
-  #    with:
-  #      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.0' }}
+  linux:
+    needs: change-detection
+    if: fromJson(needs.change-detection.outputs.run-linux)
+    uses: ./.github/workflows/build-mlir-linux.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.0' }}
+
+  macos:
+    needs: change-detection
+    if: fromJson(needs.change-detection.outputs.run-macos)
+    uses: ./.github/workflows/build-mlir-macos.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.0' }}
 
   windows:
     needs: change-detection
@@ -96,8 +96,8 @@ jobs:
     if: always()
     needs:
       - change-detection
-      #      - linux
-      #      - macos
+      - linux
+      - macos
       - windows
     runs-on: ubuntu-slim
     steps:
@@ -111,8 +111,7 @@ jobs:
           jobs: ${{ toJson(needs) }}
 
   release:
-    #    needs: [linux, macos, windows]
-    needs: [windows]
+    needs: [linux, macos, windows]
     if: ${{ inputs.release == true }}
     runs-on: ubuntu-slim
     permissions:

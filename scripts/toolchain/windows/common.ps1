@@ -260,7 +260,7 @@ function Get-LlvmCommonCMakeArgs {
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
         [string]$PrefixPath,
-        [switch]$EnableLld
+        [string]$LinkerPath
     )
 
     $cmakeArgs = @(
@@ -286,7 +286,8 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
         '-DLLVM_ENABLE_ZSTD=FORCE_ON',
-        '-DLLVM_USE_STATIC_ZSTD=ON'
+        '-DLLVM_USE_STATIC_ZSTD=ON',
+        '-DLLVM_USE_LINKER=mold'
     )
 
     if ($BuildType -eq 'Debug') {
@@ -296,11 +297,18 @@ function Get-LlvmCommonCMakeArgs {
         )
     }
 
-    if ($EnableLld) {
-        $cmakeArgs += '-DLLVM_ENABLE_LLD=ON'
-    }
     if ($PrefixPath) {
         $cmakeArgs += "-DCMAKE_PREFIX_PATH=$PrefixPath"
+    }
+
+    if ($LinkerPath) {
+        if (-not (Test-Path $LinkerPath)) {
+            throw "linker executable not found: $LinkerPath"
+        }
+        $linkerDir = Split-Path -Parent (Resolve-AbsolutePath -Path $LinkerPath)
+        if ($linkerDir) {
+            $env:PATH = "$linkerDir;$env:PATH"
+        }
     }
 
     return $cmakeArgs

@@ -17,57 +17,61 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -a <archive_path> -z <zstd_install_prefix>"
+  echo "Usage: $0 -e <zstd_exe_path> -z <zstd_archive_path> -m <mold_archive_path> -a <mlir_archive_path> [-b <Release|Debug>]"
   exit 1
 }
 
-while getopts "a:z:" opt; do
-  case $opt in
-    a) ARCHIVE_PATH="$OPTARG" ;;
-    z) ZSTD_INSTALL_PREFIX="$OPTARG" ;;
+BUILD_TYPE="Release"
+while getopts "e:z:m:a:b:" opt; do
+  case "$opt" in
+    e) ZSTD_EXE_PATH="$OPTARG" ;;
+    z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
+    m) MOLD_ARCHIVE_PATH="$OPTARG" ;;
+    a) MLIR_ARCHIVE_PATH="$OPTARG" ;;
+    b) BUILD_TYPE="$OPTARG" ;;
     *) usage ;;
   esac
 done
 
-[[ -z "${ARCHIVE_PATH:-}" || -z "${ZSTD_INSTALL_PREFIX:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
+[[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
-ZSTD_BIN="$ZSTD_INSTALL_PREFIX/bin/zstd"
-if [[ ! -x "$ZSTD_BIN" ]]; then
-  echo "Error: zstd not found or not executable at '$ZSTD_BIN'" >&2
+if [[ ! -x "$ZSTD_EXE_PATH" ]]; then
+  echo "Error: zstd not found or not executable at '$ZSTD_EXE_PATH'" >&2
   exit 1
 fi
 
 # shellcheck source=../common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
-echo "Testing installation from ${ARCHIVE_PATH}..."
+echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
-TEST_INSTALL_DIR=$(mktemp -d)
+TEST_ZSTD_DIR=$(mktemp -d)
+TEST_MOLD_DIR=$(mktemp -d)
+TEST_MLIR_DIR=$(mktemp -d)
 TEST_BUILD_DIR=$(mktemp -d)
-trap 'rm -rf "$TEST_INSTALL_DIR" "$TEST_BUILD_DIR"' EXIT
+trap 'rm -rf "$TEST_ZSTD_DIR" "$TEST_MOLD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
 
-log_step "Extracting archive"
-tar --use-compress-program="$ZSTD_BIN -d --long=30" -xf "$ARCHIVE_PATH" -C "$TEST_INSTALL_DIR"
+log_step "Extracting zstd archive"
+"$ZSTD_EXE_PATH" -d --long=30 "$ZSTD_ARCHIVE_PATH" -c | tar -xf - -C "$TEST_ZSTD_DIR"
 log_done
 
-log_step "Verifying archive structure"
-# Verify basic structure
-for d in bin include; do
-  if [ ! -d "$TEST_INSTALL_DIR/$d" ]; then
-    echo "Error: $d not found in installation" >&2
-    exit 1
-  fi
-done
+log_step "Extracting mold archive"
+"$ZSTD_EXE_PATH" -d --long=30 "$MOLD_ARCHIVE_PATH" -c | tar -xf - -C "$TEST_MOLD_DIR"
+log_done
 
-# Find the cmake config directories (may be under lib/ or lib64/)
-MLIR_CMAKE_DIR=$(find "$TEST_INSTALL_DIR" -type d -name mlir -path "*/cmake/*" 2>/dev/null | head -1)
-LLVM_CMAKE_DIR=$(find "$TEST_INSTALL_DIR" -type d -name llvm -path "*/cmake/*" 2>/dev/null | head -1)
+log_step "Extracting MLIR archive"
+"$ZSTD_EXE_PATH" -d --long=30 "$MLIR_ARCHIVE_PATH" -c | tar -xf - -C "$TEST_MLIR_DIR"
+log_done
 
-if [ -z "$MLIR_CMAKE_DIR" ]; then
+MLIR_CMAKE_DIR=$(find "$TEST_MLIR_DIR" -type d -name mlir -path "*/cmake/*" 2>/dev/null | head -1)
+LLVM_CMAKE_DIR=$(find "$TEST_MLIR_DIR" -type d -name llvm -path "*/cmake/*" 2>/dev/null | head -1)
+
+if [[ -z "$MLIR_CMAKE_DIR" ]]; then
   echo "Error: MLIR cmake directory not found in installation" >&2
   exit 1
 fi
-if [ -z "$LLVM_CMAKE_DIR" ]; then
+if [[ -z "$LLVM_CMAKE_DIR" ]]; then
   echo "Error: LLVM cmake directory not found in installation" >&2
   exit 1
 fi
@@ -77,33 +81,35 @@ echo "Found LLVM cmake dir: $LLVM_CMAKE_DIR"
 log_done
 
 log_step "Verifying key binaries"
-export PATH="$TEST_INSTALL_DIR/bin:$PATH"
+export PATH="$TEST_MLIR_DIR/bin:$TEST_MOLD_DIR/bin:$PATH"
 mlir-opt --version
 mlir-translate --version
+if [[ -x "$TEST_MOLD_DIR/bin/mold" ]]; then
+  "$TEST_MOLD_DIR/bin/mold" --version
+fi
 log_done
 
-# Locate integration test sources relative to this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 INTEGRATION_SRC="$REPO_ROOT/tests/integration"
 
-if [ ! -d "$INTEGRATION_SRC" ]; then
+if [[ ! -d "$INTEGRATION_SRC" ]]; then
   echo "Error: integration test sources not found at $INTEGRATION_SRC" >&2
   exit 1
 fi
 
-log_step "CMake configure – integration test"
+log_step "CMake configure - integration test"
 cmake -G Ninja \
   -S "$INTEGRATION_SRC" \
   -B "$TEST_BUILD_DIR" \
-  -DCMAKE_BUILD_TYPE=Release \
-  "-DCMAKE_PREFIX_PATH=$TEST_INSTALL_DIR" \
+  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+  "-DCMAKE_PREFIX_PATH=$TEST_ZSTD_DIR;$TEST_MLIR_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
   "-DLLVM_DIR=$LLVM_CMAKE_DIR" \
-  -DLLVM_ENABLE_LLD=ON
+  -DLLVM_USE_LINKER=mold
 log_done
 
-log_step "CMake build – integration test"
+log_step "CMake build - integration test"
 cmake --build "$TEST_BUILD_DIR"
 log_done
 

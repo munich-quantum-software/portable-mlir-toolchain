@@ -11,62 +11,15 @@ on:
 permissions:
   contents: read
 
-env:
-  CMAKE_BUILD_PARALLEL_LEVEL: 4
-
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        runs-on: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.runs-on }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
-        with:
-          python-version: 3.14
-          activate-environment: true
-          enable-cache: false
-      - name: Build
-        run: bash ${{ github.workspace }}/scripts/toolchain/macos/build.sh -r ${{ inputs.llvm-project-ref }} -p ${{ github.workspace }}/llvm-install
-      - name: Upload archive
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: ${{ matrix.runs-on }}-archive
-          path: |
-            llvm-mlir_*.tar.zst
-            zstd-*.tar.gz
-          if-no-files-found: error
+  macos-15:
+    uses: ./.github/workflows/build-mlir-macos-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: macos-15
 
-  test:
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        runs-on: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.runs-on }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Download archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ matrix.runs-on }}-archive
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
-        with:
-          python-version: 3.14
-          activate-environment: true
-          enable-cache: false
-      - name: Test installation
-        run: |
-          set -euo pipefail
-
-          mkdir -p "${{ github.workspace }}/zstd-install/bin"
-          tar -xzf zstd-*.tar.gz -C "${{ github.workspace }}/zstd-install/bin"
-
-          archive=$(find . -maxdepth 1 -type f -name 'llvm-mlir_*.tar.zst' -print -quit)
-          bash ${{ github.workspace }}/scripts/toolchain/macos/test-installation.sh \
-            -a "${{ github.workspace }}/$archive" \
-            -z "${{ github.workspace }}/zstd-install"
+  macos-15-intel:
+    uses: ./.github/workflows/build-mlir-macos-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: macos-15-intel

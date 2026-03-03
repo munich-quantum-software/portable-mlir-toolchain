@@ -17,7 +17,7 @@ param(
     [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
-    [Parameter(Mandatory = $true)][string]$LldArchivePath,
+    [Parameter(Mandatory = $true)][string]$MoldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
     [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
@@ -48,16 +48,21 @@ try {
     throw "Failed to extract zstd archive: $($_.Exception.Message)"
 }
 
-$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
-if (-not (Test-Path $LldArchivePath)) {
-    throw "lld archive not found: $LldArchivePath"
+$MoldArchivePath = Resolve-AbsolutePath -Path $MoldArchivePath
+if (-not (Test-Path $MoldArchivePath)) {
+    throw "mold archive not found: $MoldArchivePath"
 }
-$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
+$tempMoldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempMoldExtractDir | Out-Null
 try {
-    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
+    Decompress-ArchiveToDirectory -ArchivePath $MoldArchivePath -DestinationDir $tempMoldExtractDir -ZstdExePath $ZstdExePath
 } catch {
-    throw "Failed to extract lld archive: $($_.Exception.Message)"
+    throw "Failed to extract mold archive: $($_.Exception.Message)"
+}
+
+$moldExe = Join-Path $tempMoldExtractDir 'bin\mold.exe'
+if (-not (Test-Path $moldExe)) {
+    throw "mold executable not found: $moldExe"
 }
 
 $tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mlir-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
@@ -77,7 +82,7 @@ try {
         -HostTarget $archInfo.HostTarget `
         -Projects 'mlir' `
         -PrefixPath $tempZstdExtractDir `
-        -EnableLld
+        -LinkerPath $moldExe
 
     Write-Step "CMake configure MLIR ($BuildType)"
     Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
@@ -90,7 +95,7 @@ try {
     popd > $null
     Remove-PathIfExists -Path $repoDir
     Remove-PathIfExists -Path $tempZstdExtractDir
-    Remove-PathIfExists -Path $tempLldExtractDir
+    Remove-PathIfExists -Path $tempMoldExtractDir
     Remove-PathIfExists -Path $tempBuildDir
 }
 

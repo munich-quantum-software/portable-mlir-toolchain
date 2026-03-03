@@ -74,7 +74,11 @@ try {
             '-DCMAKE_CXX_COMPILER=clang-cl',
             "-DCMAKE_BUILD_TYPE=Release",
             "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
-            "-DZSTD_ROOT=$tempExtractDir"
+            "-DZSTD_ROOT=$tempExtractDir",
+            '-DMOLD_LTO=ON',
+            '-DMOLD_USE_SYSTEM_TBB=OFF',
+            '-DMOLD_USE_SYSTEM_MIMALLOC=OFF',
+            '-DMOLD_USE_MIMALLOC=ON'
         ) -ErrorMessage 'Failed to configure mold build with CMake'
 
         Invoke-Checked -Command 'cmake' -Arguments @('--build', 'build', '--target', 'install') -ErrorMessage 'Failed to build and install mold'
