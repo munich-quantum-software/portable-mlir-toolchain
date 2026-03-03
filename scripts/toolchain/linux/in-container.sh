@@ -32,7 +32,7 @@
 set -euo pipefail
 
 ZSTD_VERSION="1.5.7"
-NINJA_VERSION="1.14.0"
+NINJA_VERSION="1.13.0"
 
 : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
 : "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"

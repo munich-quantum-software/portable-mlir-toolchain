@@ -32,7 +32,7 @@
 set -euo pipefail
 
 ZSTD_VERSION="1.5.7"
-NINJA_VERSION="1.14.0"
+NINJA_VERSION="1.13.0"
 
 # Parse arguments
 while getopts ":r:p:" opt; do

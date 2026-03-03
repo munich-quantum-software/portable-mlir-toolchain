@@ -62,7 +62,7 @@ function Write-Done {
 # ---------------------------------------------------------------------------
 
 $zstd_version = "1.5.7"
-$ninja_version = "1.14.0"
+$ninja_version = "1.13.0"
 $root_dir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath(".")
 $debug = ($build_type -eq "Debug")
 
