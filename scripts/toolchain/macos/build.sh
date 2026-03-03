@@ -183,12 +183,13 @@ build_llvm() {
   pushd "$repo_dir" > /dev/null
 
   # Build LLVM
-  local build_dir_stage1="build_lld_release"
-  local build_dir_stage2="build_llvm"
+  local build_dir="build_llvm"
   local cmake_args=(
     -S llvm
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX="$install_prefix"
+    # Enable building MLIR
+    -DLLVM_ENABLE_PROJECTS="mlir"
     # Only build the host target to speed up the build and reduce the size of the resulting binaries
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
     # Use the system clang to build to be compatible with downstream macOS users
@@ -224,25 +225,13 @@ build_llvm() {
     -DLLVM_INSTALL_UTILS=ON
   )
 
-  # ── Stage 1: build lld with system linker ────────────────────
-  log_step "Stage 1 – CMake configure (lld only, Release, system linker)"
-  cmake "${cmake_args[@]}" -B "$build_dir_stage1" -DLLVM_ENABLE_PROJECTS="lld"
+  # Build MLIR
+  log_step "CMake configure"
+  cmake "${cmake_args[@]}" -B "$build_dir"
   log_done
 
-  log_step "Stage 1 – Build lld"
-  cmake --build "$build_dir_stage1" --target lld
-  log_done
-
-  # Use the just-built lld as the linker for stage 2
-  export PATH="$PWD/$build_dir_stage1/bin:$PATH"
-
-  # ── Stage 2: build mlir and lld, using the stage-1 lld as linker ────────────
-  log_step "Stage 2 – CMake configure (mlir + lld, Release, stage-1 lld linker)"
-  cmake "${cmake_args[@]}" -B "$build_dir_stage2" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
-  log_done
-
-  log_step "Stage 2 – Build and install LLVM/MLIR"
-  cmake --build "$build_dir_stage2" --target install
+  log_step "Build and install LLVM/MLIR"
+  cmake --build "$build_dir" --target install
   log_done
 
   # Return to original directory
