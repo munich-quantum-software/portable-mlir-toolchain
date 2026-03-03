@@ -17,11 +17,13 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  ZSTD_VERSION: 1.5.7
   NINJA_VERSION: 1.13.0
+  ZSTD_VERSION: 1.5.7
   ZSTD_ARCHIVE_PATH: zstd-1.5.7-${{ inputs.runs-on }}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
   ZSTD_EXE_NAME: zstd-exe-1.5.7-${{ inputs.runs-on }}
+  MOLD_VERSION: 2.40.4
+  MOLD_ARCHIVE_PATH: mold-2.40.4-${{ inputs.runs-on }}.tar.zst
   LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
 
 jobs:
@@ -56,6 +58,43 @@ jobs:
           path: ${{ env.ZSTD_EXE_PATH }}
           name: ${{ env.ZSTD_EXE_NAME }}
           if-no-files-found: error
+
+  build-mold:
+    needs: build-zstd
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build mold"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_EXE_NAME }}
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Build mold
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-mold.ps1 `
+            -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
+            -MoldVersion ${{ env.MOLD_VERSION }} `
+            -NinjaVersion ${{ env.NINJA_VERSION }}
+      - name: Upload mold installation
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.MOLD_ARCHIVE_PATH }}
+          if-no-files-found: error
+          archive: false
 
   build-lld:
     needs: build-zstd
