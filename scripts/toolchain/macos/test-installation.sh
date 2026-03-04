@@ -57,7 +57,7 @@ echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 TEST_ZSTD_DIR=$(mktemp -d)
 TEST_MLIR_DIR=$(mktemp -d)
 TEST_BUILD_DIR=$(mktemp -d)
-trap 'rm -rf "$TEST_ZSTD_DIR" "$TEST_MOLD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
+trap 'rm -rf "$TEST_ZSTD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
 
 decompress_archive_to_dir "$ZSTD_ARCHIVE_PATH" "$TEST_ZSTD_DIR" "$ZSTD_EXE_PATH"
 decompress_archive_to_dir "$MLIR_ARCHIVE_PATH" "$TEST_MLIR_DIR" "$ZSTD_EXE_PATH"
