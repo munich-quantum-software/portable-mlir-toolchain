@@ -82,6 +82,20 @@ fi
 
 export PATH="$mold_extract_dir/bin:$PATH"
 
+mold_linker="$mold_extract_dir/bin/mold"
+if [[ ! -x "$mold_linker" && -x "$mold_extract_dir/bin/ld64.mold" ]]; then
+  mold_linker="$mold_extract_dir/bin/ld64.mold"
+fi
+if [[ ! -x "$mold_linker" ]]; then
+  echo "Error: mold linker not found in $mold_extract_dir/bin" >&2
+  exit 1
+fi
+
+# AppleClang on macOS rejects '-fuse-ld=mold'. Provide an ld shim and use -B to pick it.
+mold_tool_dir="$tmp_dir/mold-toolchain"
+mkdir -p "$mold_tool_dir"
+ln -sf "$mold_linker" "$mold_tool_dir/ld"
+
 log_step "CMake configure MLIR (${BUILD_TYPE})"
 cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
@@ -106,8 +120,11 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_ENABLE_ZSTD=FORCE_ON \
   -DLLVM_USE_STATIC_ZSTD=ON \
   -DCMAKE_PREFIX_PATH="$zstd_extract_dir" \
-  -DLLVM_USE_LINKER=mold \
-  -DCMAKE_LINKER_TYPE=MOLD
+  "-DCMAKE_C_FLAGS=-B$mold_tool_dir" \
+  "-DCMAKE_CXX_FLAGS=-B$mold_tool_dir" \
+  "-DCMAKE_EXE_LINKER_FLAGS=-B$mold_tool_dir" \
+  "-DCMAKE_SHARED_LINKER_FLAGS=-B$mold_tool_dir" \
+  "-DCMAKE_MODULE_LINKER_FLAGS=-B$mold_tool_dir"
 log_done
 
 log_step "Build and install MLIR (${BUILD_TYPE})"
