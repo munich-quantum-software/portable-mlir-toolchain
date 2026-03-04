@@ -17,7 +17,7 @@ param(
     [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
-    [Parameter(Mandatory = $true)][string]$MoldArchivePath,
+    [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
     [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
@@ -48,29 +48,29 @@ try {
     throw "Failed to extract zstd archive: $($_.Exception.Message)"
 }
 
-$MoldArchivePath = Resolve-AbsolutePath -Path $MoldArchivePath
-if (-not (Test-Path $MoldArchivePath)) {
-    throw "mold archive not found: $MoldArchivePath"
+$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
+if (-not (Test-Path $LldArchivePath)) {
+    throw "lld archive not found: $LldArchivePath"
 }
-$tempMoldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempMoldExtractDir | Out-Null
+$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
 try {
-    Decompress-ArchiveToDirectory -ArchivePath $MoldArchivePath -DestinationDir $tempMoldExtractDir -ZstdExePath $ZstdExePath
+    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
 } catch {
-    throw "Failed to extract mold archive: $($_.Exception.Message)"
+    throw "Failed to extract lld archive: $($_.Exception.Message)"
 }
 
-$moldExe = Join-Path $tempMoldExtractDir 'bin\mold.exe'
-if (-not (Test-Path $moldExe)) {
-    throw "mold executable not found: $moldExe"
+$lldExe = Join-Path $tempLldExtractDir 'bin\ldd-link.exe'
+if (-not (Test-Path $lldExe)) {
+    throw "lld executable not found: $lldExe"
 }
 try {
-    $moldVersionOutput = & $moldExe --version 2>&1
-    Write-Host "mold version output: $moldVersionOutput"
+    $lldVersionOutput = & $lldExe --version 2>&1
+    Write-Host "LLD version output: $lldVersionOutput"
 } catch {
-    throw "Failed to execute mold to get version information: $($_.Exception.Message)"
+    throw "Failed to execute lld to get version information: $($_.Exception.Message)"
 }
-$env:PATH = "$($tempMoldExtractDir)\bin;$env:PATH"
+$env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
 $tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mlir-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
@@ -101,7 +101,7 @@ try {
     popd > $null
     Remove-PathIfExists -Path $repoDir
     Remove-PathIfExists -Path $tempZstdExtractDir
-    Remove-PathIfExists -Path $tempMoldExtractDir
+    Remove-PathIfExists -Path $tempLldExtractDir
     Remove-PathIfExists -Path $tempBuildDir
 }
 

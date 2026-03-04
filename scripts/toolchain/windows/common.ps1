@@ -259,7 +259,8 @@ function Get-LlvmCommonCMakeArgs {
         [Parameter(Mandatory = $true)][string]$InstallPrefix,
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
-        [string]$PrefixPath
+        [string]$PrefixPath,
+        [switch]$EnableLld
     )
 
     $cmakeArgs = @(
@@ -285,8 +286,7 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
         '-DLLVM_ENABLE_ZSTD=FORCE_ON',
-        '-DLLVM_USE_STATIC_ZSTD=ON',
-        '-DCMAKE_LINKER_TYPE=MOLD'
+        '-DLLVM_USE_STATIC_ZSTD=ON'
     )
 
     if ($BuildType -eq 'Debug') {
@@ -296,6 +296,9 @@ function Get-LlvmCommonCMakeArgs {
         )
     }
 
+    if ($EnableLld) {
+        $cmakeArgs += '-DLLVM_ENABLE_LLD=ON'
+    }
     if ($PrefixPath) {
         $cmakeArgs += "-DCMAKE_PREFIX_PATH=$PrefixPath"
     }

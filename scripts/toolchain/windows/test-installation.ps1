@@ -15,7 +15,7 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$MoldArchivePath,
+    [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
@@ -47,20 +47,20 @@ try {
     throw "Failed to extract zstd archive: $($_.Exception.Message)"
 }
 
-$MoldArchivePath = Resolve-AbsolutePath -Path $MoldArchivePath
-if (-not (Test-Path $MoldArchivePath)) {
-    throw "mold archive not found: $MoldArchivePath"
+$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
+if (-not (Test-Path $LldArchivePath)) {
+    throw "lld archive not found: $LldArchivePath"
 }
-$tempMoldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempMoldExtractDir | Out-Null
+$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
 try {
-    Decompress-ArchiveToDirectory -ArchivePath $MoldArchivePath -DestinationDir $tempMoldExtractDir -ZstdExePath $ZstdExePath
+    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
 } catch {
-    throw "Failed to extract mold archive: $($_.Exception.Message)"
+    throw "Failed to extract lld archive: $($_.Exception.Message)"
 }
-$moldExe = Join-Path $tempMoldExtractDir 'bin\mold.exe'
-if (-not (Test-Path $moldExe)) {
-    throw "mold executable not found: $moldExe"
+$lldExe = Join-Path $tempLldExtractDir 'bin\ldd-link.exe'
+if (-not (Test-Path $lldExe)) {
+    throw "lld executable not found: $lldExe"
 }
 
 $MlirArchivePath = Resolve-AbsolutePath -Path $MlirArchivePath
@@ -98,13 +98,13 @@ try {
     Write-Done
 
     Write-Step "Verifying key binaries"
-    $env:PATH = "$tempMlirExtractDir\bin;$tempMoldExtractDir\bin;$env:PATH"
+    $env:PATH = "$tempMlirExtractDir\bin;$tempLldExtractDir\bin;$env:PATH"
     & "$tempMlirExtractDir\bin\mlir-opt.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-opt --version failed" }
     & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-translate --version failed" }
-    & $moldExe --version
-    if ($LASTEXITCODE -ne 0) { throw "mold --version failed" }
+    & $lldExe --version
+    if ($LASTEXITCODE -ne 0) { throw "ldd-link --version failed" }
     Write-Done
 
     # Locate integration test sources relative to this script
@@ -123,7 +123,8 @@ try {
         "-DCMAKE_BUILD_TYPE=$BuildType" `
         "-DCMAKE_PREFIX_PATH=$tempZstdExtractDir;$tempMlirExtractDir" `
         "-DMLIR_DIR=$MLIRCMakeDir" `
-        "-DLLVM_DIR=$LLVMCMakeDir"
+        "-DLLVM_DIR=$LLVMCMakeDir" `
+        "-DLLVM_ENABLE_LLD=ON"
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
     Write-Done
 
@@ -140,6 +141,6 @@ try {
     Write-Host "Integration test passed!"
 } finally {
     Remove-Item -Recurse -Force $tempMlirExtractDir -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force $tempMoldExtractDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $tempLldExtractDir -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $TestBuildDir   -ErrorAction SilentlyContinue
 }

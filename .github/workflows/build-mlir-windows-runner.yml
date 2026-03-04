@@ -22,8 +22,7 @@ env:
   ZSTD_ARCHIVE_PATH: zstd-1.5.7-${{ inputs.runs-on }}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
   ZSTD_EXE_NAME: zstd-exe-1.5.7-${{ inputs.runs-on }}
-  MOLD_VERSION: 2.40.4
-  MOLD_ARCHIVE_PATH: mold-2.40.4-${{ inputs.runs-on }}.tar.zst
+  LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
 
 jobs:
   build-zstd:
@@ -58,10 +57,10 @@ jobs:
           name: ${{ env.ZSTD_EXE_NAME }}
           if-no-files-found: error
 
-  build-mold:
+  build-lld:
     needs: build-zstd
     runs-on: ${{ inputs.runs-on }}
-    name: "${{ inputs.runs-on }}: Build mold"
+    name: "${{ inputs.runs-on }}: Build lld"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -74,23 +73,29 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Build mold
+      - name: Download zstd installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Build lld (Release) with zstd
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-mold.ps1 `
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
-            -MoldVersion ${{ env.MOLD_VERSION }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }}
-      - name: Upload mold installation
+      - name: Upload lld installation (temporary)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          path: ${{ env.MOLD_ARCHIVE_PATH }}
+          path: ${{ env.LLD_ARCHIVE_PATH }}
           if-no-files-found: error
           archive: false
 
   build-mlir-release:
-    needs: [build-mold]
+    needs: [build-lld]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     env:
@@ -116,10 +121,10 @@ jobs:
         with:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
-      - name: Download mold installation archive
+      - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ env.MOLD_ARCHIVE_PATH }}
+          name: ${{ env.LLD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Build and package MLIR (Release)
         shell: pwsh
@@ -128,7 +133,7 @@ jobs:
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Release
@@ -140,7 +145,7 @@ jobs:
           archive: false
 
   build-mlir-debug:
-    needs: [build-mold]
+    needs: [build-lld]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Debug)"
     env:
@@ -166,10 +171,10 @@ jobs:
         with:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
-      - name: Download mold installation archive
+      - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ env.MOLD_ARCHIVE_PATH }}
+          name: ${{ env.LLD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Build and package MLIR (Debug)
         shell: pwsh
@@ -178,7 +183,7 @@ jobs:
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Debug
@@ -212,10 +217,10 @@ jobs:
         with:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
-      - name: Download mold installation archive
+      - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ env.MOLD_ARCHIVE_PATH }}
+          name: ${{ env.LLD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Download MLIR archive (Release)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
@@ -228,7 +233,7 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Release
@@ -256,10 +261,10 @@ jobs:
         with:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
-      - name: Download mold installation archive
+      - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
-          name: ${{ env.MOLD_ARCHIVE_PATH }}
+          name: ${{ env.LLD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Download MLIR archive (Debug)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
@@ -272,7 +277,7 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MoldArchivePath ${{ env.MOLD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Debug
