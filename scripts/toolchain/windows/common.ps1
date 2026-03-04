@@ -259,7 +259,7 @@ function Get-LlvmCommonCMakeArgs {
         [Parameter(Mandatory = $true)][string]$InstallPrefix,
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
-        [string]$PrefixPath,
+        [string]$PrefixPath
     )
 
     $cmakeArgs = @(
