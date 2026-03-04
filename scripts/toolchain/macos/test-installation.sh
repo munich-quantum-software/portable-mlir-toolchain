@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -e <zstd_exe_path> -z <zstd_archive_path> -m <mold_archive_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
+  echo "Usage: $0 -e <zstd_exe_path> -z <zstd_archive_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
   exit 1
 }
 
@@ -27,7 +27,6 @@ while getopts "e:z:m:a:n:b:" opt; do
   case $opt in
     e) ZSTD_EXE_PATH="$OPTARG" ;;
     z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
-    m) MOLD_ARCHIVE_PATH="$OPTARG" ;;
     a) MLIR_ARCHIVE_PATH="$OPTARG" ;;
     n) NINJA_VERSION="$OPTARG" ;;
     b) BUILD_TYPE="$OPTARG" ;;
@@ -35,7 +34,7 @@ while getopts "e:z:m:a:n:b:" opt; do
   esac
 done
 
-[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 if [[ ! -x "$ZSTD_EXE_PATH" ]]; then
@@ -56,13 +55,11 @@ ensure_ninja "$NINJA_VERSION"
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
 TEST_ZSTD_DIR=$(mktemp -d)
-TEST_MOLD_DIR=$(mktemp -d)
 TEST_MLIR_DIR=$(mktemp -d)
 TEST_BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_ZSTD_DIR" "$TEST_MOLD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
 
 decompress_archive_to_dir "$ZSTD_ARCHIVE_PATH" "$TEST_ZSTD_DIR" "$ZSTD_EXE_PATH"
-decompress_archive_to_dir "$MOLD_ARCHIVE_PATH" "$TEST_MOLD_DIR" "$ZSTD_EXE_PATH"
 decompress_archive_to_dir "$MLIR_ARCHIVE_PATH" "$TEST_MLIR_DIR" "$ZSTD_EXE_PATH"
 
 MLIR_CMAKE_DIR=$(find "$TEST_MLIR_DIR" -type d -name mlir -path "*/cmake/*" 2>/dev/null | head -1)
@@ -82,12 +79,9 @@ echo "Found LLVM cmake dir: $LLVM_CMAKE_DIR"
 log_done
 
 log_step "Verifying key binaries"
-export PATH="$TEST_MLIR_DIR/bin:$TEST_MOLD_DIR/bin:$PATH"
+export PATH="$TEST_MLIR_DIR/bin:$PATH"
 mlir-opt --version
 mlir-translate --version
-if [[ -x "$TEST_MOLD_DIR/bin/mold" ]]; then
-  "$TEST_MOLD_DIR/bin/mold" --version
-fi
 log_done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -106,8 +100,7 @@ cmake -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   "-DCMAKE_PREFIX_PATH=$TEST_ZSTD_DIR;$TEST_MLIR_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
-  "-DLLVM_DIR=$LLVM_CMAKE_DIR" \
-  -DLLVM_USE_LINKER=mold
+  "-DLLVM_DIR=$LLVM_CMAKE_DIR"
 log_done
 
 log_step "CMake build - integration test"

@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -r <llvm_project_ref> -e <zstd_exe_path> -z <zstd_archive_path> -m <mold_archive_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
+  echo "Usage: $0 -r <llvm_project_ref> -e <zstd_exe_path> -z <zstd_archive_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
   exit 1
 }
 
@@ -32,7 +32,6 @@ while getopts ":r:e:z:m:a:n:b:" opt; do
     r) LLVM_PROJECT_REF="$OPTARG" ;;
     e) ZSTD_EXE_PATH="$OPTARG" ;;
     z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
-    m) MOLD_ARCHIVE_PATH="$OPTARG" ;;
     a) MLIR_ARCHIVE_PATH="$OPTARG" ;;
     n) NINJA_VERSION="$OPTARG" ;;
     b) BUILD_TYPE="$OPTARG" ;;
@@ -40,7 +39,7 @@ while getopts ":r:e:z:m:a:n:b:" opt; do
   esac
 done
 
-[[ -z "${LLVM_PROJECT_REF:-}" || -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${LLVM_PROJECT_REF:-}" || -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 ensure_ninja "$NINJA_VERSION"
@@ -48,7 +47,6 @@ export MACOSX_DEPLOYMENT_TARGET="11.0"
 
 ZSTD_EXE_PATH="$(resolve_abs_path "$ZSTD_EXE_PATH")"
 ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
-MOLD_ARCHIVE_PATH="$(resolve_abs_path "$MOLD_ARCHIVE_PATH")"
 MLIR_ARCHIVE_PATH="$(resolve_abs_path "$MLIR_ARCHIVE_PATH")"
 
 if [[ ! -f "$ZSTD_EXE_PATH" ]]; then
@@ -59,7 +57,6 @@ chmod +x "$ZSTD_EXE_PATH"
 
 tmp_dir="$(mktemp -d)"
 zstd_extract_dir="$tmp_dir/zstd"
-mold_extract_dir="$tmp_dir/mold"
 repo_dir="$tmp_dir/llvm-project"
 build_dir="$tmp_dir/build-mlir"
 install_dir="$tmp_dir/mlir-install"
@@ -70,7 +67,6 @@ cleanup() {
 trap cleanup EXIT
 
 decompress_archive_to_dir "$ZSTD_ARCHIVE_PATH" "$zstd_extract_dir" "$ZSTD_EXE_PATH"
-decompress_archive_to_dir "$MOLD_ARCHIVE_PATH" "$mold_extract_dir" "$ZSTD_EXE_PATH"
 initialize_llvm_source_tree "$LLVM_PROJECT_REF" "$repo_dir"
 
 UNAME_ARCH="$(uname -m)"
@@ -79,22 +75,6 @@ if [[ -z "$HOST_TARGET" ]]; then
   echo "Error: Unsupported architecture: ${UNAME_ARCH}." >&2
   exit 1
 fi
-
-export PATH="$mold_extract_dir/bin:$PATH"
-
-mold_linker="$mold_extract_dir/bin/mold"
-if [[ ! -x "$mold_linker" && -x "$mold_extract_dir/bin/ld64.mold" ]]; then
-  mold_linker="$mold_extract_dir/bin/ld64.mold"
-fi
-if [[ ! -x "$mold_linker" ]]; then
-  echo "Error: mold linker not found in $mold_extract_dir/bin" >&2
-  exit 1
-fi
-
-# AppleClang on macOS rejects '-fuse-ld=mold'. Provide an ld shim and use -B to pick it.
-mold_tool_dir="$tmp_dir/mold-toolchain"
-mkdir -p "$mold_tool_dir"
-ln -sf "$mold_linker" "$mold_tool_dir/ld"
 
 log_step "CMake configure MLIR (${BUILD_TYPE})"
 cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
@@ -119,12 +99,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_ENABLE_WARNINGS=OFF \
   -DLLVM_ENABLE_ZSTD=FORCE_ON \
   -DLLVM_USE_STATIC_ZSTD=ON \
-  -DCMAKE_PREFIX_PATH="$zstd_extract_dir" \
-  "-DCMAKE_C_FLAGS=-B$mold_tool_dir" \
-  "-DCMAKE_CXX_FLAGS=-B$mold_tool_dir" \
-  "-DCMAKE_EXE_LINKER_FLAGS=-B$mold_tool_dir" \
-  "-DCMAKE_SHARED_LINKER_FLAGS=-B$mold_tool_dir" \
-  "-DCMAKE_MODULE_LINKER_FLAGS=-B$mold_tool_dir"
+  -DCMAKE_PREFIX_PATH="$zstd_extract_dir"
 log_done
 
 log_step "Build and install MLIR (${BUILD_TYPE})"
