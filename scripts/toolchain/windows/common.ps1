@@ -286,7 +286,7 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_ENABLE_WARNINGS=OFF',
         '-DLLVM_ENABLE_ZSTD=FORCE_ON',
         '-DLLVM_USE_STATIC_ZSTD=ON',
-        '-DLLVM_USE_LINKER=mold'
+        '-DCMAKE_LINKER_TYPE=MOLD'
     )
 
     if ($BuildType -eq 'Debug') {
