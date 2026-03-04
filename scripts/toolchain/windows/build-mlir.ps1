@@ -60,7 +60,7 @@ try {
     throw "Failed to extract lld archive: $($_.Exception.Message)"
 }
 
-$lldExe = Join-Path $tempLldExtractDir 'bin\ldd.exe'
+$lldExe = Join-Path $tempLldExtractDir 'bin\lld.exe'
 if (-not (Test-Path $lldExe)) {
     throw "lld executable not found: $lldExe"
 }
