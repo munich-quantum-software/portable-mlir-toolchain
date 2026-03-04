@@ -72,10 +72,10 @@ try {
 }
 $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
-$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mlir-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
 
-$tempBuildDir = Join-Path ([IO.Path]::GetTempPath()) ("mlir-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
+$tempBuildDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
 
 try {

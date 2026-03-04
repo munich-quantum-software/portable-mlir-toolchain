@@ -78,7 +78,7 @@ try {
 
 Write-Host "Testing installation from $MlirArchivePath..."
 
-$TestBuildDir   = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+$TestBuildDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Force -Path $TestBuildDir   | Out-Null
 
 try {
