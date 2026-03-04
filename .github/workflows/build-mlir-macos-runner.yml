@@ -89,7 +89,7 @@ jobs:
           archive: false
 
   build-mlir-release:
-    needs: [build-zstd, build-mold]
+    needs: [build-mold]
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     steps:
