@@ -19,10 +19,10 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   NINJA_VERSION: 1.13.0
   ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7-${{ inputs.runs-on }}.tar.zst
+  ZSTD_ARCHIVE_PATH: zstd-1.5.7_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}/zstd
-  ZSTD_EXE_NAME: zstd-exe-1.5.7-${{ inputs.runs-on }}
-  MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_release_${{ inputs.runs-on }}.tar.zst
+  ZSTD_EXE_NAME: zstd-1.5.7-exe_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}
+  MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}.tar.zst
 
 jobs:
   build-zstd:

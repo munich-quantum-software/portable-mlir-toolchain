@@ -19,9 +19,9 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   NINJA_VERSION: 1.13.0
   ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7-${{ inputs.runs-on }}.tar.zst
+  ZSTD_ARCHIVE_PATH: zstd-1.5.7_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
-  ZSTD_EXE_NAME: zstd-exe-1.5.7-${{ inputs.runs-on }}
+  ZSTD_EXE_NAME: zstd-1.5.7-exe_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}
   LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
 
 jobs:
@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     env:
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_release.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Free up space on runner
@@ -149,7 +149,7 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build MLIR (Debug)"
     env:
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_debug.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}_debug.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Free up space on runner
@@ -199,7 +199,7 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
     env:
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_release.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
@@ -243,7 +243,7 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Debug)"
     env:
-      MLIR_ARCHIVE_PATH: ${{ github.workspace }}\llvm-mlir_${{ inputs.llvm-project-ref }}_debug.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}_debug.tar.zst
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install the latest version of uv
