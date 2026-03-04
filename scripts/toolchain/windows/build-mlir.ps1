@@ -64,6 +64,13 @@ $moldExe = Join-Path $tempMoldExtractDir 'bin\mold.exe'
 if (-not (Test-Path $moldExe)) {
     throw "mold executable not found: $moldExe"
 }
+try {
+    $moldVersionOutput = & $moldExe --version 2>&1
+    Write-Host "mold version output: $moldVersionOutput"
+} catch {
+    throw "Failed to execute mold to get version information: $($_.Exception.Message)"
+}
+$env:PATH = "$($tempMoldExtractDir)\bin;$env:PATH"
 
 $tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ("mlir-install-$LlvmProjectRef-$([Guid]::NewGuid().ToString('N'))")
 New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
@@ -81,8 +88,7 @@ try {
         -InstallPrefix $tempInstallDir `
         -HostTarget $archInfo.HostTarget `
         -Projects 'mlir' `
-        -PrefixPath $tempZstdExtractDir `
-        -LinkerPath $moldExe
+        -PrefixPath $tempZstdExtractDir
 
     Write-Step "CMake configure MLIR ($BuildType)"
     Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'

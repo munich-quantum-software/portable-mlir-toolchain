@@ -260,7 +260,6 @@ function Get-LlvmCommonCMakeArgs {
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
         [string]$PrefixPath,
-        [string]$LinkerPath
     )
 
     $cmakeArgs = @(
@@ -299,16 +298,6 @@ function Get-LlvmCommonCMakeArgs {
 
     if ($PrefixPath) {
         $cmakeArgs += "-DCMAKE_PREFIX_PATH=$PrefixPath"
-    }
-
-    if ($LinkerPath) {
-        if (-not (Test-Path $LinkerPath)) {
-            throw "linker executable not found: $LinkerPath"
-        }
-        $linkerDir = Split-Path -Parent (Resolve-AbsolutePath -Path $LinkerPath)
-        if ($linkerDir) {
-            $env:PATH = "$linkerDir;$env:PATH"
-        }
     }
 
     return $cmakeArgs
