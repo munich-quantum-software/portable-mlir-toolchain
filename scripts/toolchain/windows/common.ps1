@@ -147,13 +147,16 @@ function Invoke-WithTempSession {
     )
 
     $preferredTempRoot = Get-PreferredTempRoot -ReferencePath $ReferencePath
-    Write-Host "Using temporary root: $preferredTempRoot"
 
     $originalTemp = $env:TEMP
     $originalTmp = $env:TMP
     $sessionTempDir = New-ScopedTempDir -RootPath $preferredTempRoot
     $env:TEMP = $sessionTempDir
     $env:TMP = $sessionTempDir
+
+    Write-Host "Temporary root: $preferredTempRoot"
+    Write-Host "TEMP=$env:TEMP"
+    Write-Host "TMP=$env:TMP"
 
     try {
         & $ScriptBlock $preferredTempRoot
