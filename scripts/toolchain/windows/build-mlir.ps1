@@ -88,7 +88,8 @@ try {
         -InstallPrefix $tempInstallDir `
         -HostTarget $archInfo.HostTarget `
         -Projects 'mlir' `
-        -PrefixPath $tempZstdExtractDir
+        -PrefixPath $tempZstdExtractDir `
+        -EnableLld
 
     Write-Step "CMake configure MLIR ($BuildType)"
     Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
