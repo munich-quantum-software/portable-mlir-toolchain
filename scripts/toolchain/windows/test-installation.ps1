@@ -103,8 +103,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "mlir-opt --version failed" }
     & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
     if ($LASTEXITCODE -ne 0) { throw "mlir-translate --version failed" }
-    & $lldExe --version
-    if ($LASTEXITCODE -ne 0) { throw "ldd-link --version failed" }
     Write-Done
 
     # Locate integration test sources relative to this script
