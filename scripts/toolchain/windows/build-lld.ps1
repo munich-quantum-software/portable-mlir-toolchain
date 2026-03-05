@@ -29,57 +29,47 @@ $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-$ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
-if (-not (Test-Path $ZstdExePath)) {
-    throw "zstd executable not found: $ZstdExePath"
-}
+Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
+    param($tempRoot)
 
-$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
-if (-not (Test-Path $ZstdArchivePath)) {
-    throw "zstd archive not found: $ZstdArchivePath"
-}
-$tempExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempExtractDir | Out-Null
-try {
-    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempExtractDir -ZstdExePath $ZstdExePath
-} catch {
-    throw "Failed to extract zstd archive: $($_.Exception.Message)"
-}
+    $cleanupPaths = @()
+    try {
+        $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
+        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
 
-$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
+        $tempExtractDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempExtractDir
+        Decompress-ArchiveToDirectory -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempExtractDir -ZstdExePath $resolvedZstdExePath
 
-$tempBuildDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+        $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempInstallDir
 
-try {
-    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+        $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempBuildDir
 
-    pushd $repoDir > $null
-    $cmakeArgs = Get-LlvmCommonCMakeArgs `
-        -BuildDir $tempBuildDir `
-        -BuildType 'Release' `
-        -InstallPrefix $tempInstallDir `
-        -HostTarget $archInfo.HostTarget `
-        -Projects 'lld' `
-        -PrefixPath $tempExtractDir
+        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+        $cleanupPaths += $repoDir
 
-    Write-Step 'CMake configure (lld only, Release)'
-    Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'lld cmake configure failed'
-    Write-Done
+        Invoke-InDirectory -Path $repoDir -ScriptBlock {
+            $cmakeArgs = Get-LlvmCommonCMakeArgs `
+                -BuildDir $tempBuildDir `
+                -BuildType 'Release' `
+                -InstallPrefix $tempInstallDir `
+                -HostTarget $archInfo.HostTarget `
+                -Projects 'lld' `
+                -PrefixPath $tempExtractDir
 
-    Write-Step 'Build and install lld (Release)'
-    Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install-lld', '--config', 'Release') -ErrorMessage 'lld build/install failed'
-    Write-Done
-} finally {
-    popd > $null
-    Remove-PathIfExists -Path $repoDir
-    Remove-PathIfExists -Path $tempExtractDir
-    Remove-PathIfExists -Path $tempBuildDir
-}
+            Write-Step 'CMake configure (lld only, Release)'
+            Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'lld cmake configure failed'
+            Write-Done
 
-try {
-    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $LldArchivePath -ZstdExePath $ZstdExePath
-} finally {
-    Remove-PathIfExists -Path $tempInstallDir
+            Write-Step 'Build and install lld (Release)'
+            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install-lld', '--config', 'Release') -ErrorMessage 'lld build/install failed'
+            Write-Done
+        }
+
+        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $LldArchivePath -ZstdExePath $resolvedZstdExePath
+    } finally {
+        Remove-PathsIfExists -Paths $cleanupPaths
+    }
 }

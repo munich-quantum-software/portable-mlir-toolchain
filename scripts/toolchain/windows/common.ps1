@@ -45,6 +45,16 @@ function Remove-PathIfExists {
     }
 }
 
+function Remove-PathsIfExists {
+    param([string[]]$Paths = @())
+
+    for ($i = $Paths.Count - 1; $i -ge 0; $i--) {
+        if ($Paths[$i]) {
+            Remove-PathIfExists -Path $Paths[$i]
+        }
+    }
+}
+
 function Resolve-AbsolutePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -53,6 +63,119 @@ function Resolve-AbsolutePath {
     }
 
     return [IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+}
+
+function Resolve-ExistingPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Description
+    )
+
+    $resolved = Resolve-AbsolutePath -Path $Path
+    if (-not (Test-Path $resolved)) {
+        throw "$Description not found: $resolved"
+    }
+    return $resolved
+}
+
+function Get-PreferredTempRoot {
+    param([string]$ReferencePath)
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    if ($env:PMT_TEMP_ROOT) {
+        $candidates.Add((Resolve-AbsolutePath -Path $env:PMT_TEMP_ROOT))
+    }
+    if ($env:RUNNER_TEMP) {
+        $candidates.Add((Resolve-AbsolutePath -Path $env:RUNNER_TEMP))
+    }
+
+    if ($env:GITHUB_WORKSPACE) {
+        $workspacePath = Resolve-AbsolutePath -Path $env:GITHUB_WORKSPACE
+        $workspaceDrive = Split-Path -Path $workspacePath -Qualifier
+        if ($workspaceDrive) {
+            $candidates.Add((Join-Path $workspaceDrive 'pmt-temp'))
+        }
+        $candidates.Add((Join-Path $workspacePath '.pmt-temp'))
+    }
+
+    if ($ReferencePath) {
+        $resolvedReference = Resolve-AbsolutePath -Path $ReferencePath
+        if (-not (Test-Path $resolvedReference -PathType Container)) {
+            $resolvedReference = Split-Path -Parent $resolvedReference
+        }
+        if ($resolvedReference) {
+            $referenceDrive = Split-Path -Path $resolvedReference -Qualifier
+            if ($referenceDrive) {
+                $candidates.Add((Join-Path $referenceDrive 'pmt-temp'))
+            }
+        }
+    }
+
+    $candidates.Add(([IO.Path]::GetTempPath()))
+
+    foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+        try {
+            New-Item -ItemType Directory -Path $candidate -Force | Out-Null
+            $probe = Join-Path $candidate ([IO.Path]::GetRandomFileName())
+            New-Item -ItemType Directory -Path $probe -Force | Out-Null
+            Remove-Item -LiteralPath $probe -Recurse -Force -ErrorAction SilentlyContinue
+            return (Resolve-AbsolutePath -Path $candidate)
+        } catch {
+            continue
+        }
+    }
+
+    throw 'Unable to find a writable temporary directory root.'
+}
+
+function New-ScopedTempDir {
+    param([Parameter(Mandatory = $true)][string]$RootPath)
+
+    $resolvedRoot = Resolve-AbsolutePath -Path $RootPath
+    New-Item -ItemType Directory -Path $resolvedRoot -Force | Out-Null
+
+    $tempDir = Join-Path $resolvedRoot ([IO.Path]::GetRandomFileName())
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    return $tempDir
+}
+
+function Invoke-WithTempSession {
+    param(
+        [string]$ReferencePath = (Get-Location).Path,
+        [Parameter(Mandatory = $true)][scriptblock]$ScriptBlock
+    )
+
+    $preferredTempRoot = Get-PreferredTempRoot -ReferencePath $ReferencePath
+    Write-Host "Using temporary root: $preferredTempRoot"
+
+    $originalTemp = $env:TEMP
+    $originalTmp = $env:TMP
+    $sessionTempDir = New-ScopedTempDir -RootPath $preferredTempRoot
+    $env:TEMP = $sessionTempDir
+    $env:TMP = $sessionTempDir
+
+    try {
+        & $ScriptBlock $preferredTempRoot
+    } finally {
+        Remove-PathIfExists -Path $sessionTempDir
+        $env:TEMP = $originalTemp
+        $env:TMP = $originalTmp
+    }
+}
+
+function Invoke-InDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][scriptblock]$ScriptBlock
+    )
+
+    pushd $Path > $null
+    try {
+        & $ScriptBlock
+    } finally {
+        popd > $null
+    }
 }
 
 function Write-Step([string]$Message) {
@@ -218,7 +341,9 @@ function Initialize-LlvmSourceTree {
     )
 
     $archiveUrl = "https://github.com/llvm/llvm-project/archive/$LlvmProjectRef.tar.gz"
-    $tempArchive = Join-Path ([IO.Path]::GetTempPath()) ("llvm-project-$LlvmProjectRef.tar.gz")
+    $tempRoot = Get-PreferredTempRoot -ReferencePath $RepoDir
+    $tempDir = New-ScopedTempDir -RootPath $tempRoot
+    $tempArchive = Join-Path $tempDir ("llvm-project-$LlvmProjectRef.tar.gz")
 
     Write-Step "Downloading LLVM/MLIR source ($LlvmProjectRef)"
     Remove-PathIfExists -Path $RepoDir
@@ -246,6 +371,7 @@ function Initialize-LlvmSourceTree {
         Invoke-Checked -Command 'tar' -Arguments $excludeArgs -ErrorMessage 'Failed to extract llvm-project archive'
     } finally {
         Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
+        Remove-PathIfExists -Path $tempDir
     }
 
     Write-Done

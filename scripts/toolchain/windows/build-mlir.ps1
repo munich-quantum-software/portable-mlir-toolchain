@@ -31,83 +31,58 @@ $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-$ZstdExePath = Resolve-AbsolutePath -Path $ZstdExePath
-if (-not (Test-Path $ZstdExePath)) {
-    throw "zstd executable not found: $ZstdExePath"
-}
+Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
+    param($tempRoot)
 
-$ZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
-if (-not (Test-Path $ZstdArchivePath)) {
-    throw "zstd archive not found: $ZstdArchivePath"
-}
-$tempZstdExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempZstdExtractDir | Out-Null
-try {
-    Decompress-ArchiveToDirectory -ArchivePath $ZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $ZstdExePath
-} catch {
-    throw "Failed to extract zstd archive: $($_.Exception.Message)"
-}
+    $cleanupPaths = @()
+    try {
+        $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
+        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
+        $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
 
-$LldArchivePath = Resolve-AbsolutePath -Path $LldArchivePath
-if (-not (Test-Path $LldArchivePath)) {
-    throw "lld archive not found: $LldArchivePath"
-}
-$tempLldExtractDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $tempLldExtractDir | Out-Null
-try {
-    Decompress-ArchiveToDirectory -ArchivePath $LldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $ZstdExePath
-} catch {
-    throw "Failed to extract lld archive: $($_.Exception.Message)"
-}
+        $tempZstdExtractDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempZstdExtractDir
+        Decompress-ArchiveToDirectory -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $resolvedZstdExePath
 
-$lldExe = Join-Path $tempLldExtractDir 'bin\lld.exe'
-if (-not (Test-Path $lldExe)) {
-    throw "lld executable not found: $lldExe"
-}
-try {
-    $lldVersionOutput = & $lldExe --version 2>&1
-    Write-Host "LLD version output: $lldVersionOutput"
-} catch {
-    throw "Failed to execute lld to get version information: $($_.Exception.Message)"
-}
-$env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
+        $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempLldExtractDir
+        Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
 
-$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
+        $lldExe = Resolve-ExistingPath -Path (Join-Path $tempLldExtractDir 'bin\lld.exe') -Description 'lld executable'
+        $lldVersionOutput = & $lldExe --version 2>&1
+        Write-Host "LLD version output: $lldVersionOutput"
+        $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
-$tempBuildDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+        $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempInstallDir
 
-try {
-    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+        $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempBuildDir
 
-    pushd $repoDir > $null
-    $cmakeArgs = Get-LlvmCommonCMakeArgs `
-        -BuildDir $tempBuildDir `
-        -BuildType $BuildType `
-        -InstallPrefix $tempInstallDir `
-        -HostTarget $archInfo.HostTarget `
-        -Projects 'mlir' `
-        -PrefixPath $tempZstdExtractDir `
-        -EnableLld
+        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+        $cleanupPaths += $repoDir
 
-    Write-Step "CMake configure MLIR ($BuildType)"
-    Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
-    Write-Done
+        Invoke-InDirectory -Path $repoDir -ScriptBlock {
+            $cmakeArgs = Get-LlvmCommonCMakeArgs `
+                -BuildDir $tempBuildDir `
+                -BuildType $BuildType `
+                -InstallPrefix $tempInstallDir `
+                -HostTarget $archInfo.HostTarget `
+                -Projects 'mlir' `
+                -PrefixPath $tempZstdExtractDir `
+                -EnableLld
 
-    Write-Step "Build and install MLIR ($BuildType)"
-    Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
-    Write-Done
-} finally {
-    popd > $null
-    Remove-PathIfExists -Path $repoDir
-    Remove-PathIfExists -Path $tempZstdExtractDir
-    Remove-PathIfExists -Path $tempLldExtractDir
-    Remove-PathIfExists -Path $tempBuildDir
-}
+            Write-Step "CMake configure MLIR ($BuildType)"
+            Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
+            Write-Done
 
-try {
-    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $ZstdExePath
-} finally {
-    Remove-PathIfExists -Path $tempInstallDir
+            Write-Step "Build and install MLIR ($BuildType)"
+            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
+            Write-Done
+        }
+
+        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
+    } finally {
+        Remove-PathsIfExists -Paths $cleanupPaths
+    }
 }

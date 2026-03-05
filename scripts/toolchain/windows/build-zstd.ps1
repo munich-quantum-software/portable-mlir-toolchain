@@ -30,67 +30,64 @@ Ensure-Ninja -Version $NinjaVersion
 
 $rootDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.')
 $zstdDir = Join-Path $rootDir "zstd-$ZstdVersion"
-Remove-PathIfExists -Path $zstdDir
 
-$tempInstallDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempInstallDir -Force | Out-Null
-$tempBuildDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Path $tempBuildDir -Force | Out-Null
+Invoke-WithTempSession -ReferencePath $rootDir -ScriptBlock {
+    param($tempRoot)
 
-$zstdTarball = Join-Path $tempBuildDir "zstd-$ZstdVersion.tar.gz"
-$zstdChecksumFile = "$zstdTarball.sha256"
-$zstdUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdTarball)"
-$zstdChecksumUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdChecksumFile)"
-
-Write-Step "Building zstd v$ZstdVersion"
-try {
-    Invoke-WebRequest -Uri $zstdUrl -OutFile $zstdTarball
-    Invoke-WebRequest -Uri $zstdChecksumUrl -OutFile $zstdChecksumFile
-
-    $expectedHashLine = Get-Content $zstdChecksumFile | Select-Object -First 1
-    $expectedHash = ($expectedHashLine -split ' ')[0]
-    $actualHash = (Get-FileHash $zstdTarball -Algorithm SHA256).Hash
-    if ($actualHash.ToLowerInvariant() -ne $expectedHash.ToLowerInvariant()) {
-        throw "Checksum verification failed for $zstdTarball. Expected: $expectedHash, Actual: $actualHash"
-    }
-
-    Invoke-Checked -Command 'tar' -Arguments @('-xzf', $zstdTarball, '-C', $rootDir) -ErrorMessage 'Failed to extract zstd source archive'
-
-    pushd (Join-Path $zstdDir 'build\cmake') > $null
+    $cleanupPaths = @($zstdDir)
     try {
-        Invoke-Checked -Command 'cmake' -Arguments @(
-            '-S', '.',
-            '-B', 'build',
-            '-G', 'Ninja',
-            '-DCMAKE_BUILD_TYPE=Release',
-            "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
-            '-DZSTD_BUILD_STATIC=ON',
-            '-DZSTD_BUILD_SHARED=OFF'
-        ) -ErrorMessage 'zstd cmake configure failed'
+        Remove-PathIfExists -Path $zstdDir
 
-        Invoke-Checked -Command 'cmake' -Arguments @(
-            '--build', 'build',
-            '--target', 'install',
-            '--config', 'Release'
-        ) -ErrorMessage 'zstd build/install failed'
+        $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempInstallDir
+
+        $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempBuildDir
+
+        $zstdTarball = Join-Path $tempBuildDir "zstd-$ZstdVersion.tar.gz"
+        $zstdChecksumFile = "$zstdTarball.sha256"
+        $zstdUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdTarball)"
+        $zstdChecksumUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdChecksumFile)"
+
+        Write-Step "Building zstd v$ZstdVersion"
+        Invoke-WebRequest -Uri $zstdUrl -OutFile $zstdTarball
+        Invoke-WebRequest -Uri $zstdChecksumUrl -OutFile $zstdChecksumFile
+
+        $expectedHashLine = Get-Content $zstdChecksumFile | Select-Object -First 1
+        $expectedHash = ($expectedHashLine -split ' ')[0]
+        $actualHash = (Get-FileHash $zstdTarball -Algorithm SHA256).Hash
+        if ($actualHash.ToLowerInvariant() -ne $expectedHash.ToLowerInvariant()) {
+            throw "Checksum verification failed for $zstdTarball. Expected: $expectedHash, Actual: $actualHash"
+        }
+
+        Invoke-Checked -Command 'tar' -Arguments @('-xzf', $zstdTarball, '-C', $rootDir) -ErrorMessage 'Failed to extract zstd source archive'
+
+        Invoke-InDirectory -Path (Join-Path $zstdDir 'build\cmake') -ScriptBlock {
+            Invoke-Checked -Command 'cmake' -Arguments @(
+                '-S', '.',
+                '-B', 'build',
+                '-G', 'Ninja',
+                '-DCMAKE_BUILD_TYPE=Release',
+                "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
+                '-DZSTD_BUILD_STATIC=ON',
+                '-DZSTD_BUILD_SHARED=OFF'
+            ) -ErrorMessage 'zstd cmake configure failed'
+
+            Invoke-Checked -Command 'cmake' -Arguments @(
+                '--build', 'build',
+                '--target', 'install',
+                '--config', 'Release'
+            ) -ErrorMessage 'zstd build/install failed'
+        }
+
+        $zstdExe = Resolve-ExistingPath -Path (Join-Path $tempInstallDir 'bin\zstd.exe') -Description 'zstd executable'
+        Write-Done
+
+        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $ZstdArchivePath -ZstdExePath $zstdExe
+        Write-Step "Copying zstd executable to $ZstdExePath"
+        Copy-Item -Path $zstdExe -Destination $ZstdExePath -Force
+        Write-Done
     } finally {
-        popd > $null
+        Remove-PathsIfExists -Paths $cleanupPaths
     }
-    $zstdExe = Join-Path $tempInstallDir 'bin\zstd.exe'
-    if (-not (Test-Path $zstdExe)) {
-        throw "zstd.exe was not found at expected path: $zstdExe"
-    }
-} finally {
-    Remove-PathIfExists -Path $zstdDir
-    Remove-PathIfExists -Path $tempBuildDir
-}
-Write-Done
-
-try {
-  Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $ZstdArchivePath -ZstdExePath $zstdExe
-  Write-Step "Copying zstd executable to $ZstdExePath"
-  Copy-Item -Path $zstdExe -Destination $ZstdExePath -Force
-  Write-Done
-} finally {
-  Remove-PathIfExists -Path $tempInstallDir
 }
