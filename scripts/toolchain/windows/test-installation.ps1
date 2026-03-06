@@ -81,8 +81,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         if ($LASTEXITCODE -ne 0) { throw 'mlir-translate --version failed' }
         Write-Done
 
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-        $repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..\..')).Path
+        $repoRoot = Get-RepoRootFromScript -ScriptPath $PSCommandPath
         $integrationSrc = Join-Path $repoRoot 'tests\integration'
 
         if (-not (Test-Path $integrationSrc)) {

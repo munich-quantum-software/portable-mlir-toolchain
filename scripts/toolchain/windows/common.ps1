@@ -31,7 +31,11 @@ function Invoke-Checked {
 }
 
 function Remove-PathIfExists {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return
+    }
 
     if (-not (Test-Path $Path)) {
         return
@@ -161,7 +165,9 @@ function Invoke-WithTempSession {
     try {
         & $ScriptBlock $preferredTempRoot
     } finally {
-        Remove-PathIfExists -Path $sessionTempDir
+        if (-not [string]::IsNullOrWhiteSpace($sessionTempDir)) {
+            Remove-PathIfExists -Path $sessionTempDir
+        }
         $env:TEMP = $originalTemp
         $env:TMP = $originalTmp
     }
