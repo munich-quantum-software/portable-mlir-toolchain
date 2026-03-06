@@ -15,8 +15,6 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$LldArchivePath,
-    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
     [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
@@ -36,19 +34,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
     $cleanupPaths = @()
     try {
         $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
-        $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
         $resolvedMlirArchivePath = Resolve-ExistingPath -Path $MlirArchivePath -Description 'MLIR archive'
-
-        $tempZstdExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempZstdExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $resolvedZstdExePath
-
-        $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempLldExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
-
-        $null = Resolve-ExistingPath -Path (Join-Path $tempLldExtractDir 'bin\lld.exe') -Description 'lld executable'
 
         $tempMlirExtractDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempMlirExtractDir
@@ -93,7 +79,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
             -S $integrationSrc `
             -B $testBuildDir `
             "-DCMAKE_BUILD_TYPE=$BuildType" `
-            "-DCMAKE_PREFIX_PATH=$tempZstdExtractDir;$tempMlirExtractDir" `
+            "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
             "-DMLIR_DIR=$MLIRCMakeDir" `
             "-DLLVM_DIR=$LLVMCMakeDir" `
             '-DLLVM_ENABLE_LLD=ON'

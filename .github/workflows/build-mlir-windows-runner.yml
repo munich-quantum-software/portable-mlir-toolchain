@@ -19,7 +19,6 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   NINJA_VERSION: 1.13.0
   ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}\zstd.exe
   ZSTD_EXE_NAME: zstd-1.5.7-exe_windows_${{ inputs.runs-on == 'windows-2025' && 'X64_X86' || 'Arm64_AArch64'}}
   LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}-${{ inputs.runs-on }}.tar.zst
@@ -41,15 +40,8 @@ jobs:
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -ZstdVersion ${{ env.ZSTD_VERSION }}
-      - name: Upload zstd installation (temporary)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          path: ${{ env.ZSTD_ARCHIVE_PATH }}
-          if-no-files-found: error
-          archive: false
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -73,18 +65,12 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Build lld (Release) with zstd
         shell: pwsh
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }}
       - name: Upload lld installation (temporary)
@@ -116,11 +102,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -132,7 +113,6 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
@@ -166,11 +146,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Download lld installation archive
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -182,7 +157,6 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
@@ -212,16 +186,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
-      - name: Download lld installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.LLD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Download MLIR archive (Release)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -232,8 +196,6 @@ jobs:
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Release
@@ -256,16 +218,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
-      - name: Download lld installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.LLD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Download MLIR archive (Debug)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -276,8 +228,6 @@ jobs:
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdExePath ${{ env.ZSTD_EXE_PATH }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
             -NinjaVersion ${{ env.NINJA_VERSION }} `
             -BuildType Debug

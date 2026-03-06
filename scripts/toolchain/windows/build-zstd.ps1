@@ -15,7 +15,6 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [string]$ZstdVersion = '1.5.7',
     [string]$NinjaVersion = '1.13.0'
 )
@@ -83,7 +82,6 @@ Invoke-WithTempSession -ReferencePath $rootDir -ScriptBlock {
         $zstdExe = Resolve-ExistingPath -Path (Join-Path $tempInstallDir 'bin\zstd.exe') -Description 'zstd executable'
         Write-Done
 
-        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $ZstdArchivePath -ZstdExePath $zstdExe
         Write-Step "Copying zstd executable to $ZstdExePath"
         Copy-Item -Path $zstdExe -Destination $ZstdExePath -Force
         Write-Done

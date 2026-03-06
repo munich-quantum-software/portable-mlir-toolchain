@@ -420,8 +420,7 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_INSTALL_UTILS=ON',
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
-        '-DLLVM_ENABLE_ZSTD=FORCE_ON',
-        '-DLLVM_USE_STATIC_ZSTD=ON'
+        '-DLLVM_ENABLE_ZSTD=OFF'
     )
 
     if ($BuildType -eq 'Debug') {

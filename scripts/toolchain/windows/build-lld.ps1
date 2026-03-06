@@ -16,7 +16,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [string]$NinjaVersion = '1.13.0'
 )
@@ -35,11 +34,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
     $cleanupPaths = @()
     try {
         $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
-
-        $tempExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempExtractDir -ZstdExePath $resolvedZstdExePath
 
         $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempInstallDir
@@ -56,8 +50,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
                 -BuildType 'Release' `
                 -InstallPrefix $tempInstallDir `
                 -HostTarget $archInfo.HostTarget `
-                -Projects 'lld' `
-                -PrefixPath $tempExtractDir
+                -Projects 'lld'
 
             Write-Step 'CMake configure (lld only, Release)'
             Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'lld cmake configure failed'

@@ -16,7 +16,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
     [Parameter(Mandatory = $true)][string]$ZstdExePath,
-    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
@@ -37,20 +36,13 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
     $cleanupPaths = @()
     try {
         $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
         $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
-
-        $tempZstdExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempZstdExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdExtractDir -ZstdExePath $resolvedZstdExePath
 
         $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempLldExtractDir
         Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
 
         $lldExe = Resolve-ExistingPath -Path (Join-Path $tempLldExtractDir 'bin\lld.exe') -Description 'lld executable'
-        $lldVersionOutput = & $lldExe --version 2>&1
-        Write-Host "LLD version output: $lldVersionOutput"
         $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
         $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
@@ -69,7 +61,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
                 -InstallPrefix $tempInstallDir `
                 -HostTarget $archInfo.HostTarget `
                 -Projects 'mlir' `
-                -PrefixPath $tempZstdExtractDir `
                 -EnableLld
 
             Write-Step "CMake configure MLIR ($BuildType)"
@@ -80,6 +71,9 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
             Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
             Write-Done
         }
+
+        # Vendor the lld installation into the MLIR archive to ensure lld is available in the test environment without needing to set up additional PATH entries.
+        Copy-Item -Path (Join-Path $tempLldExtractDir 'bin\*') -Destination (Join-Path $tempInstallDir 'bin') -Recurse -Force
 
         Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
     } finally {
