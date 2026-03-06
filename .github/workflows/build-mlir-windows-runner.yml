@@ -17,8 +17,8 @@ on:
         required: false
         type: string
       ninja-version:
-        description: "ninja version (e.g., 1.12.0)"
-        default: "1.12.0"
+        description: "ninja version (e.g., 1.13.0)"
+        default: "1.13.0"
         required: false
         type: string
 
