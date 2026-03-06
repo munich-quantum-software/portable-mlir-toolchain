@@ -67,7 +67,7 @@ compress_dir_to_archive() {
   local archive_path="$2"
   local zstd_exe="$3"
   pushd "$source_dir" > /dev/null
-  tar -cf - . | "$zstd_exe" -19 --long=30 --threads=0 -f -o "$archive_path" -
+  tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
 }
 
@@ -77,7 +77,7 @@ decompress_archive_to_dir() {
   local zstd_exe="$3"
   rm -rf "$destination_dir"
   mkdir -p "$destination_dir"
-  "$zstd_exe" -d --long=30 "$archive_path" -c | tar -xf - -C "$destination_dir"
+  "$zstd_exe" -d --long=31 "$archive_path" -c | tar -xf - -C "$destination_dir"
 }
 
 download_llvm_source() {
@@ -228,13 +228,15 @@ build_mlir() {
   cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
   log_done
 
+  # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
+  cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"
+
   local llvm_lib_dir="$mlir_install_dir/lib"
   if [[ -x "$mlir_install_dir/bin/llvm-config" ]]; then
     llvm_lib_dir="$("$mlir_install_dir"/bin/llvm-config --libdir)"
   elif [[ -d "$mlir_install_dir/lib64" && ! -d "$mlir_install_dir/lib" ]]; then
     llvm_lib_dir="$mlir_install_dir/lib64"
   fi
-  log_done
 
   log_step "Stripping debug symbols"
   if command -v strip >/dev/null 2>&1; then

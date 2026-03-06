@@ -81,3 +81,12 @@ run_manylinux_stage() {
     "$base_image" \
     bash -euo pipefail "$in_container_script"
 }
+
+extract_zstd_executable() {
+  local zstd_archive_path="$1"
+  local destination_dir="$2"
+  mkdir -p "$destination_dir"
+  tar -xzf "$zstd_archive_path" -C "$destination_dir"
+  chmod +x "$destination_dir/zstd"
+  printf '%s\n' "$destination_dir/zstd"
+}
