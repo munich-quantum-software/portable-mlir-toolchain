@@ -15,7 +15,7 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
-    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
@@ -35,8 +35,12 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
 
     $cleanupPaths = @()
     try {
-        $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
+        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
         $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
+
+        $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempZstdDir
+        $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
 
         $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempLldExtractDir

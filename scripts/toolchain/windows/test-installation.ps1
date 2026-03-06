@@ -14,7 +14,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
     [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
@@ -33,8 +33,12 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
 
     $cleanupPaths = @()
     try {
-        $resolvedZstdExePath = Resolve-ExistingPath -Path $ZstdExePath -Description 'zstd executable'
+        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
         $resolvedMlirArchivePath = Resolve-ExistingPath -Path $MlirArchivePath -Description 'MLIR archive'
+
+        $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
+        $cleanupPaths += $tempZstdDir
+        $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
 
         $tempMlirExtractDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempMlirExtractDir
@@ -44,20 +48,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
 
         $testBuildDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $testBuildDir
-
-        $MLIRCMakeDir = Get-ChildItem -Recurse -Directory -Path $tempMlirExtractDir |
-            Where-Object { $_.Name -eq 'mlir' -and $_.FullName -match 'cmake' } |
-            Select-Object -First 1 -ExpandProperty FullName
-        $LLVMCMakeDir = Get-ChildItem -Recurse -Directory -Path $tempMlirExtractDir |
-            Where-Object { $_.Name -eq 'llvm' -and $_.FullName -match 'cmake' } |
-            Select-Object -First 1 -ExpandProperty FullName
-
-        if (-not $MLIRCMakeDir) { throw 'Error: MLIR cmake directory not found in installation' }
-        if (-not $LLVMCMakeDir) { throw 'Error: LLVM cmake directory not found in installation' }
-
-        Write-Host "Found MLIR cmake dir: $MLIRCMakeDir"
-        Write-Host "Found LLVM cmake dir: $LLVMCMakeDir"
-        Write-Done
 
         Write-Step 'Verifying key binaries'
         $env:PATH = "$tempMlirExtractDir\bin;$env:PATH"
@@ -80,8 +70,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
             -B $testBuildDir `
             "-DCMAKE_BUILD_TYPE=$BuildType" `
             "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
-            "-DMLIR_DIR=$MLIRCMakeDir" `
-            "-DLLVM_DIR=$LLVMCMakeDir" `
             '-DLLVM_ENABLE_LLD=ON'
         if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
         Write-Done

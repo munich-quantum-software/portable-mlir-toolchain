@@ -282,7 +282,7 @@ function Compress-DirectoryToArchive {
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$ZstdExePath,
         [int]$CompressionLevel = 19,
-        [long]$LongWindow = 30
+        [long]$LongWindow = 31
     )
 
     if (-not (Test-Path $ZstdExePath)) {
@@ -319,7 +319,7 @@ function Decompress-ArchiveToDirectory {
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$DestinationDir,
         [Parameter(Mandatory = $true)][string]$ZstdExePath,
-        [int]$LongWindow = 30
+        [int]$LongWindow = 31
     )
 
     if (-not (Test-Path $ArchivePath)) {
@@ -341,6 +341,24 @@ function Decompress-ArchiveToDirectory {
         throw "Failed to extract tar stream from archive: $ArchivePath"
     }
     Write-Done
+}
+
+function Expand-ZstdExecutableFromTarGz {
+    param(
+        [Parameter(Mandatory = $true)][string]$ArchivePath,
+        [Parameter(Mandatory = $true)][string]$DestinationDir
+    )
+
+    $resolvedArchivePath = Resolve-ExistingPath -Path $ArchivePath -Description 'zstd archive'
+    $resolvedDestinationDir = Resolve-AbsolutePath -Path $DestinationDir
+
+    Remove-PathIfExists -Path $resolvedDestinationDir
+    New-Item -ItemType Directory -Path $resolvedDestinationDir -Force | Out-Null
+
+    Invoke-Checked -Command 'tar' -Arguments @('-xzf', $resolvedArchivePath, '-C', $resolvedDestinationDir) -ErrorMessage 'Failed to extract zstd archive'
+
+    $zstdExePath = Join-Path $resolvedDestinationDir 'zstd.exe'
+    return (Resolve-ExistingPath -Path $zstdExePath -Description 'zstd executable')
 }
 
 function Initialize-LlvmSourceTree {

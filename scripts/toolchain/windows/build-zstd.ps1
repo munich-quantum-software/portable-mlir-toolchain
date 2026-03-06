@@ -14,7 +14,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 param(
-    [Parameter(Mandatory = $true)][string]$ZstdExePath,
+    [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [string]$ZstdVersion = '1.5.7',
     [string]$NinjaVersion = '1.13.0'
 )
@@ -29,6 +29,11 @@ Ensure-Ninja -Version $NinjaVersion
 
 $rootDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.')
 $zstdDir = Join-Path $rootDir "zstd-$ZstdVersion"
+$resolvedZstdArchivePath = Resolve-AbsolutePath -Path $ZstdArchivePath
+$zstdArchiveParent = Split-Path -Parent $resolvedZstdArchivePath
+if ($zstdArchiveParent) {
+    New-Item -ItemType Directory -Path $zstdArchiveParent -Force | Out-Null
+}
 
 Invoke-WithTempSession -ReferencePath $rootDir -ScriptBlock {
     param($tempRoot)
@@ -82,8 +87,10 @@ Invoke-WithTempSession -ReferencePath $rootDir -ScriptBlock {
         $zstdExe = Resolve-ExistingPath -Path (Join-Path $tempInstallDir 'bin\zstd.exe') -Description 'zstd executable'
         Write-Done
 
-        Write-Step "Copying zstd executable to $ZstdExePath"
-        Copy-Item -Path $zstdExe -Destination $ZstdExePath -Force
+        Write-Step "Packaging zstd executable to $resolvedZstdArchivePath"
+        Invoke-InDirectory -Path (Split-Path -Parent $zstdExe) -ScriptBlock {
+            Invoke-Checked -Command 'tar' -Arguments @('-czf', $resolvedZstdArchivePath, 'zstd.exe') -ErrorMessage 'Failed to package zstd executable'
+        }
         Write-Done
     } finally {
         Remove-PathsIfExists -Paths $cleanupPaths
