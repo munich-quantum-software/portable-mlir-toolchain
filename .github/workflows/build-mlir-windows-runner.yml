@@ -11,15 +11,23 @@ on:
         description: "GitHub runner label (e.g., windows-2025)"
         required: true
         type: string
+      zstd-version:
+        description: "zstd version (e.g., 1.5.7)"
+        default: "1.5.7"
+        required: false
+        type: string
+      ninja-version:
+        description: "ninja version (e.g., 1.12.0)"
+        default: "1.12.0"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  NINJA_VERSION: 1.13.0
-  ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.gz
+  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.gz
   LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
 
 jobs:
@@ -39,8 +47,8 @@ jobs:
         run: |
           & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }} `
-            -ZstdVersion ${{ env.ZSTD_VERSION }}
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -ZstdVersion ${{ inputs.zstd-version }}
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -72,7 +80,7 @@ jobs:
             -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }}
+            -NinjaVersion ${{ inputs.ninja-version }}
       - name: Upload lld installation (temporary)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -116,7 +124,7 @@ jobs:
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
             -BuildType Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -161,7 +169,7 @@ jobs:
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
             -BuildType Debug
       - name: Upload MLIR archive (Debug)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -200,7 +208,7 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
             -BuildType Release
 
   test-debug:
@@ -233,5 +241,5 @@ jobs:
           & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
             -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
             -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ env.NINJA_VERSION }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
             -BuildType Debug

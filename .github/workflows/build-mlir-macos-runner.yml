@@ -11,15 +11,23 @@ on:
         description: "GitHub runner label (e.g., macos-15)"
         required: true
         type: string
+      zstd-version:
+        description: "zstd version (e.g., 1.5.7)"
+        default: "1.5.7"
+        required: false
+        type: string
+      ninja-version:
+        description: "ninja version (e.g., 1.13.0)"
+        default: "1.13.0"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  NINJA_VERSION: 1.13.0
-  ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7_${{ inputs.runs-on == 'macos-15' && 'arm64-apple-darwin' || 'x86_64-apple-darwin' }}.tar.gz
+  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'macos-15' && 'arm64-apple-darwin' || 'x86_64-apple-darwin' }}.tar.gz
   MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'macos-15' && 'arm64-apple-darwin' || 'x86_64-apple-darwin' }}.tar.zst
 
 jobs:
@@ -38,8 +46,8 @@ jobs:
         run: |
           bash ${{ github.workspace }}/scripts/toolchain/macos/build-zstd.sh \
             -a ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -v ${{ env.ZSTD_VERSION }} \
-            -n ${{ env.NINJA_VERSION }}
+            -v ${{ inputs.zstd-version }} \
+            -n ${{ inputs.ninja-version }}
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -70,7 +78,7 @@ jobs:
             -r ${{ inputs.llvm-project-ref }} \
             -z ${{ env.ZSTD_ARCHIVE_PATH }} \
             -a ${{ env.MLIR_ARCHIVE_PATH }} \
-            -n ${{ env.NINJA_VERSION }} \
+            -n ${{ inputs.ninja-version }} \
             -b Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -106,5 +114,5 @@ jobs:
           bash ${{ github.workspace }}/scripts/toolchain/macos/test-installation.sh \
             -z ${{ env.ZSTD_ARCHIVE_PATH }} \
             -a ${{ env.MLIR_ARCHIVE_PATH }} \
-            -n ${{ env.NINJA_VERSION }} \
+            -n ${{ inputs.ninja-version }} \
             -b Release
