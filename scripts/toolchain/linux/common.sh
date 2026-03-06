@@ -16,6 +16,9 @@
 
 set -euo pipefail
 
+# shellcheck source=../common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
+
 resolve_abs_path() {
   local p="$1"
   case "$p" in

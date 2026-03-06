@@ -34,8 +34,8 @@ done
 [[ -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
-# shellcheck source=../common.sh
-source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
+# shellcheck source=./common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
