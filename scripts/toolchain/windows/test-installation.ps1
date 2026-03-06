@@ -60,7 +60,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         Write-Done
 
         Write-Step 'Verifying key binaries'
-        $env:PATH = "$tempMlirExtractDir\bin;$tempLldExtractDir\bin;$env:PATH"
+        $env:PATH = "$tempMlirExtractDir\bin;$env:PATH"
         & "$tempMlirExtractDir\bin\mlir-opt.exe" --version
         if ($LASTEXITCODE -ne 0) { throw 'mlir-opt --version failed' }
         & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
