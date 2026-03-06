@@ -61,7 +61,7 @@ compress_dir_to_archive() {
 
   log_step "Compressing $source_dir to $archive_path"
   pushd "$source_dir" > /dev/null
-  tar -cf - . | "$zstd_exe" -19 --long=30 --threads=0 -f -o "$archive_path" -
+  tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
   log_done
 }
@@ -75,8 +75,17 @@ decompress_archive_to_dir() {
   mkdir -p "$destination_dir"
 
   log_step "Decompressing $archive_path"
-  "$zstd_exe" -d --long=30 "$archive_path" -c | tar -xf - -C "$destination_dir"
+  "$zstd_exe" -d --long=31 "$archive_path" -c | tar -xf - -C "$destination_dir"
   log_done
+}
+
+extract_zstd_executable() {
+  local zstd_archive_path="$1"
+  local destination_dir="$2"
+  mkdir -p "$destination_dir"
+  tar -xzf "$zstd_archive_path" -C "$destination_dir"
+  chmod +x "$destination_dir/zstd"
+  printf '%s\n' "$destination_dir/zstd"
 }
 
 initialize_llvm_source_tree() {
