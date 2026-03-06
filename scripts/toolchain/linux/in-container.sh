@@ -139,7 +139,6 @@ build_zstd() {
 
   cp "$install_prefix/bin/zstd" "$IO_DIR/zstd"
   chmod +x "$IO_DIR/zstd"
-  compress_dir_to_archive "$install_prefix" "$IO_DIR/zstd.tar.zst" "$IO_DIR/zstd"
 
   rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum_file" "$install_prefix"
   log_done
@@ -182,20 +181,16 @@ build_mlir() {
   : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF not set}"
 
   local zstd_exe="$IO_DIR/zstd"
-  local zstd_archive="$IO_DIR/zstd.tar.zst"
   local mold_archive="$IO_DIR/mold.tar.zst"
 
   [[ -x "$zstd_exe" ]] || { echo "Error: missing zstd executable artifact" >&2; exit 1; }
-  [[ -f "$zstd_archive" ]] || { echo "Error: missing zstd archive artifact" >&2; exit 1; }
   [[ -f "$mold_archive" ]] || { echo "Error: missing mold archive artifact" >&2; exit 1; }
 
-  local zstd_extract_dir="$BUILD_WORKSPACE/zstd-extract"
   local mold_extract_dir="$BUILD_WORKSPACE/mold-extract"
   local mlir_install_dir="$BUILD_WORKSPACE/mlir-install"
   local repo_dir="$BUILD_WORKSPACE/llvm-project"
   local build_dir="$BUILD_WORKSPACE/build_mlir"
 
-  decompress_archive_to_dir "$zstd_archive" "$zstd_extract_dir" "$zstd_exe"
   decompress_archive_to_dir "$mold_archive" "$mold_extract_dir" "$zstd_exe"
 
   download_llvm_source "$LLVM_PROJECT_REF" "$repo_dir"
@@ -225,9 +220,7 @@ build_mlir() {
     -DLLVM_INSTALL_UTILS=ON \
     -DLLVM_OPTIMIZED_TABLEGEN=ON \
     -DLLVM_ENABLE_WARNINGS=OFF \
-    -DLLVM_ENABLE_ZSTD=FORCE_ON \
-    -DLLVM_USE_STATIC_ZSTD=ON \
-    -DCMAKE_PREFIX_PATH="$zstd_extract_dir" \
+    -DLLVM_ENABLE_ZSTD=OFF \
     -DLLVM_USE_LINKER=mold
   log_done
 
@@ -237,7 +230,7 @@ build_mlir() {
 
   local llvm_lib_dir="$mlir_install_dir/lib"
   if [[ -x "$mlir_install_dir/bin/llvm-config" ]]; then
-    llvm_lib_dir="$($mlir_install_dir/bin/llvm-config --libdir)"
+    llvm_lib_dir="$("$mlir_install_dir"/bin/llvm-config --libdir)"
   elif [[ -d "$mlir_install_dir/lib64" && ! -d "$mlir_install_dir/lib" ]]; then
     llvm_lib_dir="$mlir_install_dir/lib64"
   fi
@@ -252,7 +245,7 @@ build_mlir() {
 
   compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
 
-  rm -rf "$zstd_extract_dir" "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
+  rm -rf "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
 }
 
 case "$STAGE" in

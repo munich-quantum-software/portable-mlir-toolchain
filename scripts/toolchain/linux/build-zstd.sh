@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -e <zstd_exe_path> -a <zstd_archive_path> [-v <zstd_version>]"
+  echo "Usage: $0 -e <zstd_exe_path> [-v <zstd_version>]"
   exit 1
 }
 
@@ -26,20 +26,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 ZSTD_VERSION="1.5.7"
-while getopts ":e:a:v:" opt; do
+while getopts ":e:v:" opt; do
   case "$opt" in
     e) ZSTD_EXE_PATH="$OPTARG" ;;
-    a) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
     v) ZSTD_VERSION="$OPTARG" ;;
     *) usage ;;
   esac
 done
 
-[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" ]] && usage
 
 ZSTD_EXE_PATH="$(resolve_abs_path "$ZSTD_EXE_PATH")"
-ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
-mkdir -p "$(dirname "$ZSTD_EXE_PATH")" "$(dirname "$ZSTD_ARCHIVE_PATH")"
+mkdir -p "$(dirname "$ZSTD_EXE_PATH")"
 
 io_dir="$(mktemp -d)"
 cleanup() {
@@ -51,4 +49,3 @@ echo "$ZSTD_VERSION" > "$io_dir/zstd.version"
 run_manylinux_stage "build-zstd" "$io_dir"
 
 cp "$io_dir/zstd" "$ZSTD_EXE_PATH"
-cp "$io_dir/zstd.tar.zst" "$ZSTD_ARCHIVE_PATH"

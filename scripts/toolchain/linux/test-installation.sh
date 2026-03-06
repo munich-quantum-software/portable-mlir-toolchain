@@ -17,15 +17,14 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -e <zstd_exe_path> -z <zstd_archive_path> -m <mold_archive_path> -a <mlir_archive_path> [-b <Release|Debug>]"
+  echo "Usage: $0 -e <zstd_exe_path> -m <mold_archive_path> -a <mlir_archive_path> [-b <Release|Debug>]"
   exit 1
 }
 
 BUILD_TYPE="Release"
-while getopts "e:z:m:a:b:" opt; do
+while getopts "e:m:a:b:" opt; do
   case "$opt" in
     e) ZSTD_EXE_PATH="$OPTARG" ;;
-    z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
     m) MOLD_ARCHIVE_PATH="$OPTARG" ;;
     a) MLIR_ARCHIVE_PATH="$OPTARG" ;;
     b) BUILD_TYPE="$OPTARG" ;;
@@ -33,7 +32,7 @@ while getopts "e:z:m:a:b:" opt; do
   esac
 done
 
-[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" || -z "${MOLD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 if [[ ! -x "$ZSTD_EXE_PATH" ]]; then
@@ -51,15 +50,10 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
-TEST_ZSTD_DIR=$(mktemp -d)
 TEST_MOLD_DIR=$(mktemp -d)
 TEST_MLIR_DIR=$(mktemp -d)
 TEST_BUILD_DIR=$(mktemp -d)
-trap 'rm -rf "$TEST_ZSTD_DIR" "$TEST_MOLD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
-
-log_step "Extracting zstd archive"
-"$ZSTD_EXE_PATH" -d --long=30 "$ZSTD_ARCHIVE_PATH" -c | tar -xf - -C "$TEST_ZSTD_DIR"
-log_done
+trap 'rm -rf "$TEST_MOLD_DIR" "$TEST_MLIR_DIR" "$TEST_BUILD_DIR"' EXIT
 
 log_step "Extracting mold archive"
 "$ZSTD_EXE_PATH" -d --long=30 "$MOLD_ARCHIVE_PATH" -c | tar -xf - -C "$TEST_MOLD_DIR"
@@ -108,7 +102,7 @@ cmake -G Ninja \
   -S "$INTEGRATION_SRC" \
   -B "$TEST_BUILD_DIR" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-  "-DCMAKE_PREFIX_PATH=$TEST_ZSTD_DIR;$TEST_MLIR_DIR" \
+  "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
   "-DMLIR_DIR=$MLIR_CMAKE_DIR" \
   "-DLLVM_DIR=$LLVM_CMAKE_DIR" \
   -DLLVM_USE_LINKER=mold
