@@ -19,7 +19,6 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   NINJA_VERSION: 1.13.0
   ZSTD_VERSION: 1.5.7
-  ZSTD_ARCHIVE_PATH: zstd-1.5.7_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}.tar.zst
   ZSTD_EXE_PATH: ${{ github.workspace }}/zstd
   ZSTD_EXE_NAME: zstd-1.5.7-exe_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}
   MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_macos_${{ inputs.runs-on == 'macos-15' && 'arm64_AArch64' || 'x86_64_X86'}}.tar.zst
@@ -40,15 +39,8 @@ jobs:
         run: |
           bash ${{ github.workspace }}/scripts/toolchain/macos/build-zstd.sh \
             -e ${{ env.ZSTD_EXE_PATH }} \
-            -a ${{ env.ZSTD_ARCHIVE_PATH }} \
             -v ${{ env.ZSTD_VERSION }} \
             -n ${{ env.NINJA_VERSION }}
-      - name: Upload zstd installation (temporary)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          path: ${{ env.ZSTD_ARCHIVE_PATH }}
-          if-no-files-found: error
-          archive: false
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -72,17 +64,11 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Build and package MLIR (Release)
         run: |
           bash ${{ github.workspace }}/scripts/toolchain/macos/build-mlir.sh \
             -r ${{ inputs.llvm-project-ref }} \
             -e ${{ env.ZSTD_EXE_PATH }} \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
             -a ${{ env.MLIR_ARCHIVE_PATH }} \
             -n ${{ env.NINJA_VERSION }} \
             -b Release
@@ -109,11 +95,6 @@ jobs:
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: ${{ env.ZSTD_EXE_NAME }}
-      - name: Download zstd installation archive
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
-        with:
-          name: ${{ env.ZSTD_ARCHIVE_PATH }}
-          skip-decompress: true
       - name: Download MLIR archive (Release)
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
@@ -123,7 +104,6 @@ jobs:
         run: |
           bash ${{ github.workspace }}/scripts/toolchain/macos/test-installation.sh \
             -e ${{ env.ZSTD_EXE_PATH }} \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
             -a ${{ env.MLIR_ARCHIVE_PATH }} \
             -n ${{ env.NINJA_VERSION }} \
             -b Release

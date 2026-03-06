@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -r <llvm_project_ref> -e <zstd_exe_path> -z <zstd_archive_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
+  echo "Usage: $0 -r <llvm_project_ref> -e <zstd_exe_path> -a <mlir_archive_path> [-n <ninja_version>] [-b <Release|Debug>]"
   exit 1
 }
 
@@ -27,11 +27,10 @@ source "$SCRIPT_DIR/common.sh"
 
 NINJA_VERSION="1.13.0"
 BUILD_TYPE="Release"
-while getopts ":r:e:z:m:a:n:b:" opt; do
+while getopts ":r:e:m:a:n:b:" opt; do
   case "$opt" in
     r) LLVM_PROJECT_REF="$OPTARG" ;;
     e) ZSTD_EXE_PATH="$OPTARG" ;;
-    z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
     a) MLIR_ARCHIVE_PATH="$OPTARG" ;;
     n) NINJA_VERSION="$OPTARG" ;;
     b) BUILD_TYPE="$OPTARG" ;;
@@ -39,14 +38,13 @@ while getopts ":r:e:z:m:a:n:b:" opt; do
   esac
 done
 
-[[ -z "${LLVM_PROJECT_REF:-}" || -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${LLVM_PROJECT_REF:-}" || -z "${ZSTD_EXE_PATH:-}" || -z "${MLIR_ARCHIVE_PATH:-}" ]] && usage
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 ensure_ninja "$NINJA_VERSION"
 export MACOSX_DEPLOYMENT_TARGET="11.0"
 
 ZSTD_EXE_PATH="$(resolve_abs_path "$ZSTD_EXE_PATH")"
-ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 MLIR_ARCHIVE_PATH="$(resolve_abs_path "$MLIR_ARCHIVE_PATH")"
 
 if [[ ! -f "$ZSTD_EXE_PATH" ]]; then
@@ -56,7 +54,6 @@ fi
 chmod +x "$ZSTD_EXE_PATH"
 
 tmp_dir="$(mktemp -d)"
-zstd_extract_dir="$tmp_dir/zstd"
 repo_dir="$tmp_dir/llvm-project"
 build_dir="$tmp_dir/build-mlir"
 install_dir="$tmp_dir/mlir-install"
@@ -66,7 +63,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-decompress_archive_to_dir "$ZSTD_ARCHIVE_PATH" "$zstd_extract_dir" "$ZSTD_EXE_PATH"
 initialize_llvm_source_tree "$LLVM_PROJECT_REF" "$repo_dir"
 
 UNAME_ARCH="$(uname -m)"
@@ -97,9 +93,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_INSTALL_UTILS=ON \
   -DLLVM_OPTIMIZED_TABLEGEN=ON \
   -DLLVM_ENABLE_WARNINGS=OFF \
-  -DLLVM_ENABLE_ZSTD=FORCE_ON \
-  -DLLVM_USE_STATIC_ZSTD=ON \
-  -DCMAKE_PREFIX_PATH="$zstd_extract_dir"
+  -DLLVM_ENABLE_ZSTD=OFF
 log_done
 
 log_step "Build and install MLIR (${BUILD_TYPE})"

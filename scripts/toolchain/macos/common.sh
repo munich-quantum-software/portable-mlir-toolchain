@@ -83,7 +83,7 @@ initialize_llvm_source_tree() {
   local llvm_project_ref="$1"
   local repo_dir="$2"
   local temp_archive
-  temp_archive="$(mktemp -t llvm-project-${llvm_project_ref}.XXXXXX.tar.gz)"
+  temp_archive="$(mktemp -t llvm-project-"${llvm_project_ref}".XXXXXX.tar.gz)"
 
   log_step "Downloading LLVM/MLIR source (${llvm_project_ref})"
   remove_path_if_exists "$repo_dir"

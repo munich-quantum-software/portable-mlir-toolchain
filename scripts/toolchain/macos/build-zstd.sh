@@ -17,7 +17,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 -e <zstd_exe_path> -a <zstd_archive_path> [-v <zstd_version>] [-n <ninja_version>]"
+  echo "Usage: $0 -e <zstd_exe_path> [-v <zstd_version>] [-n <ninja_version>]"
   exit 1
 }
 
@@ -27,24 +27,22 @@ source "$SCRIPT_DIR/common.sh"
 
 ZSTD_VERSION="1.5.7"
 NINJA_VERSION="1.13.0"
-while getopts ":e:a:v:n:" opt; do
+while getopts ":e:v:n:" opt; do
   case "$opt" in
     e) ZSTD_EXE_PATH="$OPTARG" ;;
-    a) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
     v) ZSTD_VERSION="$OPTARG" ;;
     n) NINJA_VERSION="$OPTARG" ;;
     *) usage ;;
   esac
 done
 
-[[ -z "${ZSTD_EXE_PATH:-}" || -z "${ZSTD_ARCHIVE_PATH:-}" ]] && usage
+[[ -z "${ZSTD_EXE_PATH:-}" ]] && usage
 
 ensure_ninja "$NINJA_VERSION"
 export MACOSX_DEPLOYMENT_TARGET="11.0"
 
 ZSTD_EXE_PATH="$(resolve_abs_path "$ZSTD_EXE_PATH")"
-ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
-mkdir -p "$(dirname "$ZSTD_EXE_PATH")" "$(dirname "$ZSTD_ARCHIVE_PATH")"
+mkdir -p "$(dirname "$ZSTD_EXE_PATH")"
 
 tmp_dir="$(mktemp -d)"
 install_dir="$tmp_dir/install"
@@ -71,5 +69,3 @@ cmake --build "$zstd_src_dir/build_cmake" --target install --config Release
 cp "$install_dir/bin/zstd" "$ZSTD_EXE_PATH"
 chmod +x "$ZSTD_EXE_PATH"
 log_done
-
-compress_dir_to_archive "$install_dir" "$ZSTD_ARCHIVE_PATH" "$ZSTD_EXE_PATH"
