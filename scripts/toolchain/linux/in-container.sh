@@ -66,18 +66,22 @@ compress_dir_to_archive() {
   local source_dir="$1"
   local archive_path="$2"
   local zstd_exe="$3"
+  log_step "Compressing $source_dir to $archive_path"
   pushd "$source_dir" > /dev/null
   tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
+  log_done
 }
 
 decompress_archive_to_dir() {
   local archive_path="$1"
   local destination_dir="$2"
   local zstd_exe="$3"
+  log_step "Decompressing $archive_path to $destination_dir"
   rm -rf "$destination_dir"
   mkdir -p "$destination_dir"
   "$zstd_exe" -d --long=31 "$archive_path" -c | tar -xf - -C "$destination_dir"
+  log_done
 }
 
 download_llvm_source() {
