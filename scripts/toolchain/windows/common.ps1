@@ -281,7 +281,7 @@ function Compress-DirectoryToArchive {
         [Parameter(Mandatory = $true)][string]$SourceDir,
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$ZstdExePath,
-        [int]$CompressionLevel = 20,
+        [int]$CompressionLevel = 22,
         [long]$LongWindow = 31
     )
 
