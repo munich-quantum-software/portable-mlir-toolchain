@@ -281,7 +281,7 @@ function Compress-DirectoryToArchive {
         [Parameter(Mandatory = $true)][string]$SourceDir,
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$ZstdExePath,
-        [int]$CompressionLevel = 19,
+        [int]$CompressionLevel = 20,
         [long]$LongWindow = 31
     )
 
@@ -304,7 +304,7 @@ function Compress-DirectoryToArchive {
     Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd (level $CompressionLevel, long window $LongWindow)"
     pushd $sourceFullPath > $null
     try {
-        tar -cf - . | & $ZstdExePath "-$CompressionLevel" "--long=$LongWindow" '--threads=0' '-f' '-o' $ArchivePath '-'
+        tar -cf - . | & $ZstdExePath "-$CompressionLevel" '--ultra' "--long=$LongWindow" '--threads=0' '-f' '-o' $ArchivePath '-'
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to compress directory with zstd: $ZstdExePath"
         }
