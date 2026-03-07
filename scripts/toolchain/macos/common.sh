@@ -19,14 +19,6 @@ set -euo pipefail
 # shellcheck source=../common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
-resolve_abs_path() {
-  local p="$1"
-  case "$p" in
-    /*) printf '%s\n' "$p" ;;
-    *) printf '%s\n' "$PWD/$p" ;;
-  esac
-}
-
 remove_path_if_exists() {
   local p="$1"
   if [[ -e "$p" ]]; then
@@ -77,15 +69,6 @@ decompress_archive_to_dir() {
   log_step "Decompressing $archive_path"
   "$zstd_exe" -d --long=31 "$archive_path" -c | tar -xf - -C "$destination_dir"
   log_done
-}
-
-extract_zstd_executable() {
-  local zstd_archive_path="$1"
-  local destination_dir="$2"
-  mkdir -p "$destination_dir"
-  tar -xzf "$zstd_archive_path" -C "$destination_dir"
-  chmod +x "$destination_dir/zstd"
-  printf '%s\n' "$destination_dir/zstd"
 }
 
 initialize_llvm_source_tree() {

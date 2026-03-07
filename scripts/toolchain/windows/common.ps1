@@ -179,11 +179,11 @@ function Invoke-InDirectory {
         [Parameter(Mandatory = $true)][scriptblock]$ScriptBlock
     )
 
-    pushd $Path > $null
+    Push-Location $Path > $null
     try {
         & $ScriptBlock
     } finally {
-        popd > $null
+        Pop-Location > $null
     }
 }
 
@@ -368,9 +368,10 @@ function Initialize-LlvmSourceTree {
     )
 
     $archiveUrl = "https://github.com/llvm/llvm-project/archive/$LlvmProjectRef.tar.gz"
+    $sanitizedRef = $LlvmProjectRef -replace '[\\/]', '-'
     $tempRoot = Get-PreferredTempRoot -ReferencePath $RepoDir
     $tempDir = New-ScopedTempDir -RootPath $tempRoot
-    $tempArchive = Join-Path $tempDir ("llvm-project-$LlvmProjectRef.tar.gz")
+    $tempArchive = Join-Path $tempDir ("llvm-project-$sanitizedRef.tar.gz")
 
     Write-Step "Downloading LLVM/MLIR source ($LlvmProjectRef)"
     Remove-PathIfExists -Path $RepoDir

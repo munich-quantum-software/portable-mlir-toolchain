@@ -75,7 +75,6 @@ fi
 log_step "Extracting zstd executable"
 extract_zstd_executable "$ZSTD_ARCHIVE_PATH" "$zstd_dir" >/dev/null
 ZSTD_EXE_PATH="$zstd_dir/zstd"
-chmod +x "$ZSTD_EXE_PATH"
 log_done
 
 log_step "CMake configure MLIR (${BUILD_TYPE})"

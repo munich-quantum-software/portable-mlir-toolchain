@@ -94,11 +94,15 @@ try {
     Remove-IfExists -Path "$env:LOCALAPPDATA\Packages\CanonicalGroupLimited.Ubuntu*"
     Remove-IfExists -Path "$env:LOCALAPPDATA\Packages\TheDebianProject.DebianGNULinux*"
     Remove-IfExists -Path "$env:LOCALAPPDATA\Packages\kali-linux.*"
-} catch {}
+} catch {
+    # Intentionally swallowing errors so best-effort cleanup can continue.
+}
 
 try {
     docker system prune -af --volumes | Out-Null
-} catch {}
+} catch {
+    # Intentionally swallowing errors so best-effort cleanup can continue.
+}
 Remove-IfExists -Path 'C:\ProgramData\Docker'
 
 Remove-IfExists -Path 'C:\Windows\Temp'
@@ -107,7 +111,9 @@ Remove-IfExists -Path "$env:LOCALAPPDATA\Temp"
 
 try {
     dotnet nuget locals all --clear | Out-Null
-} catch {}
+} catch {
+    # Intentionally swallowing errors so best-effort cleanup can continue.
+}
 
 # Recreate user temp directories for later workflow steps.
 foreach ($tempPath in @($env:TEMP, "$env:LOCALAPPDATA\Temp")) {

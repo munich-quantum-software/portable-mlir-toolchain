@@ -46,7 +46,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         $cleanupPaths += $tempLldExtractDir
         Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
 
-        $lldExe = Resolve-ExistingPath -Path (Join-Path $tempLldExtractDir 'bin\lld.exe') -Description 'lld executable'
         $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
         $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot

@@ -172,9 +172,6 @@ build_mold() {
     -DMOLD_USE_MIMALLOC=ON
 
   cmake --build "$mold_src_dir/build" --target install --config Release
-  if [[ ! -x "$mold_install_dir/bin/mold" && -x "$mold_install_dir/bin/ld64.mold" ]]; then
-    ln -sf ld64.mold "$mold_install_dir/bin/mold"
-  fi
   compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"
 
   rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"

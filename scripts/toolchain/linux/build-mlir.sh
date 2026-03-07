@@ -48,6 +48,10 @@ if [[ ! -f "$ZSTD_ARCHIVE_PATH" ]]; then
   echo "Error: zstd archive not found at $ZSTD_ARCHIVE_PATH" >&2
   exit 1
 fi
+if [[ ! -f "$MOLD_ARCHIVE_PATH" ]]; then
+  echo "Error: mold archive not found at $MOLD_ARCHIVE_PATH" >&2
+  exit 1
+fi
 mkdir -p "$(dirname "$MLIR_ARCHIVE_PATH")"
 
 io_dir="$(mktemp -d)"
