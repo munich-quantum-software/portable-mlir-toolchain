@@ -106,7 +106,7 @@ cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
 log_done
 
 log_step "Stripping debug symbols"
-if command -v strip >/dev/null 2>&1; then
+if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
   find "$install_dir/bin" -type f -perm -111 -exec strip -S {} + 2>/dev/null || true
   find "$install_dir/lib" -name "*.a" -exec strip -S {} + 2>/dev/null || true
 fi

@@ -74,8 +74,10 @@ decompress_archive_to_dir() {
 initialize_llvm_source_tree() {
   local llvm_project_ref="$1"
   local repo_dir="$2"
+  local safe_ref
   local temp_archive
-  temp_archive="$(mktemp -t llvm-project-"${llvm_project_ref}".XXXXXX.tar.gz)"
+  safe_ref="$(printf '%s' "$llvm_project_ref" | sed 's/[^A-Za-z0-9._-]/-/g')"
+  temp_archive="$(mktemp -t llvm-project-"${safe_ref}".XXXXXX.tar.gz)"
 
   log_step "Downloading LLVM/MLIR source (${llvm_project_ref})"
   remove_path_if_exists "$repo_dir"

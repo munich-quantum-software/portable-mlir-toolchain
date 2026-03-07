@@ -54,7 +54,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
         $cleanupPaths += $tempBuildDir
 
-        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
+        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef -RepoDir (Join-Path $tempRoot 'llvm-project')
         $cleanupPaths += $repoDir
 
         Invoke-InDirectory -Path $repoDir -ScriptBlock {

@@ -49,7 +49,7 @@ run_manylinux_stage() {
   mkdir -p "$io_dir"
 
   local env_args=(
-    -e HOME=/work
+    -e HOME=/build/home
     -e STAGE="$stage"
     -e IO_DIR=/io
     -e BUILD_WORKSPACE=/build

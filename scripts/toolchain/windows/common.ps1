@@ -373,12 +373,36 @@ function Initialize-LlvmSourceTree {
     $tempDir = New-ScopedTempDir -RootPath $tempRoot
     $tempArchive = Join-Path $tempDir ("llvm-project-$sanitizedRef.tar.gz")
 
+    $downloadAttempts = 3
+    if ($env:LLVM_DOWNLOAD_ATTEMPTS) {
+        $downloadAttempts = [Math]::Max(1, [int]$env:LLVM_DOWNLOAD_ATTEMPTS)
+    }
+    $baseRetryDelaySeconds = 5
+    if ($env:LLVM_DOWNLOAD_RETRY_DELAY_SECONDS) {
+        $baseRetryDelaySeconds = [Math]::Max(1, [int]$env:LLVM_DOWNLOAD_RETRY_DELAY_SECONDS)
+    }
+
     Write-Step "Downloading LLVM/MLIR source ($LlvmProjectRef)"
     Remove-PathIfExists -Path $RepoDir
     New-Item -ItemType Directory -Path $RepoDir -Force | Out-Null
 
     try {
-        Invoke-WebRequest -Uri $archiveUrl -OutFile $tempArchive
+        for ($attempt = 1; $attempt -le $downloadAttempts; $attempt++) {
+            try {
+                Write-Host "Downloading llvm-project archive (attempt $attempt/$downloadAttempts): $archiveUrl"
+                Invoke-WebRequest -Uri $archiveUrl -OutFile $tempArchive
+                break
+            } catch {
+                if ($attempt -ge $downloadAttempts) {
+                    Write-Host "Failed to download llvm-project archive after $downloadAttempts attempts."
+                    throw
+                }
+                $delaySeconds = $baseRetryDelaySeconds * $attempt
+                Write-Host "Download attempt $attempt failed: $($_.Exception.Message)"
+                Write-Host "Retrying in ${delaySeconds}s..."
+                Start-Sleep -Seconds $delaySeconds
+            }
+        }
 
         $excludeArgs = @(
             '-xzf', $tempArchive,

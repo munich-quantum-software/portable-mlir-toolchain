@@ -240,7 +240,7 @@ build_mlir() {
   fi
 
   log_step "Stripping debug symbols"
-  if command -v strip >/dev/null 2>&1; then
+  if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
     find "$mlir_install_dir/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
     find "$llvm_lib_dir" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
   fi
