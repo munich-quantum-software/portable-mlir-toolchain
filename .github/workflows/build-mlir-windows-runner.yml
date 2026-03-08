@@ -211,10 +211,16 @@ jobs:
           }
 
           Remove-Item $archivePath -Force
-      - name: Upload MLIR archive parts (Debug)
+      - name: Upload MLIR archive part 000 (Debug)
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          path: ${{ env.MLIR_ARCHIVE_PATH }}.part-*
+          path: ${{ env.MLIR_ARCHIVE_PATH }}.part-000
+          if-no-files-found: error
+          archive: false
+      - name: Upload MLIR archive part 001 (Debug)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.MLIR_ARCHIVE_PATH }}.part-001
           if-no-files-found: error
           archive: false
 
