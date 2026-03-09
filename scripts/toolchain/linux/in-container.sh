@@ -1,6 +1,6 @@
-#!/bin/bash
-# Copyright (c) 2025 Munich Quantum Software Company GmbH
-# Copyright (c) 2025 Chair for Design Automation, TUM
+#!/usr/bin/env bash
+# Copyright (c) 2025 - 2026 Munich Quantum Software Company GmbH
+# Copyright (c) 2025 - 2026 Chair for Design Automation, TUM
 # All rights reserved.
 #
 # Licensed under the Apache License v2.0 with LLVM Exceptions (the "License"); you
@@ -31,89 +31,64 @@
 
 set -euo pipefail
 
-ZSTD_VERSION="1.5.7"
+: "${STAGE:?STAGE not set}"
+: "${IO_DIR:?IO_DIR not set}"
+: "${BUILD_WORKSPACE:=/build}"
 
-: "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF (commit) not set}"
-: "${INSTALL_PREFIX:?INSTALL_PREFIX not set}"
-: "${BUILD_WORKSPACE:=/work}"
+# shellcheck source=../common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
-# Keep large build trees off the container root filesystem when possible.
-mkdir -p "$BUILD_WORKSPACE"
+ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.5.7)}"
+MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 2.40.4)}"
+NINJA_VERSION="${NINJA_VERSION:-1.13.0}"
+BUILD_TYPE="${BUILD_TYPE:-Release}"
+
+mkdir -p "$BUILD_WORKSPACE" "$IO_DIR"
 cd "$BUILD_WORKSPACE"
 
-# Determine architecture
-UNAME_ARCH=$(uname -m)
+log_step "Installing build tools (Ninja ${NINJA_VERSION})"
+uv tool install "ninja==${NINJA_VERSION}"
+log_done
 
-# Determine target
+export PATH="$HOME/.local/bin:$PATH"
+
+UNAME_ARCH="$(uname -m)"
 if [[ "$UNAME_ARCH" == "x86_64" ]]; then
   HOST_TARGET="X86"
 elif [[ "$UNAME_ARCH" == "aarch64" || "$UNAME_ARCH" == "arm64" ]]; then
   HOST_TARGET="AArch64"
 else
-  echo "Error: Unsupported architecture: ${UNAME_ARCH}. Only x86_64 and aarch64 are supported." >&2
+  echo "Error: Unsupported architecture: ${UNAME_ARCH}." >&2
   exit 1
 fi
 
-# Build and install zstd
-build_zstd() {
-  local install_prefix=$1
-  echo "Building zstd v$ZSTD_VERSION into $install_prefix..."
-  local zstd_dir="zstd-$ZSTD_VERSION"
-  local zstd_tarball="zstd-${ZSTD_VERSION}.tar.gz"
-  local zstd_checksum="${zstd_tarball}.sha256"
-  local zstd_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}"
-  local zstd_checksum_url="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum}"
-
-  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
-
-  echo "Downloading zstd tarball..."
-  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_url" -o "$zstd_tarball"; then
-    echo "Error: Failed to download zstd tarball from $zstd_url" >&2
-    exit 1
-  fi
-
-  echo "Downloading zstd checksum..."
-  if ! curl -fL --retry 5 --retry-delay 5 "$zstd_checksum_url" -o "$zstd_checksum"; then
-    echo "Error: Failed to download zstd checksum from $zstd_checksum_url" >&2
-    exit 1
-  fi
-
-  echo "Verifying checksum..."
-  if ! sha256sum -c "$zstd_checksum" > /dev/null 2>&1; then
-    echo "Error: zstd checksum verification failed!" >&2
-    exit 1
-  fi
-
-  echo "Extracting zstd..."
-  if ! tar -xzf "$zstd_tarball"; then
-    echo "Error: Failed to extract zstd tarball" >&2
-    exit 1
-  fi
-
-  pushd "$zstd_dir" > /dev/null
-  cmake -S build/cmake -B build_cmake \
-    -DCMAKE_INSTALL_PREFIX="$install_prefix" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DZSTD_BUILD_STATIC=ON \
-    -DZSTD_BUILD_SHARED=OFF
-  if ! cmake --build build_cmake --target install -j"$(nproc)"; then
-    echo "Error: Failed to build/install zstd" >&2
-    exit 1
-  fi
+compress_dir_to_archive() {
+  local source_dir="$1"
+  local archive_path="$2"
+  local zstd_exe="$3"
+  log_step "Compressing $source_dir to $archive_path"
+  pushd "$source_dir" > /dev/null
+  tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
-
-  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum"
+  log_done
 }
 
-# Main LLVM setup function
-build_llvm() {
-  local llvm_project_ref=$1
-  local install_prefix=$2
+decompress_archive_to_dir() {
+  local archive_path="$1"
+  local destination_dir="$2"
+  local zstd_exe="$3"
+  log_step "Decompressing $archive_path to $destination_dir"
+  rm -rf "$destination_dir"
+  mkdir -p "$destination_dir"
+  "$zstd_exe" -d --long=31 "$archive_path" -c | tar -xf - -C "$destination_dir"
+  log_done
+}
 
-  echo "Building MLIR $llvm_project_ref into $install_prefix..."
+download_llvm_source() {
+  local llvm_project_ref="$1"
+  local repo_dir="$2"
 
-  # Fetch LLVM project source archive
-  local repo_dir="$PWD/llvm-project"
+  log_step "Downloading LLVM/MLIR source (${llvm_project_ref})"
   rm -rf "$repo_dir"
   mkdir -p "$repo_dir"
   curl -fL --retry 5 --retry-delay 5 \
@@ -127,110 +102,167 @@ build_llvm() {
       --exclude='libclc' \
       --exclude='libc' \
       --exclude='llvm/test' \
-      --exclude='mlir/test' \
       --exclude='llvm/unittests' \
+      --exclude='mlir/test' \
       --exclude='mlir/unittests'
-
-  # Change to repo directory
-  pushd "$repo_dir" > /dev/null
-
-  # Build LLVM
-  local build_dir="build_llvm"
-  local cmake_args=(
-    -S llvm -B "$build_dir"
-    -DCMAKE_BUILD_TYPE=Release
-    -DCMAKE_C_COMPILER=gcc
-    -DCMAKE_CXX_COMPILER=g++
-    -DCMAKE_INSTALL_PREFIX="$install_prefix"
-    -DLLVM_BUILD_EXAMPLES=OFF
-    -DLLVM_BUILD_TESTS=OFF
-    -DLLVM_ENABLE_ASSERTIONS=ON
-    -DLLVM_ENABLE_ZSTD=OFF
-    -DLLVM_ENABLE_LTO=OFF
-    -DLLVM_ENABLE_RTTI=ON
-    -DLLVM_ENABLE_LIBXML2=OFF
-    -DLLVM_ENABLE_LIBEDIT=OFF
-    -DLLVM_ENABLE_LIBPFM=OFF
-    -DLLVM_INCLUDE_BENCHMARKS=OFF
-    -DLLVM_INCLUDE_EXAMPLES=OFF
-    -DLLVM_INCLUDE_TESTS=OFF
-    -DLLVM_INSTALL_UTILS=ON
-    -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET"
-  )
-
-  # Building lld first allows us to use it as a faster, parallel-friendly linker
-  # for the subsequent full LLVM and MLIR build. This significantly reduces
-  # overall build time, especially for large builds like MLIR.
-  # The first stage builds just lld, and the second stage enables both mlir and lld
-  # while using the newly built lld as the linker via LLVM_ENABLE_LLD=ON.
-  # Build lld first to use it as linker
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="lld"
-  cmake --build "$build_dir" --target lld
-  # Use the just-built lld as the linker
-  export PATH="$PWD/$build_dir/bin:$PATH"
-  cmake "${cmake_args[@]}" -DLLVM_ENABLE_PROJECTS="mlir;lld" -DLLVM_ENABLE_LLD=ON
-
-  cmake --build "$build_dir" --target install
-
-  # Return to original directory
-  popd > /dev/null
-  rm -rf "$repo_dir"
+  log_done
 }
 
-ZSTD_INSTALL_PREFIX="$PWD/zstd-install"
-build_zstd "$ZSTD_INSTALL_PREFIX"
-build_llvm "$LLVM_PROJECT_REF" "$INSTALL_PREFIX"
+build_zstd() {
+  local zstd_dir="zstd-${ZSTD_VERSION}"
+  local zstd_tarball="zstd-${ZSTD_VERSION}.tar.gz"
+  local zstd_checksum_file="${zstd_tarball}.sha256"
 
-# Prune non-essential tools
-if [[ -d "$INSTALL_PREFIX/bin" ]]; then
-  rm -f "$INSTALL_PREFIX/bin/clang*" \
-        "$INSTALL_PREFIX/bin/llvm-bolt" \
-        "$INSTALL_PREFIX/bin/perf2bolt" \
-        2>/dev/null || true
-fi
+  log_step "Building zstd v${ZSTD_VERSION}"
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum_file"
 
-# Remove non-essential directories
-rm -rf "$INSTALL_PREFIX/lib/clang" "$INSTALL_PREFIX/share" 2>/dev/null || true
+  curl -fL --retry 5 --retry-delay 5 \
+    "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}" \
+    -o "$zstd_tarball"
+  curl -fL --retry 5 --retry-delay 5 \
+    "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum_file}" \
+    -o "$zstd_checksum_file"
 
-# Strip binaries
-if command -v strip >/dev/null 2>&1; then
-  find "$INSTALL_PREFIX/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
-  find "$INSTALL_PREFIX/lib" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
-fi
+  if ! sha256sum -c "$zstd_checksum_file" > /dev/null 2>&1; then
+    echo "Error: zstd checksum verification failed" >&2
+    exit 1
+  fi
 
-# Define archive variables
-ARCHIVE_NAME="llvm-mlir_${LLVM_PROJECT_REF}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.zst"
-ARCHIVE_PATH="${INSTALL_PREFIX}/${ARCHIVE_NAME}"
-TEMP_ARCHIVE_PATH="/tmp/${ARCHIVE_NAME}"
+  tar -xzf "$zstd_tarball"
 
-# Change to installation directory
-pushd "$INSTALL_PREFIX" > /dev/null
+  local install_prefix="$BUILD_WORKSPACE/zstd-install"
+  rm -rf "$install_prefix"
 
-# Emit compressed archive (.tar.zst) to temporary location to avoid "file changed as we read it" error
-tar --use-compress-program="$ZSTD_INSTALL_PREFIX/bin/zstd -19 --long=30 --threads=0" -cf "${TEMP_ARCHIVE_PATH}" . || {
-  echo "Error: Failed to create archive" >&2
-  exit 1
+  cmake -S "$zstd_dir/build/cmake" -B "$zstd_dir/build_cmake" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$install_prefix" \
+    -DZSTD_BUILD_STATIC=ON \
+    -DZSTD_BUILD_SHARED=OFF
+
+  cmake --build "$zstd_dir/build_cmake" --target install --config Release
+
+  cp "$install_prefix/bin/zstd" "$IO_DIR/zstd"
+  chmod +x "$IO_DIR/zstd"
+
+  rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum_file" "$install_prefix"
+  log_done
 }
 
-# Return to original directory
-popd > /dev/null
+build_mold() {
+  local zstd_exe="$IO_DIR/zstd"
+  [[ -x "$zstd_exe" ]] || { echo "Error: missing zstd executable artifact" >&2; exit 1; }
 
-# Package zstd executable
-ZSTD_ARCHIVE_NAME="zstd-${ZSTD_VERSION}_linux_${UNAME_ARCH}_${HOST_TARGET}.tar.gz"
-ZSTD_ARCHIVE_PATH="${INSTALL_PREFIX}/${ZSTD_ARCHIVE_NAME}"
-echo "Packaging zstd into ${ZSTD_ARCHIVE_NAME}..."
-pushd "$ZSTD_INSTALL_PREFIX/bin" > /dev/null
-tar -czf "${ZSTD_ARCHIVE_PATH}" zstd || {
-  echo "Error: Failed to create zstd archive" >&2
-  exit 1
+  local mold_src_dir="$BUILD_WORKSPACE/mold-${MOLD_VERSION}"
+  local mold_install_dir="$BUILD_WORKSPACE/mold-install"
+  local mold_tarball="$BUILD_WORKSPACE/mold-${MOLD_VERSION}.tar.gz"
+
+  log_step "Building mold v${MOLD_VERSION}"
+  rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
+
+  curl -fL --retry 5 --retry-delay 5 \
+    "https://github.com/rui314/mold/archive/refs/tags/v${MOLD_VERSION}.tar.gz" -o "$mold_tarball"
+  tar -xzf "$mold_tarball" -C "$BUILD_WORKSPACE"
+
+  cmake -S "$mold_src_dir" -B "$mold_src_dir/build" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$mold_install_dir" \
+    -DMOLD_LTO=ON \
+    -DMOLD_USE_SYSTEM_TBB=OFF \
+    -DMOLD_USE_SYSTEM_MIMALLOC=OFF \
+    -DMOLD_USE_MIMALLOC=ON
+
+  cmake --build "$mold_src_dir/build" --target install --config Release
+  compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"
+
+  rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
+  log_done
 }
-popd > /dev/null
 
-# Move archive to final location
-mv "${TEMP_ARCHIVE_PATH}" "${ARCHIVE_PATH}" || {
-  echo "Error: Failed to move archive to final location" >&2
-  exit 1
+build_mlir() {
+  : "${LLVM_PROJECT_REF:?LLVM_PROJECT_REF not set}"
+
+  local zstd_exe="$IO_DIR/zstd"
+  local mold_archive="$IO_DIR/mold.tar.zst"
+
+  [[ -x "$zstd_exe" ]] || { echo "Error: missing zstd executable artifact" >&2; exit 1; }
+  [[ -f "$mold_archive" ]] || { echo "Error: missing mold archive artifact" >&2; exit 1; }
+
+  local mold_extract_dir="$BUILD_WORKSPACE/mold-extract"
+  local mlir_install_dir="$BUILD_WORKSPACE/mlir-install"
+  local repo_dir="$BUILD_WORKSPACE/llvm-project"
+  local build_dir="$BUILD_WORKSPACE/build_mlir"
+
+  decompress_archive_to_dir "$mold_archive" "$mold_extract_dir" "$zstd_exe"
+
+  download_llvm_source "$LLVM_PROJECT_REF" "$repo_dir"
+
+  local mold_bin_dir="$mold_extract_dir/bin"
+  export PATH="$mold_bin_dir:$PATH"
+
+  log_step "CMake configure MLIR (${BUILD_TYPE})"
+  cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
+    -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DCMAKE_INSTALL_PREFIX="$mlir_install_dir" \
+    -DCMAKE_C_COMPILER=gcc \
+    -DCMAKE_CXX_COMPILER=g++ \
+    -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
+    -DLLVM_ENABLE_PROJECTS=mlir \
+    -DLLVM_BUILD_EXAMPLES=OFF \
+    -DLLVM_INCLUDE_EXAMPLES=OFF \
+    -DLLVM_BUILD_TESTS=OFF \
+    -DLLVM_INCLUDE_TESTS=OFF \
+    -DLLVM_INCLUDE_BENCHMARKS=OFF \
+    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DLLVM_ENABLE_LTO=OFF \
+    -DLLVM_ENABLE_RTTI=ON \
+    -DLLVM_ENABLE_LIBXML2=OFF \
+    -DLLVM_ENABLE_LIBEDIT=OFF \
+    -DLLVM_ENABLE_LIBPFM=OFF \
+    -DLLVM_INSTALL_UTILS=ON \
+    -DLLVM_OPTIMIZED_TABLEGEN=ON \
+    -DLLVM_ENABLE_WARNINGS=OFF \
+    -DLLVM_ENABLE_ZSTD=OFF \
+    -DLLVM_USE_LINKER=mold
+  log_done
+
+  log_step "Build and install MLIR (${BUILD_TYPE})"
+  cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
+  log_done
+
+  # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
+  cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"
+
+  local llvm_lib_dir="$mlir_install_dir/lib"
+  if [[ -x "$mlir_install_dir/bin/llvm-config" ]]; then
+    llvm_lib_dir="$("$mlir_install_dir"/bin/llvm-config --libdir)"
+  elif [[ -d "$mlir_install_dir/lib64" && ! -d "$mlir_install_dir/lib" ]]; then
+    llvm_lib_dir="$mlir_install_dir/lib64"
+  fi
+
+  log_step "Stripping debug symbols"
+  if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
+    find "$mlir_install_dir/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
+    find "$llvm_lib_dir" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
+  fi
+  log_done
+
+  compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
+
+  rm -rf "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
 }
 
-# Clean up zstd installation
-rm -rf "$ZSTD_INSTALL_PREFIX"
+case "$STAGE" in
+  build-zstd)
+    build_zstd
+    ;;
+  build-mold)
+    build_mold
+    ;;
+  build-mlir)
+    build_mlir
+    ;;
+  *)
+    echo "Error: unsupported STAGE '$STAGE'" >&2
+    exit 1
+    ;;
+esac

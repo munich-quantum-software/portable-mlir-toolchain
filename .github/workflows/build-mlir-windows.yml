@@ -11,33 +11,15 @@ on:
 permissions:
   contents: read
 
-env:
-  CMAKE_BUILD_PARALLEL_LEVEL: 4
-
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        runs-on: [windows-2025, windows-11-arm]
-    runs-on: ${{ matrix.runs-on }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
-        with:
-          python-version: 3.13
-          activate-environment: true
-          enable-cache: false
-      - name: Build
-        shell: pwsh
-        run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build.ps1 -llvm_project_ref ${{ inputs.llvm-project-ref }} -install_prefix ${{ github.workspace }}\llvm-install
-      - name: Upload archive
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: ${{ matrix.runs-on }}-archive
-          path: |
-            llvm-mlir_*.tar.zst
-            zstd-*.zip
-          if-no-files-found: error
+  windows-2025:
+    uses: ./.github/workflows/build-mlir-windows-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: windows-2025
+
+  windows-11-arm:
+    uses: ./.github/workflows/build-mlir-windows-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: windows-11-arm

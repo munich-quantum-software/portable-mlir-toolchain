@@ -1,0 +1,327 @@
+name: Build Portable MLIR Toolchain (Windows Runner)
+
+on:
+  workflow_call:
+    inputs:
+      llvm-project-ref:
+        description: "llvm-project ref or tag (e.g., llvmorg-22.1.0)"
+        required: true
+        type: string
+      runs-on:
+        description: "GitHub runner label (e.g., windows-2025)"
+        required: true
+        type: string
+      zstd-version:
+        description: "zstd version (e.g., 1.5.7)"
+        default: "1.5.7"
+        required: false
+        type: string
+      ninja-version:
+        description: "ninja version (e.g., 1.13.0)"
+        default: "1.13.0"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.gz
+  LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
+
+jobs:
+  build-zstd:
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build zstd"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Build zstd (Release)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -ZstdVersion ${{ inputs.zstd-version }}
+      - name: Upload zstd executable (final payload)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.ZSTD_ARCHIVE_PATH }}
+          if-no-files-found: error
+          archive: false
+
+  build-lld:
+    needs: build-zstd
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build lld"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Build lld (Release) with zstd
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }}
+      - name: Upload lld installation (temporary)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.LLD_ARCHIVE_PATH }}
+          if-no-files-found: error
+          archive: false
+
+  build-mlir-release:
+    needs: [build-lld]
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build MLIR (Release)"
+    env:
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Free up space on runner
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\cleanup-runner.ps1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Build and package MLIR (Release)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -BuildType Release
+      - name: Upload MLIR archive (Release)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.MLIR_ARCHIVE_PATH }}
+          if-no-files-found: error
+          archive: false
+
+  build-mlir-debug:
+    needs: [build-lld]
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Build MLIR (Debug)"
+    env:
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}_debug.tar.zst
+      MLIR_SPLIT_PART_SIZE_BYTES: 1900000000
+      MLIR_EXPECTED_SPLIT_PARTS: 2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Free up space on runner
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\cleanup-runner.ps1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download lld installation archive
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.LLD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Build and package MLIR (Debug)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
+            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -BuildType Debug
+      - name: Split MLIR archive (Debug) into release-safe parts
+        shell: pwsh
+        run: |
+          $archivePath = Resolve-Path $env:MLIR_ARCHIVE_PATH
+          $partSizeBytes = [int64]$env:MLIR_SPLIT_PART_SIZE_BYTES
+          $expectedPartCount = [int]$env:MLIR_EXPECTED_SPLIT_PARTS
+          $bufferSize = 4MB
+
+          $input = [System.IO.File]::OpenRead($archivePath)
+          $buffer = New-Object byte[] $bufferSize
+          $partIndex = 0
+
+          try {
+            while ($input.Position -lt $input.Length) {
+              $partPath = "{0}.part-{1:D3}" -f $archivePath, $partIndex
+              $output = [System.IO.File]::Open($partPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+              $written = 0L
+
+              try {
+                while ($written -lt $partSizeBytes -and $input.Position -lt $input.Length) {
+                  $remainingInPart = $partSizeBytes - $written
+                  $remainingInFile = $input.Length - $input.Position
+                  $toRead = [int][Math]::Min($buffer.Length, [Math]::Min($remainingInPart, $remainingInFile))
+                  $read = $input.Read($buffer, 0, $toRead)
+                  if ($read -le 0) { break }
+                  $output.Write($buffer, 0, $read)
+                  $written += $read
+                }
+              } finally {
+                $output.Dispose()
+              }
+
+              Write-Host "Created part: $partPath ($written bytes)"
+              $partIndex++
+            }
+          } finally {
+            $input.Dispose()
+          }
+
+          $parts = Get-ChildItem -File -Path . -Filter "$env:MLIR_ARCHIVE_PATH.part-*" | Sort-Object Name
+          if ($parts.Count -ne $expectedPartCount) {
+            $partNames = if ($parts.Count -gt 0) { ($parts | ForEach-Object Name) -join ', ' } else { '<none>' }
+            throw "Split produced $($parts.Count) part(s), expected $expectedPartCount. Found: $partNames"
+          }
+          Write-Host "Split produced expected $expectedPartCount parts."
+
+          Remove-Item $archivePath -Force
+      - name: Upload MLIR archive part 000 (Debug)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.MLIR_ARCHIVE_PATH }}.part-000
+          if-no-files-found: error
+          archive: false
+      - name: Upload MLIR archive part 001 (Debug)
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ env.MLIR_ARCHIVE_PATH }}.part-001
+          if-no-files-found: error
+          archive: false
+
+  test-release:
+    needs: [build-mlir-release]
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
+    env:
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download MLIR archive (Release)
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.MLIR_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Test installation (Release)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -BuildType Release
+
+  test-debug:
+    needs: [build-mlir-debug]
+    runs-on: ${{ inputs.runs-on }}
+    name: "${{ inputs.runs-on }}: Test MLIR Installation (Debug)"
+    env:
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}_debug.tar.zst
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+        with:
+          python-version: 3.14
+          activate-environment: true
+          enable-cache: false
+      - name: Download zstd executable
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ env.ZSTD_ARCHIVE_PATH }}
+          skip-decompress: true
+      - name: Download MLIR archive parts (Debug)
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: ${{ env.MLIR_ARCHIVE_PATH }}.part-*
+          merge-multiple: true
+          skip-decompress: true
+      - name: Reassemble MLIR archive (Debug)
+        shell: pwsh
+        run: |
+          $parts = Get-ChildItem -File -Path . -Filter "$env:MLIR_ARCHIVE_PATH.part-*" | Sort-Object Name
+          if ($parts.Count -eq 0) {
+            throw "No archive parts found for $env:MLIR_ARCHIVE_PATH"
+          }
+
+          $target = Join-Path (Get-Location) $env:MLIR_ARCHIVE_PATH
+          if (Test-Path $target) {
+            Remove-Item $target -Force
+          }
+
+          $output = [System.IO.File]::Open($target, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+          try {
+            foreach ($part in $parts) {
+              $input = [System.IO.File]::OpenRead($part.FullName)
+              try {
+                $input.CopyTo($output)
+              } finally {
+                $input.Dispose()
+              }
+            }
+          } finally {
+            $output.Dispose()
+          }
+      - name: Test installation (Debug)
+        shell: pwsh
+        run: |
+          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
+            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
+            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
+            -NinjaVersion ${{ inputs.ninja-version }} `
+            -BuildType Debug

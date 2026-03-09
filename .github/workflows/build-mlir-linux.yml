@@ -11,43 +11,15 @@ on:
 permissions:
   contents: read
 
-env:
-  CMAKE_BUILD_PARALLEL_LEVEL: 4
-
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        runs-on: [ubuntu-24.04, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runs-on }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Build
-        run: |
-          set -euo pipefail
+  ubuntu-24-04:
+    uses: ./.github/workflows/build-mlir-linux-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: ubuntu-24.04
 
-          # Prefer /mnt if available, but fall back to /workspace
-          INSTALL_DIR="${{ github.workspace }}/llvm-install"
-          if [[ -d "/mnt" && -w "/mnt" ]]; then
-            INSTALL_DIR="/mnt/llvm-install"
-          fi
-
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build.sh -r ${{ inputs.llvm-project-ref }} -p "${INSTALL_DIR}"
-
-          # Move archives back next to the workspace for artifact pickup
-          shopt -s nullglob
-          files=("${INSTALL_DIR}"/llvm-mlir_*.tar.zst "${INSTALL_DIR}"/zstd-*.tar.gz)
-          if (( ${#files[@]} == 0 )); then
-            echo "Error: No archive produced in ${INSTALL_DIR}" >&2
-            exit 1
-          fi
-          mv -v "${files[@]}" "${{ github.workspace }}"/
-      - name: Upload archive
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: ${{ matrix.runs-on }}-archive
-          path: |
-            llvm-mlir_*.tar.zst
-            zstd-*.tar.gz
-          if-no-files-found: error
+  ubuntu-24-04-arm:
+    uses: ./.github/workflows/build-mlir-linux-runner.yml
+    with:
+      llvm-project-ref: ${{ inputs.llvm-project-ref }}
+      runs-on: ubuntu-24.04-arm
