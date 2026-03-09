@@ -8,6 +8,31 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.03.09]
+
+### Distribution
+
+- LLVM tag: `llvmorg-22.1.0`
+- zstd version: `1.5.7`
+- mold version: `2.40.4`
+
+### Added
+
+- ✅ Add a small test suite to verify that the toolchain works as expected ([#30]) ([**@burgholzer**])
+- 🐧 Distribute the `mold` linker as part of the toolchain ([#30]) ([**@burgholzer**])
+- 🏁 Distribute the `lld` linker as part of the toolchain ([#30]) ([**@burgholzer**])
+
+### Changed
+
+- 🐧 Link Linux binaries with the `mold` linker ([#30]) ([**@burgholzer**])
+- 🍎 Link with Apple's system linker on macOS ([#30]) ([**@burgholzer**])
+- 🏁 Link with LLVM's `lld` linker on Windows ([#30]) ([**@burgholzer**])
+- ♻️ Modularize the build scripts ([#30]) ([**@burgholzer**])
+
+### Fixed
+
+- 🏁 Re-enable Windows debug builds and embed debug information directly ([#30]) ([**@burgholzer**])
+
 ## [2026.02.27]
 
 ### Distribution
@@ -94,7 +119,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.02.27...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.03.09...HEAD
+[2026.03.09]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.03.09
 [2026.02.27]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.02.27
 [2026.01.13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.13
 [2026.01.08]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.08
@@ -105,6 +131,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#30]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/30
 [#13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/13
 [#11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/11
 [#4]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/4
