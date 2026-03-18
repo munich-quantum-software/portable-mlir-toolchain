@@ -8,6 +8,14 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.03.18]
+
+### Distribution
+
+- LLVM tag: `llvmorg-22.1.1`
+- zstd version: `1.5.7`
+- mold version: `2.40.4`
+
 ## [2026.03.09]
 
 ### Distribution
@@ -123,7 +131,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.03.09...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.03.18...HEAD
+[2026.03.18]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.03.18
 [2026.03.09]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.03.09
 [2026.02.28]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.02.28
 [2026.01.13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.01.13
