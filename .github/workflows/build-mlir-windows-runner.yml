@@ -50,7 +50,7 @@ jobs:
             -NinjaVersion ${{ inputs.ninja-version }} `
             -ZstdVersion ${{ inputs.zstd-version }}
       - name: Upload zstd executable (final payload)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ env.ZSTD_ARCHIVE_PATH }}
           if-no-files-found: error
@@ -82,7 +82,7 @@ jobs:
             -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
             -NinjaVersion ${{ inputs.ninja-version }}
       - name: Upload lld installation (temporary)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ env.LLD_ARCHIVE_PATH }}
           if-no-files-found: error
@@ -127,7 +127,7 @@ jobs:
             -NinjaVersion ${{ inputs.ninja-version }} `
             -BuildType Release
       - name: Upload MLIR archive (Release)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ env.MLIR_ARCHIVE_PATH }}
           if-no-files-found: error
@@ -221,13 +221,13 @@ jobs:
 
           Remove-Item $archivePath -Force
       - name: Upload MLIR archive part 000 (Debug)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ env.MLIR_ARCHIVE_PATH }}.part-000
           if-no-files-found: error
           archive: false
       - name: Upload MLIR archive part 001 (Debug)
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ env.MLIR_ARCHIVE_PATH }}.part-001
           if-no-files-found: error
