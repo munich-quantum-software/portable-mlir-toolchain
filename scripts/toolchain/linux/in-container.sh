@@ -39,7 +39,7 @@ set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.5.7)}"
-MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 2.40.4)}"
+MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 2.41.0)}"
 NINJA_VERSION="${NINJA_VERSION:-1.13.0}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
