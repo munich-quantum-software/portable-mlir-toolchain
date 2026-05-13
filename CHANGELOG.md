@@ -8,6 +8,14 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.05.13]
+
+### Distribution
+
+- LLVM commit: `8f264586d7521b0e305ca7bb78825aa3382ffef7` ([same as Xanadu's PennyLane Catalyst `v0.15.0`](https://github.com/PennyLaneAI/catalyst/blob/c1c082c9bde5bb56deeeb1c18dd34d6ce05318dd/doc/releases/changelog-0.15.0.md#L613-L614))
+- zstd version: `1.5.7`
+- mold version: `2.41.0`
+
 ## [2026.04.14]
 
 ### Distribution
@@ -147,7 +155,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.04.14...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.05.13...HEAD
+[2026.05.13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.05.13
 [2026.04.14]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.04.14
 [2026.03.29]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.03.29
 [2026.03.18]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.03.18
