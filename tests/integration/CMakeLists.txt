@@ -35,9 +35,5 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 add_llvm_executable(hello_mlir main.cpp)
-target_link_libraries(hello_mlir PRIVATE
-        MLIRIR
-        MLIRSupport
-        LLVMSupport
-)
+target_link_libraries(hello_mlir PRIVATE MLIRIR MLIRSupport LLVMSupport)
 llvm_update_compile_flags(hello_mlir)
