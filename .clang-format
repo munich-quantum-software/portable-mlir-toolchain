@@ -1,0 +1,5 @@
+BasedOnStyle: LLVM
+ColumnLimit: 100
+IncludeBlocks: Regroup
+PointerAlignment: Left
+Standard: c++20

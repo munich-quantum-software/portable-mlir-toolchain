@@ -19,20 +19,21 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Verifier.h"
+
 #include "llvm/Support/raw_ostream.h"
 
 int main() {
-    mlir::MLIRContext context;
-    mlir::OpBuilder builder(&context);
+  mlir::MLIRContext context;
+  mlir::OpBuilder builder(&context);
 
-    auto loc = builder.getUnknownLoc();
-    auto module = mlir::ModuleOp::create(loc);
+  auto loc = builder.getUnknownLoc();
+  auto module = mlir::ModuleOp::create(loc);
 
-    if (mlir::failed(mlir::verify(module))) {
-        llvm::errs() << "Module verification failed\n";
-        return 1;
-    }
+  if (mlir::failed(mlir::verify(module))) {
+    llvm::errs() << "Module verification failed\n";
+    return 1;
+  }
 
-    llvm::outs() << "MLIR integration test passed!\n";
-    return 0;
+  llvm::outs() << "MLIR integration test passed!\n";
+  return 0;
 }
