@@ -18,7 +18,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🏁 Disable `LLVM_ENABLE_DIA_SDK` to ensure compatibility ([#57]) ([**@denialhaag**])
+- 🏁 Disable `LLVM_ENABLE_DIA_SDK` to ensure builds are compatible with Visual Studio 2022 and 2026 ([#57]) ([**@denialhaag**])
 
 ## [2026.06.10]
 
@@ -38,7 +38,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🏁 Use `windows-2022` runner for building to ensure compatibility ([#55]) ([**@denialhaag**])
+- 🏁 Use `windows-2022` runner for building to ensure builds are compatible with Visual Studio 2022 and 2026 ([#55]) ([**@denialhaag**])
 
 ## [2026.05.18]
 
