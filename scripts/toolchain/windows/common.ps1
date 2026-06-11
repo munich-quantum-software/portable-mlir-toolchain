@@ -455,7 +455,6 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_INCLUDE_TESTS=OFF',
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
-        '-DLLVM_ENABLE_DIA_SDK=OFF',
         '-DLLVM_ENABLE_LTO=OFF',
         '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_ENABLE_LIBXML2=OFF',
@@ -464,7 +463,10 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_INSTALL_UTILS=ON',
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
-        '-DLLVM_ENABLE_ZSTD=OFF'
+        '-DLLVM_ENABLE_ZSTD=OFF',
+        # DIA SDK creates compatibility issues on Windows
+        # See https://github.com/llvm/llvm-project/issues/86250
+        '-DLLVM_ENABLE_DIA_SDK=OFF'
     )
 
     if ($BuildType -eq 'Debug') {
