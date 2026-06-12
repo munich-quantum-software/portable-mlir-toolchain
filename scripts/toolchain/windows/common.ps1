@@ -464,6 +464,9 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
         '-DLLVM_ENABLE_ZSTD=OFF',
+        '-DCMAKE_C_VISIBILITY_PRESET=hidden',
+        '-DCMAKE_CXX_VISIBILITY_PRESET=hidden',
+        '-DCMAKE_VISIBILITY_INLINES_HIDDEN=ON',
         # DIA SDK creates compatibility issues on Windows
         # See https://github.com/llvm/llvm-project/issues/86250
         '-DLLVM_ENABLE_DIA_SDK=OFF'

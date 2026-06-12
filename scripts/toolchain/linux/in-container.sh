@@ -222,7 +222,10 @@ build_mlir() {
     -DLLVM_OPTIMIZED_TABLEGEN=ON \
     -DLLVM_ENABLE_WARNINGS=OFF \
     -DLLVM_ENABLE_ZSTD=OFF \
-    -DLLVM_USE_LINKER=mold
+    -DLLVM_USE_LINKER=mold \
+    -DCMAKE_C_VISIBILITY_PRESET=hidden \
+    -DCMAKE_CXX_VISIBILITY_PRESET=hidden \
+    -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON
   log_done
 
   log_step "Build and install MLIR (${BUILD_TYPE})"
