@@ -464,6 +464,15 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_OPTIMIZED_TABLEGEN=ON',
         '-DLLVM_ENABLE_WARNINGS=OFF',
         '-DLLVM_ENABLE_ZSTD=OFF',
+        '-DCMAKE_C_VISIBILITY_PRESET=hidden',
+        '-DCMAKE_CXX_VISIBILITY_PRESET=hidden',
+        '-DCMAKE_VISIBILITY_INLINES_HIDDEN=ON',
+        '-DMLIR_ENABLE_BINDINGS_PYTHON=ON',
+        '-DMLIR_ENABLE_PYTHON_STABLE_ABI=ON',
+        '-DPython_FIND_VIRTUALENV=FIRST',
+        '-DPython3_FIND_VIRTUALENV=FIRST',
+        '-DMLIR_DETECT_PYTHON_ENV_PRIME_SEARCH=OFF',
+        '-DPython3_EXECUTABLE=python3',
         # DIA SDK creates compatibility issues on Windows
         # See https://github.com/llvm/llvm-project/issues/86250
         '-DLLVM_ENABLE_DIA_SDK=OFF'

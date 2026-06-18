@@ -199,6 +199,12 @@ build_mlir() {
   local mold_bin_dir="$mold_extract_dir/bin"
   export PATH="$mold_bin_dir:$PATH"
 
+  log_step "Setting up Python environment for MLIR build"
+  uv venv "$repo_dir/.venv" -p 3.14
+  source "$repo_dir/.venv/bin/activate"
+  uv pip install -r "$repo_dir/mlir/python/requirements.txt"
+  log_done
+
   log_step "CMake configure MLIR (${BUILD_TYPE})"
   cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
@@ -222,7 +228,16 @@ build_mlir() {
     -DLLVM_OPTIMIZED_TABLEGEN=ON \
     -DLLVM_ENABLE_WARNINGS=OFF \
     -DLLVM_ENABLE_ZSTD=OFF \
-    -DLLVM_USE_LINKER=mold
+    -DLLVM_USE_LINKER=mold \
+    -DCMAKE_C_VISIBILITY_PRESET=hidden \
+    -DCMAKE_CXX_VISIBILITY_PRESET=hidden \
+    -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON \
+    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+    -DMLIR_ENABLE_PYTHON_STABLE_ABI=ON \
+    -DPython_FIND_VIRTUALENV=FIRST \
+    -DPython3_FIND_VIRTUALENV=FIRST \
+    -DMLIR_DETECT_PYTHON_ENV_PRIME_SEARCH=OFF \
+    -DPython3_EXECUTABLE="$(which python3)"
   log_done
 
   log_step "Build and install MLIR (${BUILD_TYPE})"
