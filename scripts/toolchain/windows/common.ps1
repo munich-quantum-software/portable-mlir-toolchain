@@ -456,7 +456,6 @@ function Get-LlvmCommonCMakeArgs {
         '-DLLVM_INCLUDE_BENCHMARKS=OFF',
         '-DLLVM_ENABLE_ASSERTIONS=ON',
         '-DLLVM_ENABLE_LTO=OFF',
-        '-DLLVM_ENABLE_RTTI=ON',
         '-DLLVM_ENABLE_LIBXML2=OFF',
         '-DLLVM_ENABLE_LIBEDIT=OFF',
         '-DLLVM_ENABLE_LIBPFM=OFF',

@@ -8,6 +8,11 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Changed
+
+- 🛠️ Build LLVM and MLIR without runtime type information ([#74])
+  ([**@burgholzer**])
+
 ## [2026.07.13]
 
 ### Distribution
@@ -233,6 +238,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#74]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/74
 [#57]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/57
 [#55]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/55
 [#30]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/30

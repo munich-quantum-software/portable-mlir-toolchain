@@ -21,6 +21,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(MLIR REQUIRED CONFIG)
 
+if(LLVM_ENABLE_RTTI)
+  message(FATAL_ERROR "The portable MLIR toolchain must be built without RTTI")
+endif()
+
 message(STATUS "Found MLIR ${MLIR_PACKAGE_VERSION} in: ${MLIR_DIR}")
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
