@@ -8,6 +8,10 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Changed
+
+- 🛠️ Build LLVM and MLIR without runtime type information.
+
 ## [2026.07.13]
 
 ### Distribution
