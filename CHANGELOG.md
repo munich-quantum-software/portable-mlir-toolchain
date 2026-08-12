@@ -39,7 +39,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🏁 Disable `LLVM_ENABLE_DIA_SDK` to ensure builds are compatible with Visual Studio 2022 and 2026 ([#57]) ([**@denialhaag**])
+- 🏁 Disable `LLVM_ENABLE_DIA_SDK` to ensure builds are compatible with Visual
+  Studio 2022 and 2026 ([#57]) ([**@denialhaag**])
 
 ## [2026.06.10]
 
@@ -59,7 +60,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🏁 Use `windows-2022` runner for building to ensure builds are compatible with Visual Studio 2022 and 2026 ([#55]) ([**@denialhaag**])
+- 🏁 Use `windows-2022` runner for building to ensure builds are compatible with
+  Visual Studio 2022 and 2026 ([#55]) ([**@denialhaag**])
 
 ## [2026.05.18]
 
@@ -81,7 +83,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Distribution
 
-- LLVM commit: `8f264586d7521b0e305ca7bb78825aa3382ffef7` ([same as Xanadu's PennyLane Catalyst `v0.15.0`](https://github.com/PennyLaneAI/catalyst/blob/c1c082c9bde5bb56deeeb1c18dd34d6ce05318dd/doc/releases/changelog-0.15.0.md#L613-L614))
+- LLVM commit: `8f264586d7521b0e305ca7bb78825aa3382ffef7`
+  ([same as Xanadu's PennyLane Catalyst `v0.15.0`](https://github.com/PennyLaneAI/catalyst/blob/c1c082c9bde5bb56deeeb1c18dd34d6ce05318dd/doc/releases/changelog-0.15.0.md#L613-L614))
 - zstd version: `1.5.7`
 - mold version: `2.41.0`
 
@@ -119,9 +122,12 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Added
 
-- ✅ Add a small test suite to verify that the toolchain works as expected ([#30]) ([**@burgholzer**])
-- 🐧 Distribute the `mold` linker as part of the toolchain ([#30]) ([**@burgholzer**])
-- 🏁 Distribute the `lld` linker as part of the toolchain ([#30]) ([**@burgholzer**])
+- ✅ Add a small test suite to verify that the toolchain works as expected
+  ([#30]) ([**@burgholzer**])
+- 🐧 Distribute the `mold` linker as part of the toolchain ([#30])
+  ([**@burgholzer**])
+- 🏁 Distribute the `lld` linker as part of the toolchain ([#30])
+  ([**@burgholzer**])
 
 ### Changed
 
@@ -132,7 +138,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Fixed
 
-- 🏁 Re-enable Windows debug builds and embed debug information directly ([#30]) ([**@burgholzer**])
+- 🏁 Re-enable Windows debug builds and embed debug information directly ([#30])
+  ([**@burgholzer**])
 
 ## [2026.02.28]
 
@@ -149,7 +156,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Distribution
 
-- LLVM commit: `113f01aa82d055410f22a9d03b3468fa68600589` ([same as Xanadu's PennyLane Catalyst `v0.14.0`](https://github.com/PennyLaneAI/catalyst/blob/7601be537f7e18fb880925743b6c13f429accb50/doc/releases/changelog-0.14.0.md#L516))
+- LLVM commit: `113f01aa82d055410f22a9d03b3468fa68600589`
+  ([same as Xanadu's PennyLane Catalyst `v0.14.0`](https://github.com/PennyLaneAI/catalyst/blob/7601be537f7e18fb880925743b6c13f429accb50/doc/releases/changelog-0.14.0.md#L516))
 - zstd version: `1.5.7`
 
 ## [2026.01.08]
@@ -161,14 +169,17 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Fixed
 
-- 🐛 Disable zstd support for the LLVM distribution again ([#13]) ([**@burgholzer**])
+- 🐛 Disable zstd support for the LLVM distribution again ([#13])
+  ([**@burgholzer**])
 
 ## [2026.01.07]
 
 > [!NOTE]
 > This release has been removed due to another oversight in packaging `zstd`.
-> The distribution of LLVM would still require the static `zstd` library to be available at CMake configuration time, but we never ship it.
-> This has been fixed in the latest release by disabling zstd support for the LLVM distribution explicitly.
+> The distribution of LLVM would still require the static `zstd` library to be
+> available at CMake configuration time, but we never ship it. This has been
+> fixed in the latest release by disabling zstd support for the LLVM
+> distribution explicitly.
 
 ### Distribution
 
@@ -177,17 +188,20 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Fixed
 
-- 🐛 Ensure that `zstd` is statically linked on all platforms ([#11]) ([**@burgholzer**])
+- 🐛 Ensure that `zstd` is statically linked on all platforms ([#11])
+  ([**@burgholzer**])
 
 ### Changed
 
 - 📦 Only distribute `zstd` once for Windows ([#11]) ([**@burgholzer**])
-- 📦 Use `.tar.gz` instead of `.tar` for `zstd` binary archives on Linux and macOS to follow standard format conventions ([#11]) ([**@burgholzer**])
+- 📦 Use `.tar.gz` instead of `.tar` for `zstd` binary archives on Linux and
+  macOS to follow standard format conventions ([#11]) ([**@burgholzer**])
 
 ## [2026.01.05]
 
 > [!NOTE]
-> This release has been removed due to an oversight in packaging `zstd` that has subsequently been fixed.
+> This release has been removed due to an oversight in packaging `zstd` that has
+> subsequently been fixed.
 
 ### Distribution
 
@@ -195,20 +209,25 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Added
 
-- 📦 Package and upload `zstd` as a standalone asset for all platforms ([#4]) ([**@burgholzer**])
+- 📦 Package and upload `zstd` as a standalone asset for all platforms ([#4])
+  ([**@burgholzer**])
 - ✨🚸 Add Debug builds for Windows ([#4]) ([**@burgholzer**])
 
 ### Changed
 
-- 📦 Build the `lld` linker on all platforms and use it as a linker for building LLVM ([#4]) ([**@burgholzer**])
-- 📦 Build `zstd` from source on all platforms and use it for building LLVM and compressing the final archives ([#4]) ([**@burgholzer**])
-- 📉 Optimize size of distributed toolchain by using more aggressive compression (`--long=30`) ([#4]) ([**@burgholzer**])
+- 📦 Build the `lld` linker on all platforms and use it as a linker for building
+  LLVM ([#4]) ([**@burgholzer**])
+- 📦 Build `zstd` from source on all platforms and use it for building LLVM and
+  compressing the final archives ([#4]) ([**@burgholzer**])
+- 📉 Optimize size of distributed toolchain by using more aggressive compression
+  (`--long=30`) ([#4]) ([**@burgholzer**])
 
 ## [2025.12.23]
 
 ### Distribution
 
-- LLVM commit: `f8cb7987c64dcffb72414a40560055cb717dbf74` ([same as Xanadu's PennyLane Catalyst `v0.13.0`](https://github.com/PennyLaneAI/catalyst/blob/afb608306603b6269e50f008f6215df89feb23c0/doc/releases/changelog-0.13.0.md?plain=1#L440))
+- LLVM commit: `f8cb7987c64dcffb72414a40560055cb717dbf74`
+  ([same as Xanadu's PennyLane Catalyst `v0.13.0`](https://github.com/PennyLaneAI/catalyst/blob/afb608306603b6269e50f008f6215df89feb23c0/doc/releases/changelog-0.13.0.md?plain=1#L440))
 
 ## [2025.12.22]
 
@@ -220,7 +239,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 ### Added
 
-- 🚚 Move build setup from [munich-quantum-software/setup-mlir] ([#1]) ([**@denialhaag**], [**@burgholzer**])
+- 🚚 Move build setup from [munich-quantum-software/setup-mlir] ([#1])
+  ([**@denialhaag**], [**@burgholzer**])
 
 <!-- Version links -->
 
