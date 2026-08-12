@@ -8,6 +8,10 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Changed
+
+- ⬆️ Update default mold version to 2.42.0 ([#76]) ([**@denialhaag**])
+
 ## [2026.08.11]
 
 ### Distribution
@@ -18,7 +22,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🛠️ Build LLVM and MLIR without runtime type information ([#74])
+- 🛠️ Build LLVM and MLIR without runtime type information (RTTI) ([#74])
   ([**@burgholzer**])
 
 ## [2026.07.13]
@@ -95,6 +99,10 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 - LLVM tag: `llvmorg-22.1.3`
 - zstd version: `1.5.7`
 - mold version: `2.41.0`
+
+### Changed
+
+- ⬆️ Update default mold version to 2.41.0 ([#40]) ([**@denialhaag**])
 
 ## [2026.03.29]
 
@@ -267,9 +275,11 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#76]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/76
 [#74]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/74
 [#57]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/57
 [#55]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/55
+[#40]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/40
 [#30]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/30
 [#28]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/28
 [#13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/13
