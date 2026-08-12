@@ -17,8 +17,8 @@ on:
         required: false
         type: string
       mold-version:
-        description: "mold version (e.g., 2.41.0)"
-        default: "2.41.0"
+        description: "mold version (e.g., 2.42.0)"
+        default: "2.42.0"
         required: false
         type: string
 
