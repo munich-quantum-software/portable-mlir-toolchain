@@ -36,6 +36,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build zstd"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -44,11 +46,14 @@ jobs:
           enable-cache: false
       - name: Build zstd (Release)
         shell: pwsh
+        env:
+          NINJA_VERSION: ${{ inputs.ninja-version }}
+          ZSTD_VERSION: ${{ inputs.zstd-version }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-zstd.ps1 `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }} `
-            -ZstdVersion ${{ inputs.zstd-version }}
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\build-zstd.ps1" `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION `
+            -ZstdVersion $env:ZSTD_VERSION
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -62,6 +67,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build lld"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -75,12 +82,15 @@ jobs:
           skip-decompress: true
       - name: Build lld (Release) with zstd
         shell: pwsh
+        env:
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-lld.ps1 `
-            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }}
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\build-lld.ps1" `
+            -LlvmProjectRef $env:LLVM_PROJECT_REF `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -LldArchivePath $env:LLD_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION
       - name: Upload lld installation (temporary)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -96,10 +106,12 @@ jobs:
       MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Free up space on runner
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\cleanup-runner.ps1
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\cleanup-runner.ps1"
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -118,13 +130,16 @@ jobs:
           skip-decompress: true
       - name: Build and package MLIR (Release)
         shell: pwsh
+        env:
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
-            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
-            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }} `
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\build-mlir.ps1" `
+            -LlvmProjectRef $env:LLVM_PROJECT_REF `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -LldArchivePath $env:LLD_ARCHIVE_PATH `
+            -MlirArchivePath $env:MLIR_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION `
             -BuildType Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -143,10 +158,12 @@ jobs:
       MLIR_EXPECTED_SPLIT_PARTS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Free up space on runner
         shell: pwsh
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\cleanup-runner.ps1
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\cleanup-runner.ps1"
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -165,13 +182,16 @@ jobs:
           skip-decompress: true
       - name: Build and package MLIR (Debug)
         shell: pwsh
+        env:
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\build-mlir.ps1 `
-            -LlvmProjectRef ${{ inputs.llvm-project-ref }} `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -LldArchivePath ${{ env.LLD_ARCHIVE_PATH }} `
-            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }} `
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\build-mlir.ps1" `
+            -LlvmProjectRef $env:LLVM_PROJECT_REF `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -LldArchivePath $env:LLD_ARCHIVE_PATH `
+            -MlirArchivePath $env:MLIR_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION `
             -BuildType Debug
       - name: Split MLIR archive (Debug) into release-safe parts
         shell: pwsh
@@ -241,6 +261,8 @@ jobs:
       MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -259,21 +281,27 @@ jobs:
           skip-decompress: true
       - name: Test installation (Release)
         shell: pwsh
+        env:
+          NINJA_VERSION: ${{ inputs.ninja-version }}
+          RUNS_ON: ${{ inputs.runs-on }}
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }} `
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\test-installation.ps1" `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -MlirArchivePath $env:MLIR_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION `
             -BuildType Release
 
   test-debug:
     needs: [build-mlir-debug]
-    runs-on: ${{ inputs.runs-on }}
-    name: "${{ inputs.runs-on }}: Test MLIR Installation (Debug)"
+    runs-on: $env:RUNS_ON
+    name: "$env:RUNS_ON: Test MLIR Installation (Debug)"
     env:
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}_debug.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_$env:LLVM_PROJECT_REF_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}_debug.tar.zst
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -319,9 +347,11 @@ jobs:
           }
       - name: Test installation (Debug)
         shell: pwsh
+        env:
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          & ${{ github.workspace }}\scripts\toolchain\windows\test-installation.ps1 `
-            -ZstdArchivePath ${{ env.ZSTD_ARCHIVE_PATH }} `
-            -MlirArchivePath ${{ env.MLIR_ARCHIVE_PATH }} `
-            -NinjaVersion ${{ inputs.ninja-version }} `
+          & "$env:GITHUB_WORKSPACE\scripts\toolchain\windows\test-installation.ps1" `
+            -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
+            -MlirArchivePath $env:MLIR_ARCHIVE_PATH `
+            -NinjaVersion $env:NINJA_VERSION `
             -BuildType Debug

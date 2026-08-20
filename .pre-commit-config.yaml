@@ -31,6 +31,16 @@ repos:
         priority: 0
       - id: check-readthedocs
         priority: 0
+      - id: check-renovate
+        additional_dependencies: [json5]
+        priority: 0
+
+  ## Check for security issues in GitHub Actions workflows
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.29.0
+    hooks:
+      - id: zizmor
+        priority: 0
 
   ## Check for common capitalization mistakes
   - repo: local
