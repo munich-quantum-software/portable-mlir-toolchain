@@ -36,6 +36,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build zstd"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -43,11 +45,14 @@ jobs:
           activate-environment: true
           enable-cache: false
       - name: Build zstd
+        env:
+          ZSTD_VERSION: ${{ inputs.zstd-version }}
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/macos/build-zstd.sh \
-            -a ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -v ${{ inputs.zstd-version }} \
-            -n ${{ inputs.ninja-version }}
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/macos/build-zstd.sh \
+            -a "$ZSTD_ARCHIVE_PATH" \
+            -v "$ZSTD_VERSION" \
+            -n "$NINJA_VERSION"
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -61,6 +66,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -73,12 +80,15 @@ jobs:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Build and package MLIR (Release)
+        env:
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/macos/build-mlir.sh \
-            -r ${{ inputs.llvm-project-ref }} \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -a ${{ env.MLIR_ARCHIVE_PATH }} \
-            -n ${{ inputs.ninja-version }} \
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/macos/build-mlir.sh \
+            -r "$LLVM_PROJECT_REF" \
+            -z "$ZSTD_ARCHIVE_PATH" \
+            -a "$MLIR_ARCHIVE_PATH" \
+            -n "$NINJA_VERSION" \
             -b Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -93,6 +103,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -110,9 +122,11 @@ jobs:
           name: ${{ env.MLIR_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Test installation (Release)
+        env:
+          NINJA_VERSION: ${{ inputs.ninja-version }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/macos/test-installation.sh \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -a ${{ env.MLIR_ARCHIVE_PATH }} \
-            -n ${{ inputs.ninja-version }} \
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/macos/test-installation.sh \
+            -z "$ZSTD_ARCHIVE_PATH" \
+            -a "$MLIR_ARCHIVE_PATH" \
+            -n "$NINJA_VERSION" \
             -b Release

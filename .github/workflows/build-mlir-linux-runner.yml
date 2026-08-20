@@ -37,6 +37,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build zstd"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -44,10 +46,12 @@ jobs:
           activate-environment: true
           enable-cache: false
       - name: Build zstd
+        env:
+          ZSTD_VERSION: ${{ inputs.zstd-version }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build-zstd.sh \
-            -a ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -v ${{ inputs.zstd-version }}
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/linux/build-zstd.sh \
+            -a "$ZSTD_ARCHIVE_PATH" \
+            -v "$ZSTD_VERSION"
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -61,6 +65,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build mold"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -73,11 +79,13 @@ jobs:
           name: ${{ env.ZSTD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Build mold
+        env:
+          MOLD_VERSION: ${{ inputs.mold-version }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build-mold.sh \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -a ${{ env.MOLD_ARCHIVE_PATH }} \
-            -v ${{ inputs.mold-version }}
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/linux/build-mold.sh \
+            -z "$ZSTD_ARCHIVE_PATH" \
+            -a "$MOLD_ARCHIVE_PATH" \
+            -v "$MOLD_VERSION"
       - name: Upload mold installation
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -91,6 +99,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Build MLIR (Release)"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -108,12 +118,14 @@ jobs:
           name: ${{ env.MOLD_ARCHIVE_PATH }}
           skip-decompress: true
       - name: Build and package MLIR (Release)
+        env:
+          LLVM_PROJECT_REF: ${{ inputs.llvm-project-ref }}
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/linux/build-mlir.sh \
-            -r ${{ inputs.llvm-project-ref }} \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -m ${{ env.MOLD_ARCHIVE_PATH }} \
-            -a ${{ env.MLIR_ARCHIVE_PATH }} \
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/linux/build-mlir.sh \
+            -r "$LLVM_PROJECT_REF" \
+            -z "$ZSTD_ARCHIVE_PATH" \
+            -m "$MOLD_ARCHIVE_PATH" \
+            -a "$MLIR_ARCHIVE_PATH" \
             -b Release
       - name: Upload MLIR archive (Release)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -128,6 +140,8 @@ jobs:
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release)"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -146,7 +160,7 @@ jobs:
           skip-decompress: true
       - name: Test installation (Release)
         run: |
-          bash ${{ github.workspace }}/scripts/toolchain/linux/test-installation.sh \
-            -z ${{ env.ZSTD_ARCHIVE_PATH }} \
-            -a ${{ env.MLIR_ARCHIVE_PATH }} \
+          bash "$GITHUB_WORKSPACE"/scripts/toolchain/linux/test-installation.sh \
+            -z "$ZSTD_ARCHIVE_PATH" \
+            -a "$MLIR_ARCHIVE_PATH" \
             -b Release
