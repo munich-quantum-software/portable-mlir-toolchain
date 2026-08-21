@@ -57,6 +57,10 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef -RepoDir (Join-Path $tempRoot 'llvm-project')
         $cleanupPaths += $repoDir
 
+        Write-Step "Setting up Python environment for MLIR build"
+        Invoke-Checked -Command 'uv' -Arguments @('pip', 'install', "-r", (Join-Path $repoDir 'mlir\python\requirements.txt')) -ErrorMessage 'Failed to install requirements via uv'
+        Write-Done
+
         Invoke-InDirectory -Path $repoDir -ScriptBlock {
             $cmakeArgs = Get-LlvmCommonCMakeArgs `
                 -BuildDir $tempBuildDir `
