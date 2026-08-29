@@ -26,6 +26,11 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 - 🍎 Stop distributing x86 macOS binaries ([#87]) ([**@denialhaag**])
 
+### Fixed
+
+- 🐛 Retain LLVM `libc` sources required to configure LLVM 23 ([#88])
+  ([**@denialhaag**])
+
 ## [2026.08.11]
 
 ### Distribution
@@ -290,6 +295,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#88]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/88
 [#87]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/87
 [#76]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/76
 [#74]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/74
