@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-22.1.7)"
+        description: "llvm-project ref or tag (e.g., llvmorg-23.1.0)"
         required: true
         type: string
       release:
@@ -76,21 +76,21 @@ jobs:
     if: fromJson(needs.change-detection.outputs.run-linux)
     uses: ./.github/workflows/build-mlir-linux.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.7' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 
   macos:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-macos)
     uses: ./.github/workflows/build-mlir-macos.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.7' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 
   windows:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
     uses: ./.github/workflows/build-mlir-windows.yml
     with:
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-22.1.7' }}
+      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 
   # this job does nothing and is only used for branch protection
   required-checks-pass:
