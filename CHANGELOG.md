@@ -28,6 +28,8 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Fixed
 
+- 🏁 Disable precompiled headers for Windows Debug builds ([#88])
+  ([**@denialhaag**])
 - 🐛 Retain LLVM `libc` sources required to configure LLVM 23 ([#88])
   ([**@denialhaag**])
 
