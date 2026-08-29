@@ -18,12 +18,13 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🍎 Build macOS binaries on the macOS 26 runner.
+- 🍎 Build macOS binaries on the `macos-26` runner ([#87])
+  ([**@denialhaag**])
 - ⬆️ Update default mold version to 2.42.0 ([#76]) ([**@denialhaag**])
 
 ### Removed
 
-- 🍎 Stop distributing x86 macOS binaries.
+- 🍎 Stop distributing x86 macOS binaries ([#87]) ([**@denialhaag**])
 
 ## [2026.08.11]
 
@@ -289,6 +290,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#87]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/87
 [#76]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/76
 [#74]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/74
 [#57]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/57
