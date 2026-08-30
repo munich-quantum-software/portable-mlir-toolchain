@@ -8,7 +8,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
-## [2026.08.30]
+## [2026.08.31]
 
 ### Distribution
 
@@ -275,8 +275,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.08.30...HEAD
-[2026.08.30]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.08.30
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.08.31...HEAD
+[2026.08.31]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.08.31
 [2026.08.11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.08.11
 [2026.07.13]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.07.13
 [2026.06.12]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.06.12
