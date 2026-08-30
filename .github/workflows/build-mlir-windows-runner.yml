@@ -192,7 +192,8 @@ jobs:
             -LldArchivePath $env:LLD_ARCHIVE_PATH `
             -MlirArchivePath $env:MLIR_ARCHIVE_PATH `
             -NinjaVersion $env:NINJA_VERSION `
-            -BuildType Debug
+            -BuildType Debug `
+            -ZstdCompressionLevel 15
       - name: Split MLIR archive (Debug) into release-safe parts
         shell: pwsh
         run: |
