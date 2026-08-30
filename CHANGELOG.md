@@ -18,8 +18,7 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Changed
 
-- 🍎 Build macOS binaries on the `macos-26` runner ([#87])
-  ([**@denialhaag**])
+- 🍎 Build macOS binaries on the `macos-26` runner ([#87]) ([**@denialhaag**])
 - ⬆️ Update default mold version to 2.42.0 ([#76]) ([**@denialhaag**])
 
 ### Removed
@@ -28,12 +27,9 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ### Fixed
 
-- 🏁 Avoid Windows Debug build timeouts by lowering the zstd compression level
-  ([#88]) ([**@denialhaag**])
-- 🏁 Disable precompiled headers for Windows Debug builds ([#88])
+- 🏁 Fix Windows Debug linker failures and packaging timeouts ([#88])
   ([**@denialhaag**])
-- 🐛 Retain LLVM `libc` sources required to configure LLVM 23 ([#88])
-  ([**@denialhaag**])
+- 🐛 Retain `libc` required to configure LLVM 23 ([#88]) ([**@denialhaag**])
 
 ## [2026.08.11]
 
