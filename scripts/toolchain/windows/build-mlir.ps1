@@ -19,7 +19,8 @@ param(
     [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
     [string]$NinjaVersion = '1.13.0',
-    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
+    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release',
+    [ValidateRange(1, 19)][int]$ZstdCompressionLevel = 19
 )
 
 $ErrorActionPreference = 'Stop'
@@ -78,7 +79,11 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         # Vendor the lld installation into the MLIR archive to ensure lld is available in the test environment without needing to set up additional PATH entries.
         Copy-Item -Path (Join-Path $tempLldExtractDir 'bin\*') -Destination (Join-Path $tempInstallDir 'bin') -Recurse -Force
 
-        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
+        Compress-DirectoryToArchive `
+            -SourceDir $tempInstallDir `
+            -ArchivePath $MlirArchivePath `
+            -ZstdExePath $resolvedZstdExePath `
+            -CompressionLevel $ZstdCompressionLevel
     } finally {
         Remove-PathsIfExists -Paths $cleanupPaths
     }

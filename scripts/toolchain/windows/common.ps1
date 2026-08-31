@@ -414,7 +414,6 @@ function Initialize-LlvmSourceTree {
             '--exclude=flang',
             '--exclude=openmp',
             '--exclude=libclc',
-            '--exclude=libc',
             '--exclude=llvm/test',
             '--exclude=llvm/unittests',
             '--exclude=mlir/test',
@@ -470,6 +469,7 @@ function Get-LlvmCommonCMakeArgs {
 
     if ($BuildType -eq 'Debug') {
         $cmakeArgs += @(
+            '-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON',
             '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
             '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
         )

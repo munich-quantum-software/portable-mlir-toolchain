@@ -100,7 +100,6 @@ download_llvm_source() {
       --exclude='flang' \
       --exclude='openmp' \
       --exclude='libclc' \
-      --exclude='libc' \
       --exclude='llvm/test' \
       --exclude='llvm/unittests' \
       --exclude='mlir/test' \
