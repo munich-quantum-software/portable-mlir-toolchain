@@ -48,3 +48,8 @@ Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF` in the
 environment. Release CI builds and tests both variants. Distributed static
 libraries remain native objects, with LTO disabled, so consumers can use their
 supported compiler toolchain rather than requiring matching LTO bitcode.
+
+Linux SDK builds use the same manylinux 2.28 image digests as cibuildwheel 4.2.0
+(image revision `2026.08.04-1`). Consumers that require a matching compiler must
+pin these images explicitly; upgrading cibuildwheel must not silently change the
+compiler used with an existing SDK. Update SDK and consumer pins together.

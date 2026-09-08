@@ -23,9 +23,9 @@ manylinux_image_for_host() {
   local arch
   arch="$(uname -m)"
   if [[ "$arch" == "aarch64" || "$arch" == "arm64" ]]; then
-    echo "quay.io/pypa/manylinux_2_28_aarch64:2026.02.28-1"
+    echo "quay.io/pypa/manylinux_2_28_aarch64@sha256:52e4da6e9348db7cd0b529a827623b62b7c1fe867ba515ae752fa13d41f7f46e"
   else
-    echo "quay.io/pypa/manylinux_2_28_x86_64:2026.02.28-1"
+    echo "quay.io/pypa/manylinux_2_28_x86_64@sha256:012f4a50472412f18bb2b450c1cce7158434cfae4ae878591c2748a13a30c2be"
   fi
 }
 
