@@ -68,6 +68,7 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
             -S $integrationSrc `
             -B $testBuildDir `
             '-DCMAKE_BUILD_TYPE=Release' `
+            "-DEXPECTED_LLVM_ASSERTIONS=$(if ($env:LLVM_ENABLE_ASSERTIONS) { $env:LLVM_ENABLE_ASSERTIONS } else { 'ON' })" `
             "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
             '-DLLVM_ENABLE_LLD=ON'
         if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }

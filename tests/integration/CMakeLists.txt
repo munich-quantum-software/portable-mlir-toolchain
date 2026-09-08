@@ -21,6 +21,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(MLIR REQUIRED CONFIG)
 
+if(DEFINED EXPECTED_LLVM_ASSERTIONS AND NOT "${LLVM_ENABLE_ASSERTIONS}" STREQUAL
+                                        "${EXPECTED_LLVM_ASSERTIONS}")
+  message(FATAL_ERROR "Installed LLVM assertions do not match the requested variant")
+endif()
+
 if(LLVM_ENABLE_RTTI)
   message(FATAL_ERROR "The portable MLIR toolchain must be built without RTTI")
 endif()
