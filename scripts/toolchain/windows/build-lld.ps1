@@ -51,7 +51,6 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         Invoke-InDirectory -Path $repoDir -ScriptBlock {
             $cmakeArgs = Get-LlvmCommonCMakeArgs `
                 -BuildDir $tempBuildDir `
-                -BuildType 'Release' `
                 -InstallPrefix $tempInstallDir `
                 -HostTarget $archInfo.HostTarget `
                 -Projects 'lld'
