@@ -37,6 +37,22 @@ done
 # shellcheck source=./common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 
+if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" && "${MQT_MANYLINUX_TEST:-0}" != "1" ]]; then
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  root_dir="$(repo_root_from_script_dir "$script_dir")"
+  sudo docker run --rm \
+    -v "$root_dir":/work:ro \
+    -v "$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")":/zstd.tar.gz:ro \
+    -v "$(resolve_abs_path "$MLIR_ARCHIVE_PATH")":/mlir.tar.zst:ro \
+    -e MQT_MANYLINUX_TEST=1 \
+    -e LLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
+    "$(manylinux_image_for_host)" \
+    bash -euc 'uv tool install ninja==1.13.0; export PATH="$HOME/.local/bin:$PATH"; exec bash "$@"' bash \
+    /work/scripts/toolchain/linux/test-installation.sh \
+    -z /zstd.tar.gz -a /mlir.tar.zst -b "$BUILD_TYPE"
+  exit
+fi
+
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
 TEST_ZSTD_DIR=$(mktemp -d)
@@ -75,8 +91,9 @@ cmake -G Ninja \
   -B "$TEST_BUILD_DIR" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
+  -DCMAKE_INTERPROCEDURAL_OPTIMIZATION="$(if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then echo ON; else echo OFF; fi)" \
   "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
-  -DLLVM_USE_LINKER=mold
+  -DLLVM_USE_LINKER="$(if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then echo bfd; else echo mold; fi)"
 log_done
 
 log_step "CMake build - integration test"
@@ -86,5 +103,18 @@ log_done
 log_step "Running integration test binary"
 "$TEST_BUILD_DIR/hello_mlir"
 log_done
+
+if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
+  log_step "BOLT integration and failure recovery"
+  cp "$TEST_BUILD_DIR/hello_mlir" "$TEST_BUILD_DIR/original"
+  mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- "$TEST_BUILD_DIR/hello_mlir"
+  cp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
+  if mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- false > "$TEST_BUILD_DIR/expected-failure.log" 2>&1; then
+    echo "Error: BOLT accepted a failed training command" >&2
+    exit 1
+  fi
+  cmp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
+  log_done
+fi
 
 echo "Integration test passed!"

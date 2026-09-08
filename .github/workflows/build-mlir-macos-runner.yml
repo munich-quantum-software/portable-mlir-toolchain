@@ -26,6 +26,7 @@ permissions:
   contents: read
 
 env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_arm64-apple-darwin.tar.gz
 

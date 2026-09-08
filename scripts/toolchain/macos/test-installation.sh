@@ -74,6 +74,7 @@ cmake -G Ninja \
   -B "$TEST_BUILD_DIR" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
+  -DLLVM_ENABLE_LTO="$(if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then echo Full; else echo OFF; fi)" \
   "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR"
 log_done
 

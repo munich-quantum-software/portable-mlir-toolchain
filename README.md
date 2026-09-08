@@ -45,11 +45,32 @@ variant for compiler development. Always compile against the headers and
 libraries from the same variant.
 
 Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF` in the
-environment. Release CI builds and tests both variants. Distributed static
-libraries remain native objects, with LTO disabled, so consumers can use their
-supported compiler toolchain rather than requiring matching LTO bitcode.
+environment. Release CI builds and tests both variants. Assertion-enabled SDKs
+retain native static libraries for ordinary CI. Assertion-free Linux and macOS
+SDKs contain full-LTO archives for release consumers with matching compilers.
+Windows SDKs keep LTO disabled.
+
+Linux BOLT builds use GNU ld. With full GCC LTO, mold 2.42.0 produced invalid
+relocation symbol indices in local SDK and Core binaries. Assertion-enabled SDK
+builds continue to use mold, which remains bundled with both variants.
+
+Linux release SDKs also include `llvm-bolt`, `merge-fdata`, their
+instrumentation runtime, and `mqt-bolt-optimize`. Before packaging, BOLT
+profiles and optimizes `mlir-opt`, `mlir-translate`, and `mlir-tblgen` with the
+checked-in SDK workload. The helper accepts a final ELF binary followed by `--`
+and a training command; it validates the optimized binary with the same command
+and restores the original on failure. Optimization uses `-lite` to rewrite only
+functions covered by the profile. Use `llvm-strip` after BOLT and validate
+again; GNU `strip` broke rewritten executables in the local check. BOLT applies
+to final executables/shared libraries, not static archive members. Core applies
+it again after linking the SDK into its wheel binaries.
 
 Linux SDK builds use the same manylinux 2.28 image digests as cibuildwheel 4.2.0
 (image revision `2026.08.04-1`). Consumers that require a matching compiler must
 pin these images explicitly; upgrading cibuildwheel must not silently change the
 compiler used with an existing SDK. Update SDK and consumer pins together.
+
+macOS SDKs and Core CD select `/Applications/Xcode_26.6.app`. Consumers must
+select that Xcode version before configuring and enable full LTO when linking
+assertion-free archives. Linux LTO integration tests run in the pinned build
+container. Existing SDK archives must not be reused with a different compiler.
