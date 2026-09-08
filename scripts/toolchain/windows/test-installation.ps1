@@ -16,8 +16,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
-    [string]$NinjaVersion = '1.13.0',
-    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release'
+    [string]$NinjaVersion = '1.13.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,14 +67,14 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         cmake -G Ninja `
             -S $integrationSrc `
             -B $testBuildDir `
-            "-DCMAKE_BUILD_TYPE=$BuildType" `
+            '-DCMAKE_BUILD_TYPE=Release' `
             "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
             '-DLLVM_ENABLE_LLD=ON'
         if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
         Write-Done
 
         Write-Step 'CMake build - integration test'
-        cmake --build $testBuildDir --config $BuildType
+        cmake --build $testBuildDir --config Release
         if ($LASTEXITCODE -ne 0) { throw 'cmake build failed' }
         Write-Done
 

@@ -18,9 +18,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$LldArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
-    [string]$NinjaVersion = '1.13.0',
-    [ValidateSet('Release', 'Debug')][string]$BuildType = 'Release',
-    [ValidateRange(1, 19)][int]$ZstdCompressionLevel = 19
+    [string]$NinjaVersion = '1.13.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,29 +59,24 @@ Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
         Invoke-InDirectory -Path $repoDir -ScriptBlock {
             $cmakeArgs = Get-LlvmCommonCMakeArgs `
                 -BuildDir $tempBuildDir `
-                -BuildType $BuildType `
                 -InstallPrefix $tempInstallDir `
                 -HostTarget $archInfo.HostTarget `
                 -Projects 'mlir' `
                 -EnableLld
 
-            Write-Step "CMake configure MLIR ($BuildType)"
+            Write-Step 'CMake configure MLIR (Release)'
             Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
             Write-Done
 
-            Write-Step "Build and install MLIR ($BuildType)"
-            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', $BuildType) -ErrorMessage 'MLIR build/install failed'
+            Write-Step 'Build and install MLIR (Release)'
+            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', 'Release') -ErrorMessage 'MLIR build/install failed'
             Write-Done
         }
 
         # Vendor the lld installation into the MLIR archive to ensure lld is available in the test environment without needing to set up additional PATH entries.
         Copy-Item -Path (Join-Path $tempLldExtractDir 'bin\*') -Destination (Join-Path $tempInstallDir 'bin') -Recurse -Force
 
-        Compress-DirectoryToArchive `
-            -SourceDir $tempInstallDir `
-            -ArchivePath $MlirArchivePath `
-            -ZstdExePath $resolvedZstdExePath `
-            -CompressionLevel $ZstdCompressionLevel
+        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
     } finally {
         Remove-PathsIfExists -Paths $cleanupPaths
     }

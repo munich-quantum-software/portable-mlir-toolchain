@@ -432,7 +432,6 @@ function Initialize-LlvmSourceTree {
 function Get-LlvmCommonCMakeArgs {
     param(
         [Parameter(Mandatory = $true)][string]$BuildDir,
-        [Parameter(Mandatory = $true)][ValidateSet('Release', 'Debug')][string]$BuildType,
         [Parameter(Mandatory = $true)][string]$InstallPrefix,
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
@@ -444,7 +443,7 @@ function Get-LlvmCommonCMakeArgs {
         '-S', 'llvm',
         '-B', $BuildDir,
         '-G', 'Ninja',
-        "-DCMAKE_BUILD_TYPE=$BuildType",
+        '-DCMAKE_BUILD_TYPE=Release',
         "-DCMAKE_INSTALL_PREFIX=$InstallPrefix",
         "-DLLVM_TARGETS_TO_BUILD=$HostTarget",
         "-DLLVM_ENABLE_PROJECTS=$Projects",
@@ -466,14 +465,6 @@ function Get-LlvmCommonCMakeArgs {
         # See https://github.com/llvm/llvm-project/issues/86250
         '-DLLVM_ENABLE_DIA_SDK=OFF'
     )
-
-    if ($BuildType -eq 'Debug') {
-        $cmakeArgs += @(
-            '-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON',
-            '-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded',
-            '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW'
-        )
-    }
 
     if ($EnableLld) {
         $cmakeArgs += '-DLLVM_ENABLE_LLD=ON'
