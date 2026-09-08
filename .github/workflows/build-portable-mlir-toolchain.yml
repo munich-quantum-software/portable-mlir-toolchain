@@ -74,21 +74,21 @@ jobs:
   linux:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-linux)
-    uses: ./.github/workflows/build-mlir-linux.yml
+    uses: $/.github/workflows/build-mlir-linux.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 
   macos:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-macos)
-    uses: ./.github/workflows/build-mlir-macos.yml
+    uses: $/.github/workflows/build-mlir-macos.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 
   windows:
     needs: change-detection
     if: fromJson(needs.change-detection.outputs.run-windows)
-    uses: ./.github/workflows/build-mlir-windows.yml
+    uses: $/.github/workflows/build-mlir-windows.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.0' }}
 

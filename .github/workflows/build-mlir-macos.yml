@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   macos-26:
-    uses: ./.github/workflows/build-mlir-macos-runner.yml
+    uses: $/.github/workflows/build-mlir-macos-runner.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref }}
       runs-on: macos-26

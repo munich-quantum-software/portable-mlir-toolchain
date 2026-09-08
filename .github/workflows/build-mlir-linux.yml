@@ -13,13 +13,13 @@ permissions:
 
 jobs:
   ubuntu-24-04:
-    uses: ./.github/workflows/build-mlir-linux-runner.yml
+    uses: $/.github/workflows/build-mlir-linux-runner.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref }}
       runs-on: ubuntu-24.04
 
   ubuntu-24-04-arm:
-    uses: ./.github/workflows/build-mlir-linux-runner.yml
+    uses: $/.github/workflows/build-mlir-linux-runner.yml
     with:
       llvm-project-ref: ${{ inputs.llvm-project-ref }}
       runs-on: ubuntu-24.04-arm
