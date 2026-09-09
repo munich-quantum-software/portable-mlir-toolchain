@@ -37,22 +37,6 @@ done
 # shellcheck source=./common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 
-if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" && "${MQT_MANYLINUX_TEST:-0}" != "1" ]]; then
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  root_dir="$(repo_root_from_script_dir "$script_dir")"
-  sudo docker run --rm \
-    -v "$root_dir":/work:ro \
-    -v "$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")":/zstd.tar.gz:ro \
-    -v "$(resolve_abs_path "$MLIR_ARCHIVE_PATH")":/mlir.tar.zst:ro \
-    -e MQT_MANYLINUX_TEST=1 \
-    -e LLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
-    "$(manylinux_image_for_host)" \
-    bash -euc 'uv tool install ninja==1.13.0; export PATH="$HOME/.local/bin:$PATH"; exec bash "$@"' bash \
-    /work/scripts/toolchain/linux/test-installation.sh \
-    -z /zstd.tar.gz -a /mlir.tar.zst -b "$BUILD_TYPE"
-  exit
-fi
-
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
 TEST_ZSTD_DIR=$(mktemp -d)
@@ -85,43 +69,34 @@ if [[ ! -d "$INTEGRATION_SRC" ]]; then
   exit 1
 fi
 
-ipo_modes=(OFF)
-if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  ipo_modes+=(ON)
-fi
-for ipo in "${ipo_modes[@]}"; do
-  build_dir="$TEST_BUILD_DIR/$ipo"
-  log_step "CMake configure - integration test (IPO=$ipo)"
-  cmake -G Ninja \
-    -S "$INTEGRATION_SRC" \
-    -B "$build_dir" \
-    -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-    -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION="$ipo" \
-    "-DCMAKE_EXE_LINKER_FLAGS=$(if [[ "$ipo" == "OFF" ]]; then echo -fno-lto; fi)" \
-    "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
-    -DLLVM_USE_LINKER="$(if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then echo bfd; else echo mold; fi)"
-  log_done
+log_step "CMake configure - integration test"
+cmake -G Ninja \
+  -S "$INTEGRATION_SRC" \
+  -B "$TEST_BUILD_DIR" \
+  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+  -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
+  "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
+  -DLLVM_USE_LINKER=bfd
+log_done
 
-  log_step "CMake build - integration test"
-  cmake --build "$build_dir"
-  log_done
+log_step "CMake build - integration test"
+cmake --build "$TEST_BUILD_DIR"
+log_done
 
-  log_step "Running integration test binary"
-  "$build_dir/hello_mlir"
-  log_done
-done
+log_step "Running integration test binary"
+"$TEST_BUILD_DIR/hello_mlir"
+log_done
 
 if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
   log_step "BOLT integration and failure recovery"
-  cp "$build_dir/hello_mlir" "$build_dir/original"
-  mqt-bolt-optimize "$build_dir/hello_mlir" -- "$build_dir/hello_mlir"
-  cp "$build_dir/original" "$build_dir/hello_mlir"
-  if mqt-bolt-optimize "$build_dir/hello_mlir" -- false > "$build_dir/expected-failure.log" 2>&1; then
+  cp "$TEST_BUILD_DIR/hello_mlir" "$TEST_BUILD_DIR/original"
+  mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- "$TEST_BUILD_DIR/hello_mlir"
+  cp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
+  if mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- false > "$TEST_BUILD_DIR/expected-failure.log" 2>&1; then
     echo "Error: BOLT accepted a failed training command" >&2
     exit 1
   fi
-  cmp "$build_dir/original" "$build_dir/hello_mlir"
+  cmp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
   log_done
 fi
 

@@ -198,23 +198,9 @@ build_mlir() {
   local mold_bin_dir="$mold_extract_dir/bin"
   export PATH="$mold_bin_dir:$PATH"
 
-  local llvm_lto=OFF
   local llvm_projects=mlir
-  local llvm_linker=mold
-  local release_flags=()
   if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-    llvm_lto=ON
     llvm_projects="mlir;bolt"
-    llvm_linker=bfd
-    release_flags=(
-      "-DCMAKE_C_FLAGS=-flto=auto -ffat-lto-objects -fno-reorder-blocks-and-partition"
-      "-DCMAKE_CXX_FLAGS=-flto=auto -ffat-lto-objects -fno-reorder-blocks-and-partition"
-      -DCMAKE_EXE_LINKER_FLAGS=-fno-lto
-      -DCMAKE_SHARED_LINKER_FLAGS=-fno-lto
-      "-DCMAKE_AR=$(command -v gcc-ar)"
-      "-DCMAKE_RANLIB=$(command -v gcc-ranlib)"
-      -DLLVM_PARALLEL_LINK_JOBS=1
-    )
   fi
 
   log_step "CMake configure MLIR (${BUILD_TYPE})"
@@ -232,7 +218,6 @@ build_mlir() {
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
     -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
     -DLLVM_ENABLE_LTO=OFF \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
     -DLLVM_ENABLE_LIBXML2=OFF \
     -DLLVM_ENABLE_LIBEDIT=OFF \
     -DLLVM_ENABLE_LIBPFM=OFF \
@@ -240,8 +225,7 @@ build_mlir() {
     -DLLVM_OPTIMIZED_TABLEGEN=ON \
     -DLLVM_ENABLE_WARNINGS=OFF \
     -DLLVM_ENABLE_ZSTD=OFF \
-    -DLLVM_USE_LINKER="$llvm_linker" \
-    "${release_flags[@]}"
+    -DLLVM_USE_LINKER=mold
   log_done
 
   log_step "Build and install MLIR (${BUILD_TYPE})"
@@ -249,7 +233,7 @@ build_mlir() {
   log_done
   rm -rf "$repo_dir" "$build_dir"
 
-  if [[ "$llvm_lto" != "OFF" ]]; then
+  if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
     local script_root
     script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
     cp "$script_root/scripts/toolchain/linux/bolt-optimize.py" "$mlir_install_dir/bin/mqt-bolt-optimize"
@@ -267,19 +251,13 @@ build_mlir() {
   fi
 
   log_step "Stripping debug symbols"
-  if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
-    local strip_tool=strip
-    if [[ "$llvm_lto" != "OFF" ]]; then
-      strip_tool="$mlir_install_dir/bin/llvm-strip"
-    fi
-    find "$mlir_install_dir/bin" -type f -executable -exec "$strip_tool" --strip-debug {} + 2>/dev/null || true
-    if [[ "$llvm_lto" == "OFF" ]]; then
-      find "$llvm_lib_dir" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
-    fi
+  if [[ "$BUILD_TYPE" == "Release" ]]; then
+    find "$mlir_install_dir/bin" -type f -executable -exec "$mlir_install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
+    find "$llvm_lib_dir" -name "*.a" -exec "$mlir_install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
   fi
   log_done
 
-  if [[ "$llvm_lto" != "OFF" ]]; then
+  if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
     python3 "$script_root/tests/bolt/train.py" "$mlir_install_dir"
   fi
 

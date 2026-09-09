@@ -70,11 +70,6 @@ extract_zstd_executable "$ZSTD_ARCHIVE_PATH" "$zstd_dir" >/dev/null
 ZSTD_EXE_PATH="$zstd_dir/zstd"
 log_done
 
-llvm_lto=OFF
-if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  llvm_lto=Thin
-fi
-
 log_step "CMake configure MLIR (${BUILD_TYPE})"
 cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
@@ -88,8 +83,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_INCLUDE_BENCHMARKS=OFF \
   -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
-  -DLLVM_ENABLE_LTO="$llvm_lto" \
-  -DLLVM_PARALLEL_LINK_JOBS=1 \
+  -DLLVM_ENABLE_LTO=OFF \
   -DLLVM_ENABLE_LIBXML2=OFF \
   -DLLVM_ENABLE_LIBEDIT=OFF \
   -DLLVM_ENABLE_LIBPFM=OFF \
@@ -104,11 +98,9 @@ cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
 log_done
 
 log_step "Stripping debug symbols"
-if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
-  find "$install_dir/bin" -type f -perm -111 -exec strip -S {} + 2>/dev/null || true
-  if [[ "$llvm_lto" == "OFF" ]]; then
-    find "$install_dir/lib" -name "*.a" -exec strip -S {} + 2>/dev/null || true
-  fi
+if [[ "$BUILD_TYPE" == "Release" ]]; then
+  find "$install_dir/bin" -type f -perm -111 -exec "$install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
+  find "$install_dir/lib" -name "*.a" -exec "$install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
 fi
 log_done
 

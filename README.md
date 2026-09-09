@@ -45,44 +45,20 @@ variant for compiler development. Always compile against the headers and
 libraries from the same variant.
 
 Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF` in the
-environment. Release CI builds and tests both variants. Assertion-enabled SDKs
-retain native static libraries for ordinary CI. Assertion-free Linux SDKs
-contain GCC fat-LTO archives with both native code and LTO IR; macOS SDKs
-contain ThinLTO archives. LTO consumers require matching compilers. Windows SDKs
-keep LTO disabled.
+environment. Release CI builds and tests both variants. Both contain native
+static libraries; LLVM/MLIR builds do not use LTO or BOLT optimization.
+Consumers may enable LTO for their own code and apply BOLT after final linking.
+LTO cannot optimize across the native SDK library boundary.
 
-Linux BOLT builds use GNU ld. With full GCC LTO, mold 2.42.0 produced invalid
-relocation symbol indices in local SDK and Core binaries. Assertion-enabled SDK
-builds continue to use mold, which remains bundled with both variants.
+Linux builds use mold and the manylinux 2.28 image tag `2026.08.04-1`, selected
+from cibuildwheel 4.2.0. Update the SDK image pin regularly; consumers may use
+cibuildwheel's defaults independently. macOS uses the runner's default Xcode.
+Linux and macOS release packaging uses `llvm-strip` for tools and archives.
 
-Assertion-free Linux SDK tools use native links into the fat archives. This
-avoids repeating full LTO for each tool while preserving full LTO for Core CD.
-Source and build trees are removed after installation to release disk space
-before packaging. Installation tests cover both native and LTO consumers.
-
-Linux release SDKs include `llvm-bolt`, `merge-fdata`, their instrumentation
-runtime, and `mqt-bolt-optimize` for Core CD. The SDK tools themselves are not
-BOLT-rewritten: rewriting them does not optimize the archives linked into Core.
-The checked-in SDK workload still validates the packaged tools.
-
-The helper accepts a final ELF binary followed by `--` and a training command;
-it validates the optimized binary with the same command and restores the
-original on failure. Optimization uses `-lite` to rewrite only functions covered
-by the profile. Use `llvm-strip` after BOLT and validate again; GNU `strip`
-broke rewritten executables in the local check. BOLT applies to final
-executables/shared libraries, not static archive members. Core applies it after
-linking the SDK into its wheel binaries.
-
-Linux SDK builds use the same manylinux 2.28 image digests as cibuildwheel 4.2.0
-(image revision `2026.08.04-1`). Consumers that require a matching compiler must
-pin these images explicitly; upgrading cibuildwheel must not silently change the
-compiler used with an existing SDK. Update SDK and consumer pins together.
-
-macOS SDKs and Core CD select `/Applications/Xcode_26.6.app`. SDK builds use
-ThinLTO and LLVM's built-in link cache to avoid repeating full optimization for
-each bundled tool on the 7 GB hosted runner. Links remain serialized. Core and
-the integration test retain full LTO for their own objects; the linker processes
-the SDK's ThinLTO objects separately. Consumers must select that Xcode version
-before configuring and enable LTO when linking assertion-free archives. Linux
-LTO integration tests run in the pinned build container. Existing SDK archives
-must not be reused with a different compiler.
+Assertion-free Linux SDKs also supply `llvm-bolt`, `merge-fdata`, the
+instrumentation runtime, and `mqt-bolt-optimize` for consumer builds. Shipping
+these tools avoids rebuilding LLVM to obtain BOLT. The helper accepts a final
+ELF binary followed by `--` and a training command, validates the result, and
+restores the original on failure. It uses `-lite` to rewrite profiled functions.
+Preserve symbols and relocations until BOLT finishes, then use `llvm-strip` and
+validate again.
