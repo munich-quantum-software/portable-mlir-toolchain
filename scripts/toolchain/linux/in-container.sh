@@ -203,15 +203,16 @@ build_mlir() {
   local llvm_linker=mold
   local release_flags=()
   if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-    # CMake supplies GCC full LTO with parallel link-time code generation.
     llvm_lto=ON
     llvm_projects="mlir;bolt"
     llvm_linker=bfd
     release_flags=(
-      -DCMAKE_C_FLAGS=-fno-reorder-blocks-and-partition
-      -DCMAKE_CXX_FLAGS=-fno-reorder-blocks-and-partition
-      -DCMAKE_EXE_LINKER_FLAGS=-Wl,--emit-relocs
-      -DCMAKE_SHARED_LINKER_FLAGS=-Wl,--emit-relocs
+      "-DCMAKE_C_FLAGS=-flto=auto -ffat-lto-objects -fno-reorder-blocks-and-partition"
+      "-DCMAKE_CXX_FLAGS=-flto=auto -ffat-lto-objects -fno-reorder-blocks-and-partition"
+      -DCMAKE_EXE_LINKER_FLAGS=-fno-lto
+      -DCMAKE_SHARED_LINKER_FLAGS=-fno-lto
+      "-DCMAKE_AR=$(command -v gcc-ar)"
+      "-DCMAKE_RANLIB=$(command -v gcc-ranlib)"
       -DLLVM_PARALLEL_LINK_JOBS=1
     )
   fi
@@ -231,7 +232,7 @@ build_mlir() {
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
     -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
     -DLLVM_ENABLE_LTO=OFF \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION="$llvm_lto" \
+    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
     -DLLVM_ENABLE_LIBXML2=OFF \
     -DLLVM_ENABLE_LIBEDIT=OFF \
     -DLLVM_ENABLE_LIBPFM=OFF \
@@ -253,10 +254,6 @@ build_mlir() {
     script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
     cp "$script_root/scripts/toolchain/linux/bolt-optimize.py" "$mlir_install_dir/bin/mqt-bolt-optimize"
     export PATH="$mlir_install_dir/bin:$PATH"
-    for tool in mlir-opt mlir-translate mlir-tblgen; do
-      "$mlir_install_dir/bin/mqt-bolt-optimize" "$mlir_install_dir/bin/$tool" -- \
-        python3 "$script_root/tests/bolt/train.py" "$mlir_install_dir"
-    done
   fi
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
