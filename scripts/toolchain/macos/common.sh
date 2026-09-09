@@ -16,6 +16,14 @@
 
 set -euo pipefail
 
+case "$(uname -m)" in
+  arm64|aarch64) ;;
+  *)
+    echo "Error: macOS requires Apple Silicon (arm64)." >&2
+    exit 1
+    ;;
+esac
+
 # shellcheck source=../common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
@@ -101,15 +109,4 @@ initialize_llvm_source_tree() {
 
   rm -f "$temp_archive"
   log_done
-}
-
-host_target_for_arch() {
-  local arch="$1"
-  if [[ "$arch" == "arm64" || "$arch" == "aarch64" ]]; then
-    echo "AArch64"
-  elif [[ "$arch" == "x86_64" ]]; then
-    echo "X86"
-  else
-    echo ""
-  fi
 }

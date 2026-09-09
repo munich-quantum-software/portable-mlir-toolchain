@@ -5,7 +5,7 @@ are also provided as separate assets for each supported platform to facilitate
 decompression.
 
 Windows builds support Release mode only. The Linux and macOS build scripts also
-support Debug mode.
+support Debug mode. macOS builds require Apple silicon (`arm64`).
 
 ## Installation
 

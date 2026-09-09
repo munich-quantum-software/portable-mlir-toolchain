@@ -65,13 +65,6 @@ trap cleanup EXIT
 
 initialize_llvm_source_tree "$LLVM_PROJECT_REF" "$repo_dir"
 
-UNAME_ARCH="$(uname -m)"
-HOST_TARGET="$(host_target_for_arch "$UNAME_ARCH")"
-if [[ -z "$HOST_TARGET" ]]; then
-  echo "Error: Unsupported architecture: ${UNAME_ARCH}." >&2
-  exit 1
-fi
-
 log_step "Extracting zstd executable"
 extract_zstd_executable "$ZSTD_ARCHIVE_PATH" "$zstd_dir" >/dev/null
 ZSTD_EXE_PATH="$zstd_dir/zstd"
@@ -82,7 +75,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DCMAKE_INSTALL_PREFIX="$install_dir" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
-  -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
+  -DLLVM_TARGETS_TO_BUILD=AArch64 \
   -DLLVM_ENABLE_PROJECTS=mlir \
   -DLLVM_BUILD_EXAMPLES=OFF \
   -DLLVM_INCLUDE_EXAMPLES=OFF \
