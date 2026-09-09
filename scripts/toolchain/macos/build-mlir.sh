@@ -72,7 +72,7 @@ log_done
 
 llvm_lto=OFF
 if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  llvm_lto=Full
+  llvm_lto=Thin
 fi
 
 log_step "CMake configure MLIR (${BUILD_TYPE})"

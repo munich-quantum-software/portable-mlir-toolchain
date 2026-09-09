@@ -246,6 +246,7 @@ build_mlir() {
   log_step "Build and install MLIR (${BUILD_TYPE})"
   cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
   log_done
+  rm -rf "$repo_dir" "$build_dir"
 
   if [[ "$llvm_lto" != "OFF" ]]; then
     local script_root
@@ -287,7 +288,7 @@ build_mlir() {
 
   compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
 
-  rm -rf "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
+  rm -rf "$mold_extract_dir" "$mlir_install_dir"
 }
 
 case "$STAGE" in
