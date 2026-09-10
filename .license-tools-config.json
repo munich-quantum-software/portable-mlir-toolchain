@@ -33,6 +33,7 @@
     ".*\\.tfc",
     ".*\\.qc",
     ".*\\.real",
-    "LICENSE"
+    "LICENSE",
+    "^experiments/"
   ]
 }

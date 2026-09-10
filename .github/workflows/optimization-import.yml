@@ -1,0 +1,56 @@
+name: Transfer completed SDK study artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/optimized-release-toolchain]
+    paths: [.github/workflows/optimization-import.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        artifact:
+          - { run: "34530050677", name: linux-arm64-Full }
+          - { run: "34527669051", name: macos-arm64-Thin }
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          repository: munich-quantum-toolkit/core
+          run-id: ${{ matrix.artifact.run }}
+          github-token: ${{ github.token }}
+          name: study-sdk-${{ matrix.artifact.name }}
+          path: sdk
+      - name: Verify the recorded archive hash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path("sdk")
+          manifest = json.loads((root / "sdk-artifact.json").read_text())
+          with (root / "sdk.tar.zst").open("rb") as stream:
+              assert hashlib.file_digest(stream, "sha256").hexdigest() == manifest["archive_sha256"]
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: study-sdk-${{ matrix.artifact.name }}
+          path: sdk
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          repository: munich-quantum-toolkit/core
+          run-id: ${{ matrix.artifact.run }}
+          github-token: ${{ github.token }}
+          name: study-sdk-records-${{ matrix.artifact.name }}
+          path: records
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: study-sdk-records-${{ matrix.artifact.name }}
+          path: records
+          if-no-files-found: error
