@@ -74,18 +74,46 @@ Python test group. This is compatibility evidence; Windows optimization settings
 remain unchanged. Full provenance and per-stage timings are in the two workflow
 artifacts.
 
+## Hosted SDK screen
+
+All nine SDK library variants built and were uploaded. The
+[SDK measurements](results/sdk-screen.json) record source jobs, artifact
+digests, download/upload times, and resource usage. Job work includes setup and
+artifact transfer, and excludes queue time. Every Linux container used four CPUs
+and a 16 GiB memory limit with no swap; macOS used three build workers on its
+standard runner.
+
+| Platform    | SDK LTO | Job work (min) | Trial artifact (MiB) | Peak memory (GiB) |
+| ----------- | ------- | -------------: | -------------------: | ----------------: |
+| linux-arm64 | OFF     |           54.0 |                779.7 |              11.6 |
+| linux-arm64 | Thin    |           48.5 |                886.6 |              11.8 |
+| linux-arm64 | Full    |           48.9 |                885.8 |              11.7 |
+| linux-x64   | OFF     |           48.5 |                816.1 |              12.0 |
+| linux-x64   | Thin    |           60.3 |                923.5 |              12.0 |
+| linux-x64   | Full    |           59.6 |                922.9 |              11.8 |
+| macos-arm64 | OFF     |           48.4 |                559.7 |               3.3 |
+| macos-arm64 | Thin    |           61.3 |                672.5 |               3.2 |
+| macos-arm64 | Full    |           67.3 |                665.8 |               3.1 |
+
+Linux memory is the container peak, including filesystem cache. macOS memory is
+the sampled process-tree RSS; macOS swap was not measured. These are individual
+hosted observations, not build-time confidence intervals. Trial archives use
+Python's default zstd compression; production packaging uses `-19 --long=31`.
+The listed artifact sizes are not production release size estimates. Finalist
+packaging must use the production settings before making that comparison.
+
+The macOS ThinLTO job completed every recorded step, including build, packaging,
+and upload, before the migration cancellation marked its job cancelled. The
+archive was verified and transferred to the SDK repository. Its earlier harness
+did not run the standalone SDK consumer; the Core build and installed-package
+checks remain required. All eight other SDK variants passed that consumer.
+
 ## Remaining platform gates
 
-The SDK repository schedules all remaining work. Completed Linux ARM64 full-LTO
-and macOS ARM64 ThinLTO SDK archives were transferred into
-[SDK-owned artifacts](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34535339411).
-The Linux SDK pipeline took 48.5 minutes with an 11.7 GiB container peak and no
-swap. The macOS SDK pipeline took 60.7 minutes with a 3.2 GiB sampled
-process-tree peak. These timings exclude artifact transfer and are not complete
-wheel costs.
-
-The remaining work is the hosted LTO screen, Core-only and combined PGO for
+All 18 SDK/Core LTO combinations are scheduled in the SDK repository. The
+remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
-and recipe selection for each platform. The macOS producer and consumers use
-Xcode 26.6, SDK deployment target 11.0, and Core deployment target 13.3. Linux
-uses the pinned manylinux 2.28 image and prebuilt Clang 22.1.8.1.
+production-setting archive measurements, and recipe selection for each platform.
+The macOS producer and consumers use Xcode 26.6, SDK deployment target 11.0, and
+Core deployment target 13.3. Linux uses the pinned manylinux 2.28 image and
+prebuilt Clang 22.1.8.1.

@@ -353,7 +353,7 @@ def main() -> None:
     phase = "plain"
     profile = None
     if args.pgo != "none":
-        generated = core_wheel("generate")
+        generated = core_wheel("generate", suffix="-sdk-plain" if args.pgo == "both" else "")
         targets = root / "pgo-targets.json"
         if args.pgo == "both":
             commands = subprocess.check_output(

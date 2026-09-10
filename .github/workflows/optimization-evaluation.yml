@@ -59,7 +59,7 @@ jobs:
         run: |
           for run in $WHEEL_RUNS; do
             [[ "$run" =~ ^[0-9]+$ ]] || exit 2
-            gh run download "$run" --pattern "study-wheels-$STUDY_PLATFORM-*" --dir "$RUNNER_TEMP/study/downloads"
+            gh run download "$run" --pattern "study-wheels-$STUDY_PLATFORM-*" --dir "$RUNNER_TEMP/study/downloads/$run"
           done
       - name: Run twelve rotating fresh-process rounds
         shell: bash
