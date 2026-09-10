@@ -7,7 +7,8 @@ jobs. Its pinned checkout supplies the package, training corpus, benchmarks, and
 correctness tests.
 
 The [study plan](PLAN.md) defines the comparisons and adoption gates. Trial
-artifacts do not change published SDKs or setup-action defaults.
+artifacts do not change published SDKs or setup-action defaults. The
+[results](RESULTS.md) distinguish completed measurements from pending gates.
 
 ## Execution
 

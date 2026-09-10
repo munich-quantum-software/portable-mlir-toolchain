@@ -109,6 +109,17 @@ def main() -> None:
         "compiler_version": version,
         "compiler_sha256": digest(Path(cxx)),
         "compiler_configs_sha256": {str(path): digest(path) for path in sorted(Path(cxx).parent.glob("*.cfg"))},
+        "native_tools_sha256": {
+            name: digest(base / name)
+            for name in [
+                "bin/llvm-strip",
+                "bin/llvm-bolt",
+                "bin/merge-fdata",
+                "bin/mqt-bolt-optimize",
+                "lib/libbolt_rt_instr.a",
+            ]
+            if (base / name).is_file()
+        },
         "sdk_lto": args.sdk_lto,
         "core_lto": args.core_lto,
         "pgo": args.pgo,
@@ -237,6 +248,7 @@ def main() -> None:
             execute("cache-warm-statistics", [cache, "--show-stats", "--stats-format", "json"])
         return
     sdk_manifest = json.loads((base / "library-variant.json").read_text())
+    manifest["sdk_manifest_sha256"] = digest(base / "library-variant.json")
     if sdk_manifest["lto"] != args.sdk_lto or sdk_manifest["source_id"] != args.llvm_source_id:
         parser.error("the SDK library variant must match the requested LTO mode and LLVM source")
     for key in [
@@ -524,7 +536,7 @@ def main() -> None:
             "compressed_bytes": repaired.stat().st_size,
             "uncompressed_bytes": uncompressed,
         })
-    (root / "artifacts.json").write_text(json.dumps(manifest | {"artifacts": artifacts}, indent=2) + "\n")
+        (root / "artifacts.json").write_text(json.dumps(manifest | {"artifacts": artifacts}, indent=2) + "\n")
     if cache:
         execute("cache-cold-statistics", [cache, "--show-stats", "--stats-format", "json"])
         execute("cache-reset-statistics", [cache, "--zero-stats"])

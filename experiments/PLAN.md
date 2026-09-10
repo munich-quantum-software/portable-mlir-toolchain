@@ -1,8 +1,8 @@
 # Portable SDK and Core optimization study
 
-Status: trial execution is moving to this repository. The SDK variant builder,
-wheel validation, paired evaluation, and acceptance checks are implemented.
-Production release selection remains unchanged until the adoption gates pass.
+Status: trial execution runs in this repository. The SDK variant builder, wheel
+validation, paired evaluation, and acceptance checks are implemented. Production
+release selection remains unchanged until the adoption gates pass.
 
 ## Goal and scope
 
@@ -42,7 +42,10 @@ to each source/compiler/platform combination.
 
 ## Work remaining
 
-- [ ] Complete native-SDK PGO controls and two quiet paired ARM64 evaluations.
+- [x] Complete native-SDK PGO controls and two quiet paired ARM64 evaluations.
+      The matched Clang 23 finalist gains about 8.6%, below the 10% gate; see
+      [results](RESULTS.md). Windows compatibility also passes on both
+      architectures.
 - [x] Implement reusable SDK library variants and portable
       measurement/acceptance tooling with focused regression tests.
 - [x] Add bounded Linux/macOS trial workflows and Windows compatibility jobs.

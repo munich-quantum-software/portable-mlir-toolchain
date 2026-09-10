@@ -179,6 +179,7 @@ jobs:
             python3 experiments/linux_optimization.py --output "$STUDY_ROOT/pipeline.json" -- bash experiments/run.sh
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
         with:
           name: study-wheels-${{ matrix.platform.name }}-${{ matrix.recipe.sdk }}-${{ matrix.recipe.core }}-${{ inputs.pgo }}
           path: |
@@ -186,7 +187,7 @@ jobs:
             ${{ runner.temp }}/study/output/artifacts.json
             ${{ runner.temp }}/study/output/requirements.txt
           compression-level: 0
-          if-no-files-found: error
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
