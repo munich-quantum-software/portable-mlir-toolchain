@@ -131,6 +131,7 @@ def main() -> None:
         "warm_cache": args.warm_cache,
         "defines": args.define,
         "benchmark_sha256": digest(project / "test/release/benchmark_optimization.py"),
+        "study_cmake_sha256": digest(Path(__file__).with_suffix(".cmake")),
     }
     if system == "Darwin":
         manifest["xcode"] = subprocess.check_output(["xcodebuild", "-version"], text=True)
@@ -324,7 +325,7 @@ def main() -> None:
             "CMAKE_EXE_LINKER_FLAGS": linker,
             "CMAKE_SHARED_LINKER_FLAGS": linker,
             "CMAKE_MODULE_LINKER_FLAGS": linker,
-            "CMAKE_PROJECT_INCLUDE": str(project / "test/release/optimization.cmake"),
+            "CMAKE_PROJECT_INCLUDE": str(Path(__file__).with_suffix(".cmake").resolve()),
             "CMAKE_JOB_POOLS": "study_links=1",
             "CMAKE_JOB_POOL_LINK": "study_links",
         }
