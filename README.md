@@ -84,3 +84,11 @@ with a different identity fails. Generated headers and CMake exports are
 installed with the libraries. Phase reports preserve command failures and
 profile hashes. Neither the profile data nor the compiler is required to consume
 native PGO archives; LTO archives require compatible compiler/linker tooling.
+
+The manylinux Clang 22.1.8 package omits its profiling runtime and
+`llvm-profdata`. In that container, run
+`scripts/toolchain/linux/install-profile-tools.sh WORK_DIR` with `CC`, `CXX`,
+`AR`, and `RANLIB` set to that compiler's tools. The script builds only the
+matching profiling components, verifies a generate/merge/use cycle, and records
+their hashes. Set `LLVM_PROFDATA=WORK_DIR/tools/bin/llvm-profdata` for training;
+LLVM 23's profiler cannot read Clang 22's raw profiles.

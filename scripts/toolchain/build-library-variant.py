@@ -44,11 +44,12 @@ def main():
     parser.add_argument("--profile", type=Path)
     parser.add_argument("--targets", type=Path, help="JSON archive target list; omitted means all LLVM/MLIR archives")
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument("--lto-workers", type=int, default=1)
     parser.add_argument("--define", action="append", default=[], help="Additional CMake KEY=VALUE")
     args = parser.parse_args()
     if (args.phase == "use") != (args.profile is not None):
         parser.error("--profile is required only for --phase use")
-    if args.jobs < 1 or platform.system() not in {"Linux", "Darwin"}:
+    if min(args.jobs, args.lto_workers) < 1 or platform.system() not in {"Linux", "Darwin"}:
         parser.error("a positive job count and a Linux or macOS host are required")
     source, base, build, install = (p.resolve() for p in [args.source, args.base_sdk, args.build, args.install])
     if any(a == b or a.is_relative_to(b) or b.is_relative_to(a) for a, b in [(base, install), (build, install)]):
@@ -71,7 +72,12 @@ def main():
         parser.error("archive targets must be a nonempty subset of the base SDK's LLVM/MLIR archives")
     if len(targets) != len(set(targets)):
         parser.error("archive targets must be unique")
-    for tool in ["llvm-tblgen", "mlir-tblgen", "llvm-config"]:
+    generators = {
+        "LLVM_TABLEGEN": "llvm-tblgen", "MLIR_TABLEGEN": "mlir-tblgen",
+        "MLIR_PDLL_TABLEGEN": "mlir-pdll", "MLIR_SRC_SHARDER_TABLEGEN": "mlir-src-sharder",
+        "MLIR_LINALG_ODS_YAML_GEN": "mlir-linalg-ods-yaml-gen",
+    }
+    for tool in [*generators.values(), "llvm-config"]:
         if not (base / "bin" / tool).is_file():
             parser.error(f"base SDK is missing {tool}")
     llvm_version = subprocess.check_output([str(base / "bin/llvm-config"), "--version"], text=True).strip()
@@ -90,6 +96,7 @@ def main():
         "base_archives_sha256": {p.name: digest(p) for p in archives},
         "compiler_version": version, "platform": platform.platform(), "machine": platform.machine(),
         "install": str(install), "lto": args.lto, "assertions": False, "defines": args.define,
+        "lto_workers": args.lto_workers,
     }
     identity["compiler_configs_sha256"] = {
         str(path): digest(path) for path in sorted(Path(cxx).parent.glob("*.cfg"))
@@ -113,8 +120,8 @@ def main():
         "-DLLVM_BUILD_EXAMPLES=OFF", "-DLLVM_INCLUDE_EXAMPLES=OFF", "-DLLVM_INCLUDE_BENCHMARKS=OFF",
         "-DLLVM_ENABLE_LIBXML2=OFF", "-DLLVM_ENABLE_LIBEDIT=OFF", "-DLLVM_ENABLE_LIBPFM=OFF",
         "-DLLVM_ENABLE_ZSTD=OFF", "-DLLVM_ENABLE_WARNINGS=OFF", "-DLLVM_INSTALL_UTILS=ON",
-        "-DLLVM_PARALLEL_LINK_JOBS=1", f"-DLLVM_TABLEGEN={base / 'bin/llvm-tblgen'}",
-        f"-DMLIR_TABLEGEN={base / 'bin/mlir-tblgen'}",
+        "-DLLVM_PARALLEL_LINK_JOBS=1",
+        *[f"-D{variable}={base / 'bin' / tool}" for variable, tool in generators.items()],
         f"-DLLVM_BUILD_INSTRUMENTED={'IR' if args.phase == 'generate' else 'OFF'}",
         f"-DLLVM_PROFDATA_FILE={args.profile.resolve() if args.profile else ''}",
         f"-DLLVM_PROFILE_DATA_DIR={build / 'build-profiles'}",
@@ -122,6 +129,11 @@ def main():
     ]
     if platform.system() == "Darwin":
         cmake += ["-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0"]
+        linker_flags = f"-Wl,-mllvm,-threads={args.lto_workers}"
+    else:
+        cmake += ["-DLLVM_USE_LINKER=lld"]
+        linker_flags = f"-fuse-ld=lld -Wl,--thinlto-jobs={args.lto_workers},--lto-partitions={args.lto_workers}"
+    cmake += [f"-DCMAKE_{kind}_LINKER_FLAGS={linker_flags}" for kind in ["EXE", "SHARED", "MODULE"]]
     started = time.monotonic()
     record = identity | {"phase": args.phase, "targets": targets, "all_archives": set(targets) == available,
                          "profile_sha256": digest(args.profile) if args.profile else None, "configure": cmake}
