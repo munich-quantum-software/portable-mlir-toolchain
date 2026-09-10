@@ -1,0 +1,71 @@
+name: Diagnose macOS study exception handling
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/optimized-release-toolchain]
+    paths: [.github/workflows/optimization-diagnostics.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnose:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: munich-quantum-toolkit/core
+          fetch-depth: 0
+          ref: 65ee323df7ab5aa8854e9d857e9d5b2819f050d1
+          path: core
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: "34535974767"
+          github-token: ${{ github.token }}
+          name: study-sdk-macos-arm64-OFF
+          path: ${{ runner.temp }}/study/download
+      - name: Expose the failed assertion's actual error
+        shell: bash
+        env:
+          STUDY_ROOT: ${{ runner.temp }}/study
+          STUDY_OPERATION: wheel
+          STUDY_SDK_LTO: "OFF"
+          STUDY_CORE_LTO: "OFF"
+          STUDY_JOBS: "3"
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('core/mlir/unittests/Compiler/test_compiler_qdmi_adapter.cpp')
+          source = path.read_text()
+          old = 'EXPECT_NE(message.find("Unknown QDMI device ID"), std::string::npos);'
+          assert source.count(old) == 1
+          path.write_text(source.replace(old, old[:-1] + ' << message;'))
+          PY
+          git -C core diff > "$STUDY_ROOT/diagnostic.patch"
+          python3 experiments/linux_optimization.py --output "$STUDY_ROOT/pipeline.json" -- bash experiments/run.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: study-macos-exception-diagnostic
+          path: |
+            ${{ runner.temp }}/study/diagnostic.patch
+            ${{ runner.temp }}/study/pipeline.*
+            ${{ runner.temp }}/study/output/measurements
+            ${{ runner.temp }}/study/output/core-build/profile-test-results
+            ${{ runner.temp }}/study/output/core-build/compile_commands.json
+            ${{ runner.temp }}/study/output/core-build/build.ninja
+            ${{ runner.temp }}/study/output/raw
+          if-no-files-found: error
