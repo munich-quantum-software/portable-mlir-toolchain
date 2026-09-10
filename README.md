@@ -62,3 +62,25 @@ ELF binary followed by `--` and a training command, validates the result, and
 restores the original on failure. It uses `-lite` to rewrite profiled functions.
 Preserve symbols and relocations until BOLT finishes, then use `llvm-strip` and
 validate again.
+
+## Experimental library variants
+
+`scripts/toolchain/build-library-variant.py` rebuilds LLVM/MLIR static libraries
+with Clang or Apple Clang while reusing the base SDK's native executables. This
+is trial tooling; published archive names and installation defaults are
+unchanged.
+
+Pass separate source, base SDK, build, and installation directories, an
+immutable `--source-id`, and `--lto OFF`, `Thin`, or `Full`. Set `CC`, `CXX`,
+and matching archive tools explicitly. `--phase generate` instruments libraries;
+`--phase use` requires the consuming project's merged `--profile`. Core owns
+training inputs. An optional JSON `--targets` list restricts rebuilding to a
+measured dependency closure; the manifest distinguishes this from rebuilding all
+archives.
+
+The build identity fixes the source identifier, compiler, base archive hashes,
+assertion mode, LTO mode, and additional CMake definitions. Reusing a directory
+with a different identity fails. Generated headers and CMake exports are
+installed with the libraries. Phase reports preserve command failures and
+profile hashes. Neither the profile data nor the compiler is required to consume
+native PGO archives; LTO archives require compatible compiler/linker tooling.
