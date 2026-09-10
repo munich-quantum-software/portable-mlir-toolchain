@@ -2,6 +2,11 @@ name: Native SDK Windows compatibility
 
 on:
   workflow_dispatch:
+    inputs:
+      wheel-run-id:
+        description: Reuse repaired wheels from a previous compatibility run
+        type: string
+        default: ""
   push:
     branches: [codex/optimized-release-toolchain]
     paths: [.github/workflows/optimization-compatibility.yml]
@@ -12,6 +17,7 @@ permissions:
 
 jobs:
   windows:
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -46,11 +52,19 @@ jobs:
           name: llvm-mlir_llvmorg-23.1.0_${{ matrix.platform.arch }}-pc-windows-msvc_noassert.tar.zst
           path: ${{ runner.temp }}/study/download
           skip-decompress: true
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        if: inputs.wheel-run-id != ''
+        with:
+          run-id: ${{ inputs.wheel-run-id }}
+          github-token: ${{ github.token }}
+          name: study-windows-${{ matrix.platform.arch }}
+          path: ${{ runner.temp }}/study/reused
       - name: Validate repaired wheel and CMake consumers
         shell: pwsh
         env:
           STUDY_ROOT: ${{ runner.temp }}/study
           STUDY_TESTS: ${{ matrix.platform.tests }}
+          STUDY_WHEEL_RUN: ${{ inputs.wheel-run-id }}
         run: |
           $ErrorActionPreference = 'Stop'
           . "$env:GITHUB_WORKSPACE/scripts/toolchain/windows/common.ps1"
@@ -65,6 +79,11 @@ jobs:
           Invoke-Checked -Command uv -Arguments @('pip', 'sync', "$env:STUDY_ROOT/build-requirements.txt") -ErrorMessage 'Build dependency installation failed'
           Invoke-Checked -Command uv -Arguments @('pip', 'install', 'delvewheel==1.12.0') -ErrorMessage 'Wheel repair dependency installation failed'
           $arguments = @('experiments/validate_windows_sdk.py', '--core', "$env:GITHUB_WORKSPACE/core", '--root', "$env:STUDY_ROOT/output", '--sdk', $sdk)
+          if ($env:STUDY_WHEEL_RUN) {
+            $wheels = @(Get-ChildItem "$env:STUDY_ROOT/reused" -Filter *.whl -Recurse)
+            if ($wheels.Count -ne 1) { throw 'Expected exactly one repaired wheel' }
+            $arguments += @('--wheel', $wheels[0].FullName)
+          }
           if ($env:STUDY_TESTS) { $arguments += $env:STUDY_TESTS }
           Invoke-Checked -Command python -Arguments $arguments -ErrorMessage 'Windows compatibility check failed'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,7 @@ def main() -> None:
     parser.add_argument("--core", type=Path, required=True, help="Pinned MQT Core source checkout")
     parser.add_argument("--sdk", type=Path, required=True)
     parser.add_argument("--full-python-tests", action="store_true")
+    parser.add_argument("--wheel", type=Path, help="Reuse a previously built and repaired wheel")
     args = parser.parse_args()
     if platform.system() != "Windows":
         parser.error("run this compatibility check in a Visual Studio developer shell on Windows")
@@ -56,60 +58,68 @@ def main() -> None:
             msg = f"{label} failed ({result}); see its measurement log"
             raise SystemExit(msg)
 
-    build = root / "core-build"
-    execute(
-        "wheel-build",
-        [
-            "uv",
-            "build",
-            "--wheel",
-            "--no-build-isolation",
-            "--python",
-            sys.executable,
-            "--out-dir",
-            str(root / "raw"),
-            "-Cbuild-dir=" + str(build),
-            "-Ccmake.define.ENABLE_IPO=OFF",
-            "-Ccmake.define.BUILD_MQT_CORE_TESTS=OFF",
-            "-Ccmake.define.LLVM_DIR=" + str(sdk / "lib/cmake/llvm"),
-            "-Ccmake.define.MLIR_DIR=" + str(sdk / "lib/cmake/mlir"),
-        ],
-    )
-    cpp_build = root / "cpp-build"
-    execute(
-        "cpp-configure",
-        [
-            "cmake",
-            "--preset",
-            "release",
-            "-S",
-            str(project),
-            "-B",
-            str(cpp_build),
-            "-DENABLE_IPO=OFF",
-            "-DLLVM_DIR=" + str(sdk / "lib/cmake/llvm"),
-            "-DMLIR_DIR=" + str(sdk / "lib/cmake/mlir"),
-        ],
-    )
-    execute("cpp-build", ["cmake", "--build", str(cpp_build), "--config", "Release", "-j", "4"])
-    execute("cpp-tests", ["ctest", "--test-dir", str(cpp_build), "-C", "Release", "--output-on-failure", "-j", "4"])
-    wheel = next((root / "raw").glob("*.whl"))
-    execute(
-        "repair",
-        [
-            sys.executable,
-            "-m",
-            "delvewheel",
+    if args.wheel:
+        wheel = args.wheel.resolve()
+        if not wheel.is_file() or wheel.suffix != ".whl":
+            parser.error("--wheel must name an existing repaired wheel")
+        (root / "artifacts").mkdir(exist_ok=True)
+        repaired = root / "artifacts" / wheel.name
+        shutil.copy2(wheel, repaired)
+    else:
+        build = root / "core-build"
+        execute(
+            "wheel-build",
+            [
+                "uv",
+                "build",
+                "--wheel",
+                "--no-build-isolation",
+                "--python",
+                sys.executable,
+                "--out-dir",
+                str(root / "raw"),
+                "-Cbuild-dir=" + str(build),
+                "-Ccmake.define.ENABLE_IPO=OFF",
+                "-Ccmake.define.BUILD_MQT_CORE_TESTS=OFF",
+                "-Ccmake.define.LLVM_DIR=" + str(sdk / "lib/cmake/llvm"),
+                "-Ccmake.define.MLIR_DIR=" + str(sdk / "lib/cmake/mlir"),
+            ],
+        )
+        cpp_build = root / "cpp-build"
+        execute(
+            "cpp-configure",
+            [
+                "cmake",
+                "--preset",
+                "release",
+                "-S",
+                str(project),
+                "-B",
+                str(cpp_build),
+                "-DENABLE_IPO=OFF",
+                "-DLLVM_DIR=" + str(sdk / "lib/cmake/llvm"),
+                "-DMLIR_DIR=" + str(sdk / "lib/cmake/mlir"),
+            ],
+        )
+        execute("cpp-build", ["cmake", "--build", str(cpp_build), "--config", "Release", "-j", "4"])
+        execute("cpp-tests", ["ctest", "--test-dir", str(cpp_build), "-C", "Release", "--output-on-failure", "-j", "4"])
+        wheel = next((root / "raw").glob("*.whl"))
+        execute(
             "repair",
-            "-w",
-            str(root / "artifacts"),
-            str(wheel),
-            "--namespace-pkg",
-            "mqt",
-            "--ignore-existing",
-        ],
-    )
-    repaired = next((root / "artifacts").glob("*.whl"))
+            [
+                sys.executable,
+                "-m",
+                "delvewheel",
+                "repair",
+                "-w",
+                str(root / "artifacts"),
+                str(wheel),
+                "--namespace-pkg",
+                "mqt",
+                "--ignore-existing",
+            ],
+        )
+        repaired = next((root / "artifacts").glob("*.whl"))
     venv = root / "installed"
     execute("venv", ["uv", "venv", "--python", sys.executable, str(venv)])
     python = venv / "Scripts/python.exe"
@@ -160,7 +170,7 @@ def main() -> None:
         [
             "cmake",
             "-S",
-            str(project / "test/release/consumer"),
+            str(Path(__file__).resolve().parent / "consumer"),
             "-B",
             str(consumer),
             "-G",
@@ -182,6 +192,8 @@ def main() -> None:
         "visual_studio": os.environ.get("VCTOOLSVERSION"),
         "windows_sdk": os.environ.get("WINDOWSSDKVERSION"),
         "wheel_sha256": wheel_hash,
+        "reused_wheel": bool(args.wheel),
+        "wheel_source_run": os.environ.get("STUDY_WHEEL_RUN") or None,
         "wheel_bytes": repaired.stat().st_size,
         "full_python_tests": args.full_python_tests,
         "python_test_limit": None

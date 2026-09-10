@@ -502,7 +502,7 @@ def main() -> None:
                 [
                     "cmake",
                     "-S",
-                    str(project / "test/release/consumer"),
+                    str(Path(__file__).resolve().parent / "consumer"),
                     "-B",
                     str(consumer),
                     "-G",
