@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-23.1.0)"
+        description: "llvm-project ref or tag (e.g., llvmorg-23.1.1)"
         required: true
         type: string
 
