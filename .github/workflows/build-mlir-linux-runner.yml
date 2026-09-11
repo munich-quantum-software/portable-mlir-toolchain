@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-23.1.0)"
+        description: "llvm-project ref or tag (e.g., llvmorg-23.1.1)"
         required: true
         type: string
       runs-on:
@@ -17,8 +17,8 @@ on:
         required: false
         type: string
       mold-version:
-        description: "mold version (e.g., 2.42.0)"
-        default: "2.42.0"
+        description: "mold version (e.g., 2.42.1)"
+        default: "2.42.1"
         required: false
         type: string
 

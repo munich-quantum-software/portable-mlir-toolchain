@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # shellcheck source=./common.sh
 source "$SCRIPT_DIR/common.sh"
 
-MOLD_VERSION="2.42.0"
+MOLD_VERSION="2.42.1"
 while getopts ":z:a:v:" opt; do
   case "$opt" in
     z) ZSTD_ARCHIVE_PATH="$OPTARG" ;;
