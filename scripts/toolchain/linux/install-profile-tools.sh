@@ -38,7 +38,7 @@ cmake -S "$root/source/runtimes" -B "$root/runtime" -G Ninja \
   -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=ON \
   -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
 cmake --build "$root/runtime" --target profile -j "${STUDY_JOBS:-4}"
-runtime_dir=$($CC --print-runtime-dir)
+runtime_dir=$($CC -print-resource-dir)/lib/$triple
 mkdir -p "$runtime_dir"
 cp "$root/runtime/compiler-rt/lib/$triple/libclang_rt.profile.a" "$runtime_dir/"
 cmake -S "$root/source/llvm" -B "$root/tools" -G Ninja \
