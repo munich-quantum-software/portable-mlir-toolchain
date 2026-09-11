@@ -18,12 +18,42 @@ import hashlib
 import json
 import math
 import runpy
+import struct
 import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+
+@pytest.mark.parametrize("machine", [62, 183])
+def test_linker_stack_changes_only_the_size_and_rejects_invalid_input(tmp_path: Path, machine: int) -> None:
+    """Keep code and stack permissions unchanged; reject unsupported headers before writing."""
+    script = Path(__file__).resolve().parents[1] / "configure_linker_stack.py"
+    configure = runpy.run_path(str(script))["configure"]
+    original = bytearray(120)
+    original[:6] = b"\x7fELF\x02\x01"
+    struct.pack_into("<HH", original, 16, 2, machine)
+    struct.pack_into("<Q", original, 32, 64)
+    struct.pack_into("<HH", original, 54, 56, 1)
+    struct.pack_into("<II", original, 64, 0x6474E551, 6)
+    binary = tmp_path / "lld"
+    binary.write_bytes(original)
+    record = configure(binary)
+    expected = bytearray(original)
+    struct.pack_into("<Q", expected, 104, 8 * 1024 * 1024)
+    assert binary.read_bytes() == expected
+    assert record["original_sha256"] == hashlib.sha256(original).hexdigest()
+    assert record["configured_sha256"] == hashlib.sha256(expected).hexdigest()
+    assert configure(binary)["original_sha256"] == record["configured_sha256"]
+    for offset, value in [(0, 0), (54, 0), (64, 3), (64, 0)]:
+        invalid = bytearray(original)
+        invalid[offset] = value
+        binary.write_bytes(invalid)
+        with pytest.raises(ValueError, match=r"ELF64|program header|statically linked|PT_GNU_STACK"):
+            configure(binary)
+        assert binary.read_bytes() == invalid
 
 
 def test_failed_command_and_replay(tmp_path: Path) -> None:

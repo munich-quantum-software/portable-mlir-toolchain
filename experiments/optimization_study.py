@@ -136,6 +136,8 @@ def main() -> None:
     if system == "Darwin":
         manifest["xcode"] = subprocess.check_output(["xcodebuild", "-version"], text=True)
         manifest["macos_sdk"] = subprocess.check_output(["xcrun", "--show-sdk-build-version"], text=True).strip()
+    else:
+        manifest["linker_sha256"] = digest(Path(cxx).with_name("ld.lld"))
     cache = None
     if args.warm_cache:
         cache = shutil.which("sccache")

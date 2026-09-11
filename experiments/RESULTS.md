@@ -110,8 +110,33 @@ checks remain required. All eight other SDK variants passed that consumer.
 
 ## Remaining platform gates
 
-All 18 SDK/Core LTO combinations are scheduled in the SDK repository. The
-remaining work is repaired-wheel validation, Core-only and combined PGO for
+All six native-SDK Linux recipes passed their C++ tests, plain/BOLT
+repaired-wheel checks, and producer-Clang/GCC consumers. Complete job work took
+15.4–31.9 minutes on ARM64 and 19.9–35.3 minutes on x86-64, with container peaks
+below 13.6 GiB and no swap. Both paired cohorts on each architecture selected
+full Core LTO with BOLT. Their Core-only and combined PGO trials also measure a
+clean warm-cache rebuild, avoiding another cold pipeline solely to obtain cache
+measurements.
+
+The first four Linux ThinLTO-SDK wheel jobs crashed in the static, musl-linked
+LLD shipped by manylinux's Clang package. An LLVM-only reproducer also crashed:
+the faulting instruction writes into a worker thread's stack guard. Setting the
+linker's `PT_GNU_STACK` size to 8 MiB made that same link and runtime check
+pass. The study records the original/configured linker hashes and changes no
+executable code or stack permissions. The
+[reproducer and evidence](results/linux-thin-linker-stack.tar.gz) have a
+[hash manifest](results/linux-thin-linker-stack.json). Full hosted wheel retries
+remain required. The static musl build is documented in the
+[compiler package recipe](https://github.com/mayeut/static-clang-images/blob/v22.1.8.1/Dockerfile).
+
+The macOS native-SDK screen exposed a separate Core build issue: its MLIR helper
+disables RTTI after the QDMI adapter explicitly requests it. The unknown-device
+exception then becomes `unknown exception`. A recorded study CMake override
+restores the adapter's requested RTTI setting while preserving the pinned Core
+source. Corrected package validation remains required; the superseded macOS LTO
+jobs were cancelled.
+
+The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
 production-setting archive measurements, and recipe selection for each platform.
 The macOS producer and consumers use Xcode 26.6, SDK deployment target 11.0, and
