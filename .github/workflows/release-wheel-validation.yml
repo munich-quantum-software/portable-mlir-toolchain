@@ -110,6 +110,9 @@ jobs:
           compression-level: 0
           path: |
             core/wheelhouse/*.whl
+            core/build/release-pgo.cmake
+            core/build/python/Release/CMakeCache.txt
+            core/build/python/Release/CMakeFiles/CMakeConfigureLog.yaml
             core/build/release-pgo-*/*.json
             core/build/release-pgo-*/*.log
             core/build/release-pgo-*/*.profdata
@@ -204,6 +207,9 @@ jobs:
           compression-level: 0
           path: |
             core/wheelhouse/*.whl
+            core/build/release-pgo.cmake
+            core/build/python/Release/CMakeCache.txt
+            core/build/python/Release/CMakeFiles/CMakeConfigureLog.yaml
             core/build/release-pgo-*/*.json
             core/build/release-pgo-*/*.log
             core/build/release-pgo-*/*.profdata
