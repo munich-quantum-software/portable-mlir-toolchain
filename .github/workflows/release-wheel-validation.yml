@@ -3,6 +3,11 @@ name: Validate the integrated release wheel recipe
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: Platform to qualify with the retained SDK artifacts
+        type: choice
+        options: [linux, windows]
+        default: linux
       sdk-run-id:
         description: Native LLVM 23.1.1 qualification artifacts
         type: string
@@ -21,7 +26,7 @@ permissions:
 
 jobs:
   linux:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'linux'
     strategy:
       fail-fast: false
       matrix:
@@ -82,4 +87,92 @@ jobs:
             core/build/release-pgo-*/*.profdata
             core/build/release-pgo-*/sdk-build/variant-*.json
             ${{ runner.temp }}/release/pipeline*
+          if-no-files-found: error
+
+  windows:
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'windows'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { runner: windows-2025, arch: x86_64, cibw: AMD64 }
+          - { runner: windows-11-arm, arch: aarch64, cibw: ARM64 }
+        python:
+          - { abi: cp311, version: "3.11" }
+          - { abi: cp315t, version: "3.15t" }
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: munich-quantum-toolkit/core
+          ref: ${{ inputs.core-ref }}
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          python-version: 3.14.7
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ inputs.sdk-run-id }}
+          github-token: ${{ github.token }}
+          name: llvm-mlir_llvmorg-23.1.1_${{ matrix.platform.arch }}-pc-windows-msvc_noassert.tar.zst
+          path: ${{ runner.temp }}/release/download
+          skip-decompress: true
+      - name: Build and validate the production Windows wheel
+        shell: pwsh
+        env:
+          RELEASE_ROOT: ${{ runner.temp }}/release
+          RELEASE_PYTHON: ${{ matrix.python.version }}
+          CIBW_BUILD: ${{ matrix.python.abi }}-*
+          CIBW_ARCHS: ${{ matrix.platform.cibw }}
+          CMAKE_BUILD_PARALLEL_LEVEL: "4"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . "$env:GITHUB_WORKSPACE/scripts/toolchain/windows/common.ps1"
+          Enter-VisualStudioDevShell -VsArch (Get-ArchInfo).VsArch
+          Ensure-Ninja
+          $sdk = "$env:RELEASE_ROOT/sdk"
+          New-Item -ItemType Directory -Force $sdk | Out-Null
+          $archive = (Get-ChildItem "$env:RELEASE_ROOT/download/*.tar.zst").FullName
+          Invoke-Checked -Command uv -Arguments @('run', '--no-project', '--python', '3.14.7', 'python', 'experiments/extract_study_sdk.py', $archive, $sdk) -ErrorMessage 'SDK extraction failed'
+          $env:MLIR_DIR = "$sdk/lib/cmake/mlir"
+          $env:LLVM_DIR = "$sdk/lib/cmake/llvm"
+          $env:PATH = "$sdk/bin;$env:PATH"
+          $env:MQT_CORE_QDMI_CONFIG_JSON = '{"schema-version":1,"qdmi":{"devices":[]}}'
+          Set-Location core
+          Invoke-Checked -Command uvx -Arguments @('cibuildwheel==4.2.1', '--platform', 'windows') -ErrorMessage 'Production wheel pipeline failed'
+          $wheels = @(Get-ChildItem wheelhouse -Filter *.whl)
+          if ($wheels.Count -ne 1) { throw 'Expected one repaired wheel' }
+          $installed = "$env:RELEASE_ROOT/installed"
+          Invoke-Checked -Command uv -Arguments @('venv', '--python', $env:RELEASE_PYTHON, $installed) -ErrorMessage 'Installed environment creation failed'
+          $python = "$installed/Scripts/python.exe"
+          Invoke-Checked -Command uv -Arguments @('pip', 'install', '--python', $python, $wheels[0].FullName) -ErrorMessage 'Repaired wheel installation failed'
+          Invoke-Checked -Command $python -Arguments @('test/release/train_optimization.py', '--expected-root', $installed) -ErrorMessage 'Installed numerical, compiler, QIR and CLI checks failed'
+          $package = "$installed/Lib/site-packages/mqt/core"
+          $dllPaths = Get-ChildItem "$installed/Lib/site-packages" -Filter *.dll -Recurse | ForEach-Object { $_.DirectoryName } | Sort-Object -Unique
+          $env:PATH = ($dllPaths -join ';') + ';' + $env:PATH
+          Invoke-Checked -Command uvx -Arguments @('--from', 'cmake==4.4.3', 'cmake', '-S', 'test/release/consumer', '-B', 'build/consumer', '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', "-DCMAKE_PREFIX_PATH=$package") -ErrorMessage 'Installed CMake consumer configure failed'
+          Invoke-Checked -Command uvx -Arguments @('--from', 'cmake==4.4.3', 'cmake', '--build', 'build/consumer', '-j', '4') -ErrorMessage 'Installed CMake consumer build failed'
+          Invoke-Checked -Command './build/consumer/consumer.exe' -Arguments @() -ErrorMessage 'Installed CMake consumer execution failed'
+          if ($env:RELEASE_PYTHON -eq '3.11') {
+            Invoke-Checked -Command uvx -Arguments @('--from', 'cmake==4.4.3', 'cmake', '--preset', 'release', '-DENABLE_IPO=OFF') -ErrorMessage 'C++ test configure failed'
+            Invoke-Checked -Command uvx -Arguments @('--from', 'cmake==4.4.3', 'cmake', '--build', '--preset', 'release', '-j', '4') -ErrorMessage 'C++ test build failed'
+            Invoke-Checked -Command uvx -Arguments @('--from', 'cmake==4.4.3', 'ctest', '--preset', 'release') -ErrorMessage 'C++ tests failed'
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: release-validation-windows-${{ matrix.platform.arch }}-${{ matrix.python.abi }}
+          compression-level: 0
+          path: |
+            core/wheelhouse/*.whl
+            core/build/consumer/CMakeCache.txt
+            core/build/release/Testing/Temporary/*.log
           if-no-files-found: error
