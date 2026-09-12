@@ -81,7 +81,7 @@ jobs:
           project=${1:?Core source directory}
           build="$project/build/release-validation-cpp"
           cmake -S "$project" -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_UNITY_BUILD=ON -DBUILD_MQT_CORE_SHARED_LIBS=ON \
+            -DCMAKE_UNITY_BUILD=ON \
             -DBUILD_MQT_CORE_BINDINGS=OFF -DBUILD_MQT_CORE_TESTS=ON \
             -DCMAKE_PROJECT_INCLUDE_BEFORE="$project/build/release-pgo.cmake"
           cmake --build "$build" -j 4
