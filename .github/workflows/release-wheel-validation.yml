@@ -170,7 +170,11 @@ jobs:
           cmake --build build/consumer -j 3
           build/consumer/consumer
           if [[ "$RELEASE_PYTHON" == 3.11 ]]; then
-            cmake --preset release -DENABLE_IPO=OFF
+            arguments=(-DENABLE_IPO=ON)
+            if [[ -f build/release-pgo.cmake ]]; then
+              arguments+=(-DCMAKE_PROJECT_INCLUDE_BEFORE="$PWD/build/release-pgo.cmake")
+            fi
+            cmake --preset release "${arguments[@]}"
             cmake --build --preset release -j 3
             ctest --preset release
           fi
