@@ -4,9 +4,11 @@ Both Linux architectures retain native SDK libraries. On ARM64, the matched SDK
 improves balanced latency by about 8.6% with the Clang 23 reference and 3.3% in
 the hosted Clang 22 study, below the required 10%. On x86-64, it gains 12.8% on
 the AMD host and 8.5% on the Intel host, failing the requirement to clear the
-gate in both cohorts. Windows compatibility passes on both architectures. The
-macOS PGO trials remain in progress. No production SDK release or setup default
-has changed.
+gate in both cohorts. macOS also retains native SDK libraries: its matched
+combined-PGO candidates have about 10-13% lower point-estimate latency, but
+their confidence bounds do not meet the adoption rule. Windows compatibility
+passes on both architectures. No production SDK release or setup default has
+changed.
 
 ## Linux ARM64 reference comparison
 
@@ -365,7 +367,8 @@ otherwise RTTI-enabled handler from matching a standard exception thrown by a
 shared library. Enabling RTTI only in the QDMI adapter was therefore
 insufficient.
 
-macOS trials now use Core `9e776ddb4bd1d9eede04a08cb814394367a84884`. The
+The completed pre-PGO screen used Core
+`9e776ddb4bd1d9eede04a08cb814394367a84884`. The
 [diagnostic run](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34686608949)
 retains object symbols and a link map showing that the no-RTTI CLI translation
 unit emitted private standard-exception typeinfo through inline library code.
@@ -426,12 +429,77 @@ existing test skipped, and all 43 Python QDMI compilation tests. Hosted CI also
 passes on Linux, macOS, and Windows at `bb0ae8208`. These changes do not alter
 the frozen sources of the retained timing samples.
 
-The remaining work is repaired-wheel validation, Core-only and combined PGO for
-native and matched finalists, paired runtime evaluation, full cold/warm costs,
-production-setting archive measurements, and recipe selection for each platform.
-The macOS producer and consumers use Xcode 26.6, SDK deployment target 11.0, and
-Core deployment target 13.3. Linux uses the pinned manylinux 2.28 image and
-prebuilt Clang 22.1.8.1.
+## macOS final comparison
+
+All twelve recipes pass with Core `cc3f08f5` and LLVM 23.1.0: the six LTO
+combinations plus Core-only and combined SDK/Core PGO on native/Thin, Thin/Full,
+and Full/Full. Each passed the recorded C++/MLIR and CLI checks, wheel repair,
+1,184 installed Python tests (one skipped), numerical and QIR execution, and the
+installed CMake consumer. The producer and consumer use Xcode 26.6, with
+deployment targets 11.0 for the SDK and 13.3 for Core.
+
+The final two twelve-round cohorts evaluate all twelve wheel hashes on their
+respective hosts without concurrent builds, collecting 288 samples. Both select
+native SDK libraries with Core ThinLTO and combined SDK/Core PGO. The two
+leading matched candidates retain full Core LTO and combined PGO:
+
+| SDK LTO | Cohort | Matched/native latency |    95% interval | Runtime gate |
+| ------- | ------ | ---------------------: | --------------: | ------------ |
+| Full    | 1      |                0.88928 | 0.84355-0.93974 | Fail         |
+| Full    | 2      |                0.89252 | 0.81484-0.98455 | Fail         |
+| Thin    | 1      |                0.89900 | 0.85682-0.95341 | Fail         |
+| Thin    | 2      |                0.86931 | 0.78966-0.98219 | Fail         |
+
+Neither combined-PGO finalist has a confirmed individual regression above 3%,
+but every upper confidence bound exceeds 0.90. None of the other matched
+candidates meets the two-cohort rule either. Native SDK libraries remain the
+recommendation. The selected wheel is 33,252,901 bytes; its balanced latency is
+6.6-9.9% lower than native SDK/Core builds with LTO and PGO disabled. Those
+figures are point estimates, not comparisons with a published Core wheel.
+
+All twelve jobs fit the five-hour budget on standard three-CPU, 7 GiB macOS
+runners. Cold timings below run from pipeline start through the final installed
+consumer check. Whole-job times also include setup, retained-SDK transfer, warm
+probes where enabled, and artifact upload; they exclude queue time. The complete
+native SDK build is reported separately above.
+
+| SDK LTO | Core LTO | PGO  | Cold (min) | Warm (min) | Whole job (min) | RSS (GiB) |
+| ------- | -------- | ---- | ---------: | ---------: | --------------: | --------: |
+| OFF     | OFF      | none |        9.3 |          - |            10.8 |       2.3 |
+| OFF     | Thin     | none |       18.9 |          - |            19.6 |       2.1 |
+| OFF     | Full     | none |       18.2 |          - |            19.4 |       2.5 |
+| Thin    | Thin     | none |       97.0 |          - |            98.6 |       2.6 |
+| Thin    | Full     | none |       89.9 |          - |            90.9 |       2.7 |
+| Full    | Full     | none |       64.0 |          - |            64.7 |       4.3 |
+| OFF     | Thin     | core |       32.8 |        3.1 |            37.4 |       1.2 |
+| Thin    | Full     | core |      130.3 |       25.2 |           157.3 |       2.9 |
+| Full    | Full     | core |       86.9 |       13.7 |           101.2 |       4.8 |
+| OFF     | Thin     | both |      113.4 |        4.9 |           119.2 |       1.7 |
+| Thin    | Full     | both |      201.8 |       15.5 |           219.0 |       3.4 |
+| Full    | Full     | both |      177.7 |       11.8 |           190.7 |       4.7 |
+
+RSS is sampled process-tree memory, not whole-system peak usage; swap was not
+measured. Warm probes reuse the same profile and cover clean SDK/Core rebuilds
+and semantic checks, excluding fresh training, repair, compression, and upload.
+The native and full-LTO combined-PGO probes each recorded 2,258 compiler-cache
+hits with no misses or errors. The ThinLTO-SDK probes and full-LTO Core-only
+probe recorded no compiler-cache requests, so their timings do not demonstrate
+compiler-cache hits. Combined PGO rebuilds 163 linked SDK archive targets; it
+does not profile every library in the SDK.
+
+The [retained records](results/macos-final-comparison.tar.gz) and
+[hash manifest](results/macos-final-comparison.json) include all twelve build
+pipelines, raw samples, original rankings, host identities, and the separate
+decision calculation. Two earlier native-only cohorts, collecting 120 samples,
+are retained with their separate purpose: they selected the same native recipe
+and allowed current release-hook qualification to start while the last matched
+build completed. The final decision uses the complete twelve-variant cohorts.
+
+Qualification of the current Core release hooks with LLVM 23.1.1 remains a
+separate gate. Linux uses native SDK libraries, full Core LTO, combined SDK/Core
+PGO, and BOLT with prebuilt manylinux Clang 22.1.8.1. macOS uses native SDK
+libraries, Core ThinLTO, and combined SDK/Core PGO. Windows keeps its existing
+compiler and optimization settings.
 
 ## Released mold qualification
 

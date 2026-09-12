@@ -56,9 +56,11 @@ to each source/compiler/platform combination.
 - [x] Compare the prebuilt Clang 22 recipe with retained Clang 23 and GCC 14
       references on one quiet host in two cohorts. The selected Clang recipes
       have similar latency and no confirmed workload regressions above 3%.
-- [ ] Run complete hosted builds, repaired-wheel checks, and resource
-      measurements for the remaining macOS PGO finalists and current release
-      hooks using LLVM 23.1.1 trial SDKs.
+- [x] Complete all twelve macOS recipes and two final runtime cohorts. Native
+      SDK libraries with Core ThinLTO and combined SDK/Core PGO remain the
+      recommendation; no matched candidate meets the confidence-supported gate.
+- [ ] Qualify the current Linux and macOS release hooks using LLVM 23.1.1 trial
+      SDKs. Normal SDK qualification and all four Windows release jobs pass.
 - [ ] Report per-platform decisions and revise companion PRs around measured
       outcomes without publishing a production SDK release.
 
@@ -82,10 +84,9 @@ check.
 Cache probes use an explicit cache and profile identity. A ThinLTO SDK support
 library check recorded 182 cold compilations followed by 182 cache hits after
 cleaning the build output, without cache errors. This proves the cache
-mechanism; completed hosted cold/warm costs are recorded in the results, with
-remaining macOS trials pending. Warm results cover clean SDK/Core rebuilds and
-semantic checks with the same profile, and exclude fresh training, BOLT, repair,
-compression, and upload.
+mechanism; completed hosted cold/warm costs are recorded in the results. Warm
+results cover clean SDK/Core rebuilds and semantic checks with the same profile,
+and exclude fresh training, BOLT, repair, compression, and upload.
 
 Current package checks build C++ tests separately on Windows and use the actual
 shared-library directories for Unix test execution. Linux wheels must repair to
