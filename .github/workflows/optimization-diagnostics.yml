@@ -23,7 +23,7 @@ jobs:
         with:
           repository: munich-quantum-toolkit/core
           fetch-depth: 0
-          ref: 65ee323df7ab5aa8854e9d857e9d5b2819f050d1
+          ref: 8d520eb04fc301b5dba85a8e4c2587ba410fb533
           path: core
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
@@ -36,7 +36,7 @@ jobs:
           github-token: ${{ github.token }}
           name: study-sdk-macos-arm64-OFF
           path: ${{ runner.temp }}/study/download
-      - name: Expose the failed assertion's actual error
+      - name: Retain the failing benchmark CLI and its link map
         shell: bash
         env:
           STUDY_ROOT: ${{ runner.temp }}/study
@@ -46,76 +46,42 @@ jobs:
           STUDY_JOBS: "3"
           DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
         run: |
-          cat > "$STUDY_ROOT/exception.cpp" <<'CPP'
-          #include <cstdio>
-          #include <exception>
-          #include <stdexcept>
-          static void report(const std::exception_ptr& exception) {
-            try { std::rethrow_exception(exception); }
-            catch (const std::exception& error) { std::printf("standard exception: %s\n", error.what()); }
-            catch (...) { std::puts("unknown exception"); }
-          }
-          int main() {
-            try { throw std::out_of_range("known diagnostic marker"); }
-            catch (...) { report(std::current_exception()); }
-          }
-          CPP
-          for flag in -fno-rtti -frtti; do
-            xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 "$flag" "$STUDY_ROOT/exception.cpp" -o "$STUDY_ROOT/exception$flag"
-            "$STUDY_ROOT/exception$flag" | tee "$STUDY_ROOT/exception$flag.log"
-          done
-          cat > "$STUDY_ROOT/exception-throw.cpp" <<'CPP'
-          #include <stdexcept>
-          void marker() { throw std::out_of_range("known diagnostic marker"); }
-          CPP
-          cat > "$STUDY_ROOT/exception-extra.cpp" <<'CPP'
-          #include <exception>
-          void check(void (*call)()) {
-            try { call(); } catch (const std::exception&) {}
-          }
-          CPP
-          xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -dynamiclib "$STUDY_ROOT/exception-throw.cpp" -o "$STUDY_ROOT/exception-throw.dylib"
-          python3 - <<'PY'
-          import os
+          python3 - <<'PYTHON'
           from pathlib import Path
-          path = Path(os.environ['STUDY_ROOT']) / 'exception.cpp'
-          source = path.read_text().replace('int main() {', 'void marker();\nint main() {')
-          source = source.replace('throw std::out_of_range("known diagnostic marker")', 'marker()')
-          path.write_text(source)
-          PY
-          for flag in -fno-rtti -frtti; do
-            xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -fvisibility-inlines-hidden "$flag" -c "$STUDY_ROOT/exception-extra.cpp" -o "$STUDY_ROOT/exception-extra.o"
-            xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -frtti "$STUDY_ROOT/exception.cpp" "$STUDY_ROOT/exception-extra.o" "$STUDY_ROOT/exception-throw.dylib" -o "$STUDY_ROOT/exception-mixed$flag"
-            "$STUDY_ROOT/exception-mixed$flag" | tee "$STUDY_ROOT/exception-mixed$flag.log"
-          done
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('core/mlir/unittests/Compiler/test_compiler_qdmi_adapter.cpp')
-          source = path.read_text()
-          old = 'EXPECT_NE(message.find("Unknown QDMI device ID"), std::string::npos);'
-          assert source.count(old) == 1
-          path.write_text(source.replace(old, old[:-1] + ' << message;'))
-          path = Path('core/mlir/CMakeLists.txt')
-          source = path.read_text()
-          old = '  mqt_llvm_target_disable_rtti(${target_name})\n'
-          assert source.count(old) == 1
-          path.write_text(source.replace(old, ''))
-          path = Path('core/mlir/lib/Compiler/QDMIAdapter.cpp')
-          source = path.read_text()
-          old = 'return qdmiError(action, "unknown exception");'
-          assert source.count(old) == 1
-          diagnostic = 'auto* type = __cxxabiv1::__cxa_current_exception_type(); std::fprintf(stderr, "DIAGNOSTIC exception type: %s\\n", type ? type->name() : "foreign"); '
-          path.write_text('#include <cxxabi.h>\n#include <cstdio>\n#include <typeinfo>\n' + source.replace(old, diagnostic + old))
-          PY
+          path = Path('core/mlir/bench/CMakeLists.txt')
+          with path.open('a') as stream:
+              stream.write('\ntarget_link_options(mqt-core-bench PRIVATE "-Wl,-map,${CMAKE_CURRENT_BINARY_DIR}/mqt-core-bench.map")\n')
+          PYTHON
           git -C core diff > "$STUDY_ROOT/diagnostic.patch"
+          set +e
           python3 experiments/linux_optimization.py --output "$STUDY_ROOT/pipeline.json" -- bash experiments/run.sh
+          study_status=$?
+          set -e
+          python3 - <<'PYTHON'
+          import os, subprocess
+          from pathlib import Path
+          root = Path(os.environ['STUDY_ROOT'])
+          build = root / 'output/core-build'
+          paths = [build / 'mlir/bench/mqt-core-bench', *sorted((build / 'mlir/bench').rglob('*.o')),
+                   *sorted((build / 'src/bench').glob('*.dylib'))]
+          with (root / 'symbols.log').open('w') as stream:
+              for path in paths:
+                  if path.is_file():
+                      print(path, file=stream, flush=True)
+                      subprocess.run(['xcrun', 'nm', '-m', str(path)], stdout=stream, stderr=subprocess.STDOUT, check=True)
+          with (root / 'dependencies.log').open('w') as stream:
+              subprocess.run(['otool', '-L', str(paths[0])], stdout=stream, stderr=subprocess.STDOUT, check=True)
+          PYTHON
+          exit "$study_status"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: study-macos-exception-diagnostic
+          name: study-macos-cli-diagnostic
           path: |
             ${{ runner.temp }}/study/diagnostic.patch
-            ${{ runner.temp }}/study/exception*
+            ${{ runner.temp }}/study/*.log
+            ${{ runner.temp }}/study/output/core-build/mlir/bench
+            ${{ runner.temp }}/study/output/core-build/src/bench/*.dylib
             ${{ runner.temp }}/study/pipeline.*
             ${{ runner.temp }}/study/output/measurements
             ${{ runner.temp }}/study/output/core-build/profile-test-results
