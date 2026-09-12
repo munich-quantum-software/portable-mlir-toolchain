@@ -1,0 +1,85 @@
+name: Validate the integrated release wheel recipe
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk-run-id:
+        description: Native LLVM 23.1.1 qualification artifacts
+        type: string
+        required: true
+      core-ref:
+        description: Exact Core integration commit
+        type: string
+        required: true
+  push:
+    branches: [codex/release-wheel-validation]
+    paths: [.github/workflows/release-wheel-validation.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  linux:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { runner: ubuntu-24.04, arch: x86_64 }
+          - { runner: ubuntu-24.04-arm, arch: aarch64 }
+        abi: [cp311, cp315t]
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: munich-quantum-toolkit/core
+          ref: ${{ inputs.core-ref }}
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          python-version: 3.14.7
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ inputs.sdk-run-id }}
+          github-token: ${{ github.token }}
+          name: llvm-mlir_llvmorg-23.1.1_${{ matrix.platform.arch }}-unknown-linux-gnu_noassert.tar.zst
+          path: ${{ runner.temp }}/release/download
+          skip-decompress: true
+      - name: Run the production cibuildwheel hooks with the retained SDK
+        shell: bash
+        env:
+          RELEASE_ROOT: ${{ runner.temp }}/release
+          CIBW_BUILD: ${{ matrix.abi }}-*
+          CIBW_ARCHS: ${{ matrix.platform.arch }}
+          SCCACHE_GHA_ENABLED: "false"
+        run: |
+          mkdir -p "$RELEASE_ROOT/sdk" "$GITHUB_WORKSPACE/core/build"
+          uv run --no-project --python 3.14.7 python experiments/extract_study_sdk.py \
+            "$RELEASE_ROOT"/download/*.tar.zst "$RELEASE_ROOT/sdk"
+          export CIBW_CONTAINER_ENGINE="docker; create_args: --cpus=4 --memory=16g --memory-swap=16g --name=mqt-release-validation -v$RELEASE_ROOT/sdk:/opt/llvm-23.1.1:ro -v$GITHUB_WORKSPACE/core/build:/project/build"
+          cd core
+          uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
+            --output "$RELEASE_ROOT/pipeline.json" --container mqt-release-validation -- \
+            uvx cibuildwheel==4.2.1 --platform linux
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: release-validation-${{ matrix.platform.arch }}-${{ matrix.abi }}
+          compression-level: 0
+          path: |
+            core/wheelhouse/*.whl
+            core/build/release-pgo-*/*.json
+            core/build/release-pgo-*/*.log
+            core/build/release-pgo-*/*.profdata
+            core/build/release-pgo-*/sdk-build/variant-*.json
+            ${{ runner.temp }}/release/pipeline*
+          if-no-files-found: error
