@@ -41,7 +41,7 @@ jobs:
         with:
           repository: munich-quantum-toolkit/core
           fetch-depth: 0
-          ref: ${{ matrix.platform == 'macos-arm64' && '8d520eb04fc301b5dba85a8e4c2587ba410fb533' || '65ee323df7ab5aa8854e9d857e9d5b2819f050d1' }}
+          ref: ${{ matrix.platform == 'macos-arm64' && '9e776ddb4bd1d9eede04a08cb814394367a84884' || '65ee323df7ab5aa8854e9d857e9d5b2819f050d1' }}
           path: core
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d

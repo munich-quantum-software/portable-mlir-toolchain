@@ -204,16 +204,22 @@ otherwise RTTI-enabled handler from matching a standard exception thrown by a
 shared library. Enabling RTTI only in the QDMI adapter was therefore
 insufficient.
 
-macOS trials now use Core `8d520eb04fc301b5dba85a8e4c2587ba410fb533`, which
-honors explicit RTTI requirements for the adapter and its tests and separates
-the benchmark exception handler from LLVM command-line types. Ordinary benchmark
-file and argument errors return diagnostics directly, and the QDMI adapter no
-longer catches and rethrows an exception merely to translate it. The complete
-local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one skipped. The
-macOS retry passes the QDMI error test, but its stricter benchmark CLI check
-detects an abort for an unknown benchmark. The diagnostic run retains the CLI
-objects and link map to locate that remaining exception boundary. Linux
-measurements retain their frozen Core revision; no macOS wheel is accepted yet.
+macOS trials now use Core `9e776ddb4bd1d9eede04a08cb814394367a84884`. The
+[diagnostic run](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34686608949)
+retains object symbols and a link map showing that the no-RTTI CLI translation
+unit emitted private standard-exception typeinfo through inline library code.
+That typeinfo prevented its RTTI-enabled handler from matching exceptions thrown
+by the benchmark shared library.
+
+Core now compiles LLVM option parsing without exceptions or RTTI, and keeps CLI
+execution and its handler in a separate RTTI-enabled target. Benchmark
+generation allows exceptions to propagate from its existing JSON parser APIs.
+Ordinary file and argument errors return diagnostics directly, and the QDMI
+adapter no longer catches and rethrows an exception merely to translate it. The
+full local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one
+skipped. The earlier macOS retry passed the QDMI error test; the updated CLI
+still requires a fresh macOS wheel check. Linux measurements retain their frozen
+Core revision; no macOS wheel is accepted yet.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
