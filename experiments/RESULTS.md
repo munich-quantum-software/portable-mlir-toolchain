@@ -10,6 +10,29 @@ their confidence bounds do not meet the adoption rule. Windows compatibility
 passes on both architectures. No production SDK release or setup default has
 changed.
 
+## Selected recipes
+
+All selected recipes use native assertion-free SDK libraries and preserve the
+platform's portable CPU and deployment targets. Combined PGO covers Core and its
+recorded SDK archive dependencies; native SDK executables are reused.
+
+| Platform          | Selected wheel recipe                       | Lower balanced latency |    Cold wheel pipeline (min) | Warm rebuild/checks (min) |
+| ----------------- | ------------------------------------------- | ---------------------: | ---------------------------: | ------------------------: |
+| Linux ARM64       | Full LTO, combined PGO, BOLT                |             14.8–15.1% |                        119.8 |                       4.3 |
+| Linux x86-64      | Full LTO, combined PGO, BOLT                |             14.6–14.9% |                        185.1 |                       4.1 |
+| macOS ARM64       | ThinLTO, combined PGO                       |               6.6–9.9% |                        113.4 |                       4.9 |
+| Windows ARM64/x64 | Existing compiler and optimization settings |            Not studied | See compatibility jobs below |               Not studied |
+
+Latency ranges are point estimates from the two frozen-source study cohorts
+against their native-SDK baseline with Core LTO, PGO, and BOLT disabled. They
+are not confidence intervals or comparisons against published Core wheels. Cold
+wheel pipelines include fresh profiling, SDK dependency rebuilding, repair, and
+validation; the initial complete native SDK build is separate. Warm probes reuse
+an existing profile and cover clean rebuilds and semantic checks, excluding
+fresh training, repair, and artifact transfer. Each platform section records the
+exact scope, cache statistics, sizes, resources, and compatibility limits.
+Current LLVM 23.1.1 SDK and release-hook qualification is reported separately.
+
 ## Linux ARM64 reference comparison
 
 The screen includes 16 native-SDK configurations and six matched-SDK
@@ -33,7 +56,8 @@ All 576 samples are retained. The best native configuration was
 Neither repeat has a confirmed individual workload regression above 3%. Both
 upper latency bounds exceed 0.90, so the matched SDK fails the adoption rule.
 The native finalist wheel is 38,498,907 bytes; the matched wheel is 40,979,706
-bytes, 6.4% larger. Complete hosted SDK and wheel costs remain a separate gate.
+bytes, 6.4% larger. The hosted costs and release qualification below use the
+selected Clang 22 recipe.
 
 These are DGX Spark ARM64 measurements of the Clang 23 reference, using Core
 `706fd8f95e38c29451d97e88cfdf6022a55020fe`, LLVM 23.1.0, CPython 3.14.7, and
@@ -87,6 +111,45 @@ The earlier frozen-source compatibility checks at Core `9e776ddb` also pass on
 both architectures. Their [records](results/windows-compatibility.tar.gz) and
 [manifest](results/windows-compatibility.json) remain available. The consumer
 allocates its DD package on the heap to fit Windows' default stack size.
+
+## Current macOS release qualification
+
+[Both current macOS ABI jobs](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34714749193)
+pass the actual cibuildwheel 4.2.1 hooks at Core
+`1a8514a4ff1675230297db02535c085a5832cebf`, using the native assertion-free LLVM
+23.1.1 SDK. Each trains its own profile and rebuilds 164 linked SDK archive
+targets, with Core ThinLTO and three build workers from Xcode 26.6.
+
+| Python ABI | Wheel bytes | Complete wheel job (min) | SDK + wheel job work (min) | Cibuildwheel RSS (GiB) |
+| ---------- | ----------: | -----------------------: | -------------------------: | ---------------------: |
+| cp311      |  24,973,867 |                     89.6 |                      189.7 |                    2.9 |
+| cp315t     |  24,976,165 |                    102.7 |                      202.7 |                    3.0 |
+
+Both repaired wheels pass installed numerical, compiler, QIR, CLI, DD, and CMake
+consumer checks. The stable-ABI job additionally passes 1,363 Python tests and
+3,544 C++ tests, with one existing skip in each suite. The free-threaded job
+uses the targeted installed checks. Consumers use the recorded Apple Clang
+toolchain; these checks do not establish compatibility with older compiler ABIs.
+
+Direct inspection of all 13 Mach-O binaries in each wheel confirms ARM64 and a
+minimum macOS version of 13.3. Python modules retain two-level namespaces, and
+no dependency or runtime search path points into the build directory. The SDK
+library rebuild retains its 11.0 deployment target. Both final CMake
+configurations pass their PIC probes while retaining target-scoped profile-use
+options.
+
+The complete job includes provisioning, profile generation, training, SDK and
+Core rebuilding, stripping, repair, applicable tests, consumers, and artifact
+transfer. SDK + wheel work adds the complete fresh native SDK cost reported
+below; it is summed job work, not observed end-to-end latency. The sampled RSS
+covers cibuildwheel only, excluding the subsequent supplementary C++ and
+consumer checks; swap was not measured. Both complete jobs fit the five-hour
+budget on standard three-CPU, 7 GiB runners.
+
+The [qualification records](results/macos-release-qualification.tar.gz) and
+[hash manifest](results/macos-release-qualification.json) retain profiles,
+commands, compiler and source identities, CMake configurations, all logs,
+repaired binary headers, test results, wheel hashes, and resource measurements.
 
 ## Complete native SDK qualification
 
@@ -415,8 +478,8 @@ minutes and peaked at 2.3 GiB. The
 [hash manifest](results/macos-profile-namespace.json).
 
 Core `cc3f08f5` applies the namespace restoration to all Python modules. All six
-ordinary recipes pass with this revision, so the final PGO comparison uses
-identical source and link policies. Core-only and combined SDK/Core PGO advance
+ordinary recipes passed with this revision, so the final PGO comparison uses
+identical source and link policies. Core-only and combined SDK/Core PGO advanced
 on native/Thin, Thin/Full, and Full/Full. The earlier screening records remain
 unchanged.
 
