@@ -58,23 +58,33 @@ python3 experiments/decide_optimization.py \
 
 ## Windows compatibility
 
-[Fresh native-SDK compatibility builds](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34688341748)
-pass for x64 and ARM64 at Core `9e776ddb4bd1d9eede04a08cb814394367a84884`,
-including its error-handling fixes. Both jobs passed wheel construction, repair,
-C++ tests, installed checks, and consumer configure/build/execution.
+[Current release qualification](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34709109479)
+passes all four actual cibuildwheel 4.2.1 jobs at Core
+`0fcd55068528aee5421965d66fda9c00f0955fc6`, using native assertion-free LLVM
+23.1.1 SDK artifacts. Windows compiler and optimization settings remain
+unchanged.
 
-| Platform      | Wheel bytes | Installed Python checks                  | Consumer |
-| ------------- | ----------: | ---------------------------------------- | -------- |
-| Windows x64   |  30,839,022 | 1,183 passed, two skipped                | Pass     |
-| Windows ARM64 |  26,293,892 | Numerical, compiler, QIR, and CLI checks | Pass     |
+| Platform | Python ABI | Wheel bytes | Complete job (min) |
+| -------- | ---------- | ----------: | -----------------: |
+| ARM64    | cp311      |  26,553,691 |               23.8 |
+| ARM64    | cp315t     |  27,398,236 |               10.0 |
+| x64      | cp311      |  31,278,570 |               32.6 |
+| x64      | cp315t     |  32,244,503 |               11.2 |
 
-ARM64 retains the existing release dependency limit instead of running the full
-Python test group. This is compatibility evidence; Windows optimization settings
-remain unchanged. The [retained records](results/windows-compatibility.tar.gz)
-and [manifest](results/windows-compatibility.json) preserve wheel hashes,
-compiler identity, per-stage commands, timings, and validation logs. The
-consumer allocates its DD package on the heap to fit Windows' default stack
-size.
+Every repaired wheel passes installed numerical, compiler, QIR, CLI, and CMake
+consumer checks. Both stable-ABI jobs pass 3,544 C++ tests with one existing
+skip. The x64 stable-ABI wheel also passes 1,345 Python tests with six skips.
+ARM64 and free-threaded wheels retain the existing release dependency limits and
+run the targeted installed checks. Job times include setup and artifact
+transfer, and exclude queue time. The
+[qualification records](results/windows-release-qualification.tar.gz) and
+[hash manifest](results/windows-release-qualification.json) retain all job logs,
+SDK and wheel identities, consumer configurations, and C++ test logs.
+
+The earlier frozen-source compatibility checks at Core `9e776ddb` also pass on
+both architectures. Their [records](results/windows-compatibility.tar.gz) and
+[manifest](results/windows-compatibility.json) remain available. The consumer
+allocates its DD package on the heap to fit Windows' default stack size.
 
 ## Hosted SDK screen
 

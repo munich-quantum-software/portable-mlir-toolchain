@@ -1,0 +1,138 @@
+{
+  "source_run": 34709109479,
+  "core_revision": "0fcd55068528aee5421965d66fda9c00f0955fc6",
+  "qualification_revision": "067f485843ee8ce91d73afd797a064da1641b822",
+  "sdk_run": 34697289386,
+  "sdk_revision": "57fd0184f2fd416effcc131eeeff17659c07c7fb",
+  "llvm_revision": "6dfe1677ab8dffbc6ec13d53a1e0215d75147689",
+  "llvm_version": "23.1.1",
+  "optimization_changes": false,
+  "records": [
+    {
+      "architecture": "aarch64",
+      "python_abi": "cp311",
+      "source_job_url": "https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34709109479/job/103594478519",
+      "job_conclusion": "success",
+      "job_seconds": 1428.0,
+      "wheel": "mqt_core-4.0.1.dev12+g0fcd55068-cp311-abi3-win_arm64.whl",
+      "wheel_bytes": 26553691,
+      "wheel_sha256": "866676d655fc67b5eb5317638de8d07c3845dff80c7490f25455f516f6df4f9e",
+      "installed_numerical_compiler_qir_cli_checks": true,
+      "installed_cmake_consumer": true,
+      "cpp_tests": {
+        "passed": 3544,
+        "skipped": 1
+      },
+      "python_tests": null
+    },
+    {
+      "architecture": "aarch64",
+      "python_abi": "cp315t",
+      "source_job_url": "https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34709109479/job/103594478461",
+      "job_conclusion": "success",
+      "job_seconds": 602.0,
+      "wheel": "mqt_core-4.0.1.dev12+g0fcd55068-cp315-abi3t-win_arm64.whl",
+      "wheel_bytes": 27398236,
+      "wheel_sha256": "f5f9a55c6d695db71198b201d21c8d2d557161469710320f9869ac532ef76e28",
+      "installed_numerical_compiler_qir_cli_checks": true,
+      "installed_cmake_consumer": true,
+      "cpp_tests": null,
+      "python_tests": null
+    },
+    {
+      "architecture": "x86_64",
+      "python_abi": "cp311",
+      "source_job_url": "https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34709109479/job/103594478528",
+      "job_conclusion": "success",
+      "job_seconds": 1953.0,
+      "wheel": "mqt_core-4.0.1.dev12+g0fcd55068-cp311-abi3-win_amd64.whl",
+      "wheel_bytes": 31278570,
+      "wheel_sha256": "c74fe25428cc041ab0556703dbba987bfcc702b5103e45e080a2f933564ef275",
+      "installed_numerical_compiler_qir_cli_checks": true,
+      "installed_cmake_consumer": true,
+      "cpp_tests": {
+        "passed": 3544,
+        "skipped": 1
+      },
+      "python_tests": {
+        "passed": 1345,
+        "skipped": 6
+      }
+    },
+    {
+      "architecture": "x86_64",
+      "python_abi": "cp315t",
+      "source_job_url": "https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34709109479/job/103594478469",
+      "job_conclusion": "success",
+      "job_seconds": 672.0,
+      "wheel": "mqt_core-4.0.1.dev12+g0fcd55068-cp315-abi3t-win_amd64.whl",
+      "wheel_bytes": 32244503,
+      "wheel_sha256": "3c22a614da215dd8b4528ae7bd2cac117ac87906a45bc874209cb94c9307697d",
+      "installed_numerical_compiler_qir_cli_checks": true,
+      "installed_cmake_consumer": true,
+      "cpp_tests": null,
+      "python_tests": null
+    }
+  ],
+  "sdk_artifacts": [
+    {
+      "id": 10302252941,
+      "node_id": "MDg6QXJ0aWZhY3QxMDMwMjI1Mjk0MQ==",
+      "name": "llvm-mlir_llvmorg-23.1.1_x86_64-pc-windows-msvc_noassert.tar.zst",
+      "size_in_bytes": 297223781,
+      "url": "https://api.github.com/repos/munich-quantum-software/portable-mlir-toolchain/actions/artifacts/10302252941",
+      "archive_download_url": "https://api.github.com/repos/munich-quantum-software/portable-mlir-toolchain/actions/artifacts/10302252941/zip",
+      "expired": false,
+      "digest": "sha256:3a6b0f56374871df35a25db10ba6ae7da519a1b1c263c299c6d508af6c67c07c",
+      "created_at": "2026-09-12T17:26:32Z",
+      "updated_at": "2026-09-12T17:26:32Z",
+      "expires_at": "2026-12-11T13:45:10Z",
+      "workflow_run": {
+        "id": 34697289386,
+        "repository_id": 1120998438,
+        "head_repository_id": 1120998438,
+        "head_branch": "codex/optimized-release-toolchain",
+        "head_sha": "57fd0184f2fd416effcc131eeeff17659c07c7fb"
+      }
+    },
+    {
+      "id": 10301003456,
+      "node_id": "MDg6QXJ0aWZhY3QxMDMwMTAwMzQ1Ng==",
+      "name": "llvm-mlir_llvmorg-23.1.1_aarch64-pc-windows-msvc_noassert.tar.zst",
+      "size_in_bytes": 253991931,
+      "url": "https://api.github.com/repos/munich-quantum-software/portable-mlir-toolchain/actions/artifacts/10301003456",
+      "archive_download_url": "https://api.github.com/repos/munich-quantum-software/portable-mlir-toolchain/actions/artifacts/10301003456/zip",
+      "expired": false,
+      "digest": "sha256:e27d6287cf40a9595b911ea467eb82a150d51ab003f54de4960f41f6453aee00",
+      "created_at": "2026-09-12T16:11:34Z",
+      "updated_at": "2026-09-12T16:11:34Z",
+      "expires_at": "2026-12-11T13:45:10Z",
+      "workflow_run": {
+        "id": 34697289386,
+        "repository_id": 1120998438,
+        "head_repository_id": 1120998438,
+        "head_branch": "codex/optimized-release-toolchain",
+        "head_sha": "57fd0184f2fd416effcc131eeeff17659c07c7fb"
+      }
+    }
+  ],
+  "archive": "windows-release-qualification.tar.gz",
+  "archive_sha256": "4b8c9e0fec866d094d173670f956197bd0fbece81635401030e823957a26e0d8",
+  "files": {
+    "release-windows-arm64-cp311-success.log": "e5016aca434c24b23fe13fae336fd47e87dae45bce5d9b156b66d9c83189cac6",
+    "release-windows-arm64-cp315t-success.log": "980a937c1755b96851cee218e91aff104ace7409de5b1f011312dd9a07f6f5d8",
+    "release-windows-final/release-validation-windows-aarch64-cp311/build/consumer/CMakeCache.txt": "f8ac09b460ec988dc4b8ae0fd27117da20e6425aabce64ed24335708ad160547",
+    "release-windows-final/release-validation-windows-aarch64-cp311/build/release/Testing/Temporary/LastTest.log": "cff59469214d9c4ea6e902297d5fb05b9abaf08dfdc8eec3c4dde3aeb5c8bfe6",
+    "release-windows-final/release-validation-windows-aarch64-cp311/build/release/Testing/Temporary/LastTestsDisabled.log": "b1b3d56cd49035769de5aa7ef299a18d05a0a6e73cc576a67f3c2339ca5f6b04",
+    "release-windows-final/release-validation-windows-aarch64-cp315t/build/consumer/CMakeCache.txt": "2ea78ec58b9b38e426f03e39549dcc04636054e08666fea6e1704056794cff47",
+    "release-windows-final/release-validation-windows-x86_64-cp311/build/consumer/CMakeCache.txt": "9f8d9d1ca613a916ad46a2ffa01f76144e78bb1cf8ed455c1710491da5263a47",
+    "release-windows-final/release-validation-windows-x86_64-cp311/build/release/Testing/Temporary/LastTest.log": "31238b8fb300010a611f3e9a17d111f5e583ac7632bbea9533d63cf9b63a4076",
+    "release-windows-final/release-validation-windows-x86_64-cp311/build/release/Testing/Temporary/LastTestsDisabled.log": "b1b3d56cd49035769de5aa7ef299a18d05a0a6e73cc576a67f3c2339ca5f6b04",
+    "release-windows-final/release-validation-windows-x86_64-cp315t/build/consumer/CMakeCache.txt": "7a1fd611dbb73d2a321241398b5928ed953cc49b2f726fc9e238a3605e4aaf73",
+    "release-windows-final-artifacts.json": "dfd31733bf705a142d0984d0ee6ec4960112b85d99c04227f746a63d4cdcfa9a",
+    "release-windows-final-jobs.json": "c12055eaf0d7abd7b4d49239b2cbac64e90b2664333ee3d5789190c16e273712",
+    "release-windows-final-summary.json": "e3de25f3938531be42ea07978a81964f6a4ed5c2afaebf2888a1c51573ee2ed0",
+    "release-windows-x64-cp311-success.log": "5742f2d59fa9d83887f2098e9d46bd7dd1eb1bf1d2fa874baad4bdeff9ff8b94",
+    "release-windows-x64-cp315t-success.log": "8fb8270e6c0849be0d73f0e10530cbc2abd9deea939c4f37aaa277fcff6e9483"
+  }
+}
