@@ -270,7 +270,12 @@ jobs:
           $wheels = @(Get-ChildItem wheelhouse -Filter *.whl)
           if ($wheels.Count -ne 1) { throw 'Expected one repaired wheel' }
           $installed = "$env:RELEASE_ROOT/installed"
-          Invoke-Checked -Command uv -Arguments @('venv', '--python', $env:RELEASE_PYTHON, $installed) -ErrorMessage 'Installed environment creation failed'
+          $pythonPackage = if ($env:CIBW_ARCHS -eq 'ARM64') { 'pythonarm64' } else { 'python' }
+          if ($env:RELEASE_PYTHON.EndsWith('t')) { $pythonPackage += '-freethreaded' }
+          $pythonVersion = $env:RELEASE_PYTHON.TrimEnd('t')
+          $interpreters = @(Get-ChildItem "$env:LOCALAPPDATA/pypa/cibuildwheel/Cache/nuget-cpython/$pythonPackage.$pythonVersion.*/tools/python.exe")
+          if ($interpreters.Count -ne 1) { throw 'Expected one matching cibuildwheel interpreter' }
+          Invoke-Checked -Command uv -Arguments @('venv', '--python', $interpreters[0].FullName, $installed) -ErrorMessage 'Installed environment creation failed'
           $python = "$installed/Scripts/python.exe"
           Invoke-Checked -Command uv -Arguments @('pip', 'install', '--python', $python, $wheels[0].FullName) -ErrorMessage 'Repaired wheel installation failed'
           Invoke-Checked -Command $python -Arguments @('test/release/train_optimization.py', '--expected-root', $installed) -ErrorMessage 'Installed numerical, compiler, QIR and CLI checks failed'
