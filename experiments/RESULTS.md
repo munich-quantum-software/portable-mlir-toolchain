@@ -501,6 +501,37 @@ PGO, and BOLT with prebuilt manylinux Clang 22.1.8.1. macOS uses native SDK
 libraries, Core ThinLTO, and combined SDK/Core PGO. Windows keeps its existing
 compiler and optimization settings.
 
+## Fresh release configuration and PGO compiler probes
+
+The first current Linux release-hook qualification exposed a configuration bug
+on both architectures. The final wheel's fresh CMake configuration inherited
+`-fprofile-use` through global compiler flags. Profiles for trained CLI `main`
+functions conflicted with unrelated compiler-probe functions; Clang rejected
+those probes under LLVM's required `-Werror`. The false-negative PIC checks
+allowed PIE module flags into the full-LTO shared library, producing local-exec
+TLS relocations that the shared-library link could not accept.
+
+Core now applies final LTO and profile-use flags through directory compile and
+link options. Compiler probes remain profile-free, while project targets retain
+the selected optimization. The SDK builder already passes profiles through
+LLVM's supported `LLVM_PROFDATA_FILE` mechanism and needs no change.
+
+A fresh ARM64 Core wheel reproduces the hosted failure with the retained
+profile; a separate fresh build with the corrected configuration passes the
+installed numerical, compiler, QIR, CLI, and DD checks. This local diagnostic
+uses LLVM 23.1.0 and does not substitute for current repaired-wheel
+qualification with LLVM 23.1.1. A small standalone reproducer generates its own
+profile and checks the failed and corrected PIC probes plus independent
+thread-local state. The earlier study reused its instrumented Core build
+directory, so its cached feature checks did not encounter this
+fresh-configuration failure.
+
+The [diagnostic records](results/pgo-feature-probes.tar.gz) and
+[hash manifest](results/pgo-feature-probes.json) retain hosted profiles and
+logs, local before/after configurations, extracted LTO module flags, and the
+runnable reproducer. Fresh Linux and macOS release qualification uses the
+corrected Core revision `1a8514a4ff1675230297db02535c085a5832cebf`.
+
 ## Released mold qualification
 
 [mold 2.42.1](https://github.com/rui314/mold/releases/tag/v2.42.1) includes the
