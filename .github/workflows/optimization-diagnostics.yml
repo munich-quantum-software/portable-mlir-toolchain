@@ -6,7 +6,7 @@ on:
       diagnostic:
         description: "macOS diagnostic to run when sdk-run-id is empty"
         type: choice
-        options: [wheel, profile]
+        options: [wheel, profile, core-profile]
         default: wheel
       sdk-run-id:
         description: "Validate retained Linux SDK archives; empty diagnoses the macOS Core wheel"
@@ -46,21 +46,30 @@ jobs:
           github-token: ${{ github.token }}
           name: study-sdk-macos-arm64-OFF
           path: ${{ runner.temp }}/study/download
-      - name: Retain the failing benchmark CLI and its link map
+      - name: Validate the Core wheel with retained diagnostic output
         shell: bash
         env:
           STUDY_ROOT: ${{ runner.temp }}/study
           STUDY_OPERATION: wheel
           STUDY_SDK_LTO: "OFF"
           STUDY_CORE_LTO: "OFF"
+          STUDY_PGO: ${{ inputs.diagnostic == 'core-profile' && 'core' || 'none' }}
           STUDY_JOBS: "3"
           DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
         run: |
           python3 - <<'PYTHON'
+          import os
           from pathlib import Path
-          path = Path('core/mlir/bench/CMakeLists.txt')
-          with path.open('a') as stream:
-              stream.write('\ntarget_link_options(mqt-core-bench PRIVATE "-Wl,-map,${CMAKE_CURRENT_BINARY_DIR}/mqt-core-bench.map")\n')
+          if os.environ['STUDY_PGO'] == 'core':
+              path = Path('core/cmake/AddMQTPythonBinding.cmake')
+              source = path.read_text()
+              old = 'if(ENABLE_BOLT)'
+              assert source.count(old) == 1
+              path.write_text(source.replace(old, 'if(ENABLE_BOLT OR CMAKE_CXX_FLAGS MATCHES "fprofile-generate")'))
+          else:
+              path = Path('core/mlir/bench/CMakeLists.txt')
+              with path.open('a') as stream:
+                  stream.write('\ntarget_link_options(mqt-core-bench PRIVATE "-Wl,-map,${CMAKE_CURRENT_BINARY_DIR}/mqt-core-bench.map")\n')
           PYTHON
           git -C core diff > "$STUDY_ROOT/diagnostic.patch"
           set +e
@@ -73,14 +82,17 @@ jobs:
           root = Path(os.environ['STUDY_ROOT'])
           build = root / 'output/core-build'
           paths = [build / 'mlir/bench/mqt-core-bench', *sorted((build / 'mlir/bench').rglob('*.o')),
-                   *sorted((build / 'src/bench').glob('*.dylib'))]
+                   *sorted((build / 'src/bench').glob('*.dylib')),
+                   *sorted((build / 'bindings').rglob('*.so')), *sorted((build / 'bindings').rglob('*.o'))]
           with (root / 'symbols.log').open('w') as stream:
               for path in paths:
                   if path.is_file():
                       print(path, file=stream, flush=True)
                       subprocess.run(['xcrun', 'nm', '-m', str(path)], stdout=stream, stderr=subprocess.STDOUT, check=True)
           with (root / 'dependencies.log').open('w') as stream:
-              subprocess.run(['otool', '-L', str(paths[0])], stdout=stream, stderr=subprocess.STDOUT, check=True)
+              for path in paths:
+                  if path.is_file() and path.suffix in {'.so', '.dylib', ''}:
+                      subprocess.run(['otool', '-L', str(path)], stdout=stream, stderr=subprocess.STDOUT, check=True)
           PYTHON
           exit "$study_status"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -91,6 +103,7 @@ jobs:
             ${{ runner.temp }}/study/diagnostic.patch
             ${{ runner.temp }}/study/*.log
             ${{ runner.temp }}/study/output/core-build/mlir/bench
+            ${{ runner.temp }}/study/output/core-build/bindings
             ${{ runner.temp }}/study/output/core-build/src/bench/*.dylib
             ${{ runner.temp }}/study/pipeline.*
             ${{ runner.temp }}/study/output/measurements
