@@ -122,6 +122,7 @@ jobs:
           source = root / 'module.cpp'
           source.write_text('extern "C" __attribute__((visibility("default"))) int PyInit_dd() { return 42; }\n')
           compiler = subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip()
+          sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
           results = {'compiler': compiler,
                      'compiler_sha256': hashlib.file_digest(open(compiler, 'rb'), 'sha256').hexdigest(),
                      'compiler_version': subprocess.check_output([compiler, '--version'], text=True),
@@ -136,7 +137,7 @@ jobs:
                       'frontend-export-strip': (['-fprofile-instr-generate'], export + strip)}
           for name, (profile, link) in variants.items():
               output = root / (name + '.so')
-              command = [compiler, '-O3', '-std=c++20', '-mmacosx-version-min=13.3', '-fvisibility=hidden',
+              command = [compiler, '-isysroot', sdk, '-O3', '-std=c++20', '-mmacosx-version-min=13.3', '-fvisibility=hidden',
                          '-fprofile-update=atomic', *profile, '-bundle', '-undefined', 'dynamic_lookup',
                          str(source), *link, '-o', str(output)]
               build = subprocess.run(command, capture_output=True, text=True)
@@ -154,7 +155,7 @@ jobs:
               results['variants'][name] = result
           (root / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
           print(json.dumps(results, indent=2))
-          assert results['variants']['ir-plain']['load_status'] == 0
+          assert all(v['build_status'] == 0 for v in results['variants'].values())
           PYTHON
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
