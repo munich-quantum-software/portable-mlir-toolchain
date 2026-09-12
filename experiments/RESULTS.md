@@ -86,6 +86,37 @@ both architectures. Their [records](results/windows-compatibility.tar.gz) and
 [manifest](results/windows-compatibility.json) remain available. The consumer
 allocates its DD package on the heap to fit Windows' default stack size.
 
+## Complete native SDK qualification
+
+The
+[LLVM 23.1.1 qualification](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34697289386)
+passes native SDK builds and installed consumers on all five platforms, with
+assertions both enabled and disabled. A Windows ARM64 installation job needed a
+retry after GitHub timed out downloading an action, before SDK code ran.
+
+| Platform      | Assertion-free archive (MiB) | Build and package job (min) | Complete fresh pipeline (min) |
+| ------------- | ---------------------------: | --------------------------: | ----------------------------: |
+| Linux ARM64   |                        290.7 |                        84.0 |                          95.9 |
+| Linux x64     |                        294.7 |                       110.8 |                         124.6 |
+| macOS ARM64   |                        227.9 |                        98.9 |                         100.0 |
+| Windows ARM64 |                        242.2 |                       110.2 |                         147.5 |
+| Windows x64   |                        283.5 |                       171.2 |                         222.4 |
+
+Complete pipeline time sums the first successful prerequisite, native SDK, and
+installation jobs. It includes downloads, tools and libraries, production
+compression, and artifact transfer; it excludes queues and the action-download
+retry. Shared zstd and mold/LLD prerequisites count once per platform. No
+compiler cache was restored. These ordinary SDK builds retain GCC 14.2.1 on
+Linux, Apple Clang from Xcode 26.6 on macOS, and MSVC on Windows.
+
+The [retained records](results/native-sdk-release-qualification.tar.gz) and
+[hash manifest](results/native-sdk-release-qualification.json) include build and
+installation logs, all job outcomes, compiler and artifact identities, and the
+failed action download. The table covers complete native SDKs. The library-only
+screen below used LLVM 23.1.0 and reused existing native tools. Peak memory and
+swap were not instrumented in the ordinary SDK workflow. The library study
+records those resource measurements separately.
+
 ## Hosted SDK screen
 
 All nine SDK library variants built and were uploaded. The
