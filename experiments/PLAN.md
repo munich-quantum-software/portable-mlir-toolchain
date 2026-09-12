@@ -53,6 +53,9 @@ to each source/compiler/platform combination.
       ARM64 matched gains remain below 10%, and x86-64 clears the gate on the
       AMD host but misses it on the Intel host. Both architectures select full
       Core LTO, combined SDK/Core PGO, and BOLT with native SDK libraries.
+- [x] Compare the prebuilt Clang 22 recipe with retained Clang 23 and GCC 14
+      references on one quiet host in two cohorts. The selected Clang recipes
+      have similar latency and no confirmed workload regressions above 3%.
 - [ ] Run complete hosted builds, repaired-wheel checks, and resource
       measurements for the remaining macOS PGO finalists and current release
       hooks using LLVM 23.1.1 trial SDKs.
@@ -79,9 +82,10 @@ check.
 Cache probes use an explicit cache and profile identity. A ThinLTO SDK support
 library check recorded 182 cold compilations followed by 182 cache hits after
 cleaning the build output, without cache errors. This proves the cache
-mechanism; full hosted cold/warm costs remain pending. Warm results cover clean
-SDK/Core rebuilds and semantic checks with the same profile, and exclude fresh
-training, BOLT, repair, compression, and upload.
+mechanism; completed hosted cold/warm costs are recorded in the results, with
+remaining macOS trials pending. Warm results cover clean SDK/Core rebuilds and
+semantic checks with the same profile, and exclude fresh training, BOLT, repair,
+compression, and upload.
 
 Current package checks build C++ tests separately on Windows and use the actual
 shared-library directories for Unix test execution. Linux wheels must repair to

@@ -247,7 +247,7 @@ upper bounds exceed 0.90, so native SDK libraries remain the recommendation. The
 [hash manifest](results/linux-arm64-clang22-final.json) retain all samples,
 original rankings, host records, and the separate decision calculation. This
 Clang 22 result and the earlier Clang 23 result use different hosts and Core
-revisions; a neutral compiler comparison remains outstanding.
+revisions. The retained recipes are compared on one host below.
 
 The final x86-64 comparison evaluated all twenty variants in two twelve-round
 cohorts, collecting 480 samples. Both select native SDK libraries with full Core
@@ -287,6 +287,31 @@ executable code or stack permissions. The
 retries passed. Their complete measured pipelines took 124.3–145.0 minutes. The
 static musl build is documented in the
 [compiler package recipe](https://github.com/mayeut/static-clang-images/blob/v22.1.8.1/Dockerfile).
+
+## Prebuilt compiler reference comparison
+
+Two fresh twelve-round cohorts compare eight retained native-SDK recipes on DGX
+Spark CPU 19 without concurrent builds or benchmarks, collecting 192 samples.
+Every environment uses CPython 3.14.7 and identical dependency versions. The
+Core production source trees match between `706fd8f95` and `65ee323df`; the
+compiler, build environment, and profile-generation recipes differ. This
+comparison measures the resulting recipes, not an isolated compiler-version
+effect.
+
+| Cohort | Clang 22 / Clang 23 latency |    95% interval | Confirmed workload regressions above 3% |
+| ------ | --------------------------: | --------------: | --------------------------------------- |
+| 1      |                     0.99634 | 0.99266–1.00049 | None                                    |
+| 2      |                     0.99788 | 0.99434–1.00023 | None                                    |
+
+Both recipes use native SDK libraries, full Core LTO, combined SDK/Core PGO, and
+BOLT. Their balanced latency is close, with both intervals containing 1.0. The
+selected Clang 22 recipe also lowers latency by 9.8% relative to the retained
+GCC 14 recipe in each cohort; these are point estimates. The
+[raw samples and provenance](results/linux-clang22-reference-comparison.tar.gz)
+and [hash manifest](results/linux-clang22-reference-comparison.json) retain
+wheel hashes, source identities, dependencies, commands, and both full rankings.
+These results support the prebuilt Clang 22 choice. Qualification of the current
+release hooks against LLVM 23.1.1 remains a separate gate.
 
 ## macOS screen
 
@@ -345,11 +370,11 @@ minutes and peaked at 2.3 GiB. The
 [reproducer and Core records](results/macos-profile-namespace.tar.gz) have a
 [hash manifest](results/macos-profile-namespace.json).
 
-Core `cc3f08f5` applies the namespace restoration to all Python modules. The six
-ordinary recipes are being rebuilt with this revision so that the final PGO
-comparison uses identical source and link policies. Core-only and combined
-SDK/Core PGO advance on native/Thin, Thin/Full, and Full/Full. The earlier
-screening records remain unchanged.
+Core `cc3f08f5` applies the namespace restoration to all Python modules. All six
+ordinary recipes pass with this revision, so the final PGO comparison uses
+identical source and link policies. Core-only and combined SDK/Core PGO advance
+on native/Thin, Thin/Full, and Full/Full. The earlier screening records remain
+unchanged.
 
 The current-main repair in
 [PR #2545](https://github.com/munich-quantum-toolkit/core/pull/2545) returns
