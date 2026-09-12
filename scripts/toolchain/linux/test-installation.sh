@@ -76,7 +76,7 @@ cmake -G Ninja \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
   "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
-  -DLLVM_USE_LINKER=bfd
+  -DLLVM_USE_LINKER=mold
 log_done
 
 log_step "CMake build - integration test"
