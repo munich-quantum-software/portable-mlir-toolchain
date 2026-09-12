@@ -108,15 +108,53 @@ archive was verified and transferred to the SDK repository. Its earlier harness
 did not run the standalone SDK consumer; the Core build and installed-package
 checks remain required. All eight other SDK variants passed that consumer.
 
-## Remaining platform gates
+## Linux Clang 22 screen
 
-All six native-SDK Linux recipes passed their C++ tests, plain/BOLT
-repaired-wheel checks, and producer-Clang/GCC consumers. Complete job work took
-15.4–31.9 minutes on ARM64 and 19.9–35.3 minutes on x86-64, with container peaks
-below 13.6 GiB and no swap. Both paired cohorts on each architecture selected
-full Core LTO with BOLT. Their Core-only and combined PGO trials also measure a
-clean warm-cache rebuild, avoiding another cold pipeline solely to obtain cache
-measurements.
+All twelve Linux screening recipes passed their C++ tests, plain/BOLT
+repaired-wheel checks, and producer-Clang/GCC consumers. The
+[wheel measurements](results/linux-wheel-screen.json) retain complete job work,
+per-stage times, compiler identity, memory, and cache statistics. Job work
+includes setup and artifact transfer, and excludes queue time. All containers
+used four CPUs, at most 16 GiB of memory, and no swap.
+
+| SDK LTO | Core LTO | ARM64 job work (min) | x86-64 job work (min) |
+| ------- | -------- | -------------------: | --------------------: |
+| OFF     | OFF      |                 15.5 |                  20.0 |
+| OFF     | Thin     |                 31.9 |                  35.4 |
+| OFF     | Full     |                 28.0 |                  31.7 |
+| Thin    | Thin     |                132.7 |                 146.4 |
+| Thin    | Full     |                128.9 |                 124.9 |
+| Full    | Full     |                 99.9 |                  80.3 |
+
+All four native-SDK PGO trials also passed. Each uses full Core LTO and produces
+both plain and BOLT wheels. Peak container memory across the sixteen recipes was
+13.8 GiB; no swap was used.
+
+| Platform | PGO scope | Job work including warm probe (min) | Cold pipeline (min) | Warm rebuild and checks (min) |
+| -------- | --------- | ----------------------------------: | ------------------: | ----------------------------: |
+| ARM64    | Core      |                                44.3 |                40.9 |                           3.0 |
+| ARM64    | SDK/Core  |                               124.6 |               119.8 |                           4.3 |
+| x86-64   | Core      |                                41.3 |                37.5 |                           2.4 |
+| x86-64   | SDK/Core  |                               190.2 |               185.1 |                           4.1 |
+
+Cold pipelines include provisioning, profile generation and use, C++ tests,
+BOLT, wheel repair, and installed checks. SDK/Core PGO rebuilds the dependency
+archive closure: 163 targets on ARM64 and 162 on x86-64. Warm probes clean and
+rebuild those archives and the Core wheel with the existing profile, then run
+staged Python checks. They exclude C++ test builds, fresh training, BOLT,
+repair, and transfer. The warm probes recorded 113 cache hits for Core-only
+builds and 2,257/2,263 hits for the combined ARM64/x86-64 builds, with no misses
+or errors.
+
+Two independent twelve-round cohorts per architecture evaluated sixteen wheel
+variants, for 768 fresh-process samples. All four cohorts selected full Core
+LTO, combined SDK/Core PGO, and BOLT as the native-SDK finalist. All four
+selected full SDK/Core LTO with BOLT as the matched recipe to advance to PGO.
+These are screening choices, not adoption decisions: the matched Core-only and
+combined PGO builds are still running. The
+[raw screens](results/linux-clang22-screen.tar.gz) and
+[manifest](results/linux-clang22-screen.json) retain samples, artifact hashes,
+host records, rankings, and finalist selections.
 
 The first four Linux ThinLTO-SDK wheel jobs crashed in the static, musl-linked
 LLD shipped by manylinux's Clang package. An LLVM-only reproducer also crashed:
@@ -125,16 +163,28 @@ linker's `PT_GNU_STACK` size to 8 MiB made that same link and runtime check
 pass. The study records the original/configured linker hashes and changes no
 executable code or stack permissions. The
 [reproducer and evidence](results/linux-thin-linker-stack.tar.gz) have a
-[hash manifest](results/linux-thin-linker-stack.json). Full hosted wheel retries
-remain required. The static musl build is documented in the
+[hash manifest](results/linux-thin-linker-stack.json). All four hosted wheel
+retries passed. Their complete measured pipelines took 124.3–145.0 minutes. The
+static musl build is documented in the
 [compiler package recipe](https://github.com/mayeut/static-clang-images/blob/v22.1.8.1/Dockerfile).
 
-The macOS native-SDK screen fails the unknown-device exception check: the
-original error becomes `unknown exception`. Restoring the QDMI adapter's
-requested RTTI setting alone did not resolve it. That ineffective study override
-was removed; the diagnostic workflow checks exception handling across the linked
-components. No macOS wheel is accepted yet, and the superseded macOS LTO jobs
-were cancelled.
+## Remaining platform gates
+
+The original macOS native-SDK screen failed the unknown-device exception check:
+the original error became `unknown exception`. A minimal reproducer shows that
+linking a translation unit which catches `std::exception` without RTTI can
+prevent an otherwise RTTI-enabled handler from matching a standard exception
+thrown by a shared library. Enabling RTTI only in the QDMI adapter was therefore
+insufficient.
+
+macOS trials now use Core `8d520eb04fc301b5dba85a8e4c2587ba410fb533`, which
+honors explicit RTTI requirements for the adapter and its tests and separates
+the benchmark exception handler from LLVM command-line types. Ordinary benchmark
+file and argument errors return diagnostics directly, and the QDMI adapter no
+longer catches and rethrows an exception merely to translate it. The complete
+local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one skipped.
+macOS wheel validation remains pending. Linux measurements retain their frozen
+Core revision; no previous macOS wheel is accepted.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
@@ -142,3 +192,25 @@ production-setting archive measurements, and recipe selection for each platform.
 The macOS producer and consumers use Xcode 26.6, SDK deployment target 11.0, and
 Core deployment target 13.3. Linux uses the pinned manylinux 2.28 image and
 prebuilt Clang 22.1.8.1.
+
+## Released mold qualification
+
+[mold 2.42.1](https://github.com/rui314/mold/releases/tag/v2.42.1) includes the
+emitted-relocation fix used in the earlier patched 2.42.0 experiment. Its
+unmodified ARM64 release passes the local-symbol relocation reproducer and both
+Core QIR links previously rejected for duplicate symbols in mixed native/LTO
+archives. The linked programs execute successfully with their expected results.
+Neither the patch nor `--no-relax` or `--no-fork` was used.
+
+Relinking the earlier full-LTO `mlir-tblgen` also passes relocation inspection
+and execution. BOLT still rejects an ADR in its non-simple `p_ere` function.
+This is a remaining BOLT limitation; releasing the mold fix did not resolve it.
+The selected SDK design retains native tools without BOLT rewriting.
+
+The [replay records](results/mold-2.42.1-replay.tar.gz) and their
+[hash manifest](results/mold-2.42.1-replay.json) retain both successes and the
+BOLT failure. The Linux SDK recipe now selects mold 2.42.1. Fresh native SDK
+builds and installation tests on both architectures and assertion modes are
+running in the
+[Linux qualification workflow](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34683842047).
+Existing runtime samples continue to identify their original linker binaries.

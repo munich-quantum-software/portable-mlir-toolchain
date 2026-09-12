@@ -1,0 +1,22 @@
+{
+  "archive": "mold-2.42.1-replay.tar.gz",
+  "archive_sha256": "784045c8ce2b1d4b46d53ee56dd8c3d9fcbb007e08ef2c6d958a5514838c23a1",
+  "files": {
+    "mold-2.42.1/inputs.json": "f3a33fbb5f315b7d3b22a1bf95003137c3c7599e2cc710982313fc1f4b200df5",
+    "mold-2.42.1/local-reloc-readelf.log": "e63869e67c0c6c71282a346705fbfe2a139e363d9e505b96953ec3400a4c9709",
+    "mold-2.42.1/local-reloc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mold-2.42.1/local-reloc.s": "d0aa84a6befa833bf5a4c39e76efa99c4025c088751ab9b288cd290cf6363698",
+    "mold-2.42.1/m2-commands.json": "84577af8bbddd81949acb0da65cf225d37b686040fb06eded427ce344cc76c2c",
+    "mold-2.42.1/mqt-core-qir-adaptive-record-outputs-ll-link.log": "469c825796b3cdc30cfbefc25a1509236d549df42a1e3bc3a29e366508e828a8",
+    "mold-2.42.1/mqt-core-qir-adaptive-record-outputs-ll-run.log": "d410e05a540bc37879402b92f30be483beec37a6674f76be5b81b57ef55097fe",
+    "mold-2.42.1/mqt-core-qir-bell-pair-adaptive-ll-link.log": "469c825796b3cdc30cfbefc25a1509236d549df42a1e3bc3a29e366508e828a8",
+    "mold-2.42.1/mqt-core-qir-bell-pair-adaptive-ll-run.log": "f409f9750344325fb11d62624077043a6a5dd0cf10e45fa7f9c4e9be8337038f",
+    "mold-2.42.1/replay.log": "4db5ee7d032a822ba554f866b706cd18c015107888644506ccd6cdc96b8a52bf",
+    "mold-2.42.1/replay.py": "be3a6d4b8748900bb24e96ac5156cbeaa5efb1c011ffa4715717e1abe9905c7d",
+    "mold-2.42.1/results.json": "981985e4cf7a3e01417b69102d2c8a27bf92b822ce917edee179b2237271110c",
+    "mold-2.42.1/tblgen-bolt.log": "657b2f9b296c3b5c38c589e3c88c82a7a1f443f197704e263f092e5c17f62207",
+    "mold-2.42.1/tblgen-link.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mold-2.42.1/tblgen-relocs.log": "128cf8b72223820bf7a2edbf016c5600e7379a4a4ff5970901bb9c3cb8ed1d72",
+    "mold-2.42.1/tblgen-run.log": "50c74e228d3c022476f304f257ace37e2ec148dc15fd71612b995a43b3aa40dc"
+  }
+}

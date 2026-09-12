@@ -1,0 +1,23 @@
+{
+  "archive": "linux-clang22-screen.tar.gz",
+  "archive_sha256": "13fd73d69ddeb4af21bd31309486249ce98ff3d358cabd6ca068a51e59cf551d",
+  "archive_bytes": 2139697,
+  "source_runs": {
+    "linux-arm64": 34683483866,
+    "linux-x64": 34683485067
+  },
+  "files": {
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-1/evaluation/comparison-20260912-083224.json": "16b9c2096f0c569ad92f289ec3009c01714d5bf7f08ca9ac858dedcbfd653fd3",
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-1/evaluation/comparison-20260912-083224.ranking.json": "1517dd32b840e3fbcea468d2c37e33bbbf9c4940e0b0f2eb0bb4e3800a0205a7",
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-1/finalists.json": "fceba7e6c61e1d5177b8203ac242d648b32a841a6407e1835cb64e6269fd24c1",
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-2/evaluation/comparison-20260912-083219.json": "e146a1cbd9f5d8f1b8b335675913fc04879beaa26eaaf9928cd676afcb4b8bb4",
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-2/evaluation/comparison-20260912-083219.ranking.json": "a1e6dcc4b646ee537e3b9eed0051d2ec491a1a9d36f8ddcacf8b65a975cf86b7",
+    "linux-clang22-screen/linux-arm64/study-evaluation-linux-arm64-2/finalists.json": "522161c8a02a38c3c075d4c998890c13451759e90e145eddedb55d2c32afe375",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-1/evaluation/comparison-20260912-083231.json": "267ca338df340e56de76092a304029c2e9827bbfff339acd91cca397960fef0a",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-1/evaluation/comparison-20260912-083231.ranking.json": "ad811abbbd385a14bf6b44a60832071bc60e3c7f6495621f2f33b46ab94dcdd3",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-1/finalists.json": "e953f1fcb835315a06dc330c274243a6f0d0bfcee90774431315f5d530af6908",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-2/evaluation/comparison-20260912-083235.json": "b55f258b06445d3769fcf025a4aeec01b1e071ba5cd86aab3585110b56fbc65f",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-2/evaluation/comparison-20260912-083235.ranking.json": "224ee9122a1cbbb611820b5e826c20cc277c2c64147ef5f82581365aba6903d6",
+    "linux-clang22-screen/linux-x64/study-evaluation-linux-x64-2/finalists.json": "0c511a6b3cff60d36e7334085ba3e69bfe2bccc0645ec9f061c8fd68a1fdfaf5"
+  }
+}
