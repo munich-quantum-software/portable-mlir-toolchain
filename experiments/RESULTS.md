@@ -129,12 +129,12 @@ executable code or stack permissions. The
 remain required. The static musl build is documented in the
 [compiler package recipe](https://github.com/mayeut/static-clang-images/blob/v22.1.8.1/Dockerfile).
 
-The macOS native-SDK screen exposed a separate Core build issue: its MLIR helper
-disables RTTI after the QDMI adapter explicitly requests it. The unknown-device
-exception then becomes `unknown exception`. A recorded study CMake override
-restores the adapter's requested RTTI setting while preserving the pinned Core
-source. Corrected package validation remains required; the superseded macOS LTO
-jobs were cancelled.
+The macOS native-SDK screen fails the unknown-device exception check: the
+original error becomes `unknown exception`. Restoring the QDMI adapter's
+requested RTTI setting alone did not resolve it. That ineffective study override
+was removed; the diagnostic workflow checks exception handling across the linked
+components. No macOS wheel is accepted yet, and the superseded macOS LTO jobs
+were cancelled.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
