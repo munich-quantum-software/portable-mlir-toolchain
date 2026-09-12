@@ -174,7 +174,12 @@ jobs:
           cd core
           uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
             --output "$RELEASE_ROOT/pipeline.json" -- uvx cibuildwheel==4.2.1 --platform macos
-          uv venv --python "$RELEASE_PYTHON" "$RELEASE_ROOT/installed"
+          interpreter="/Library/Frameworks/Python.framework/Versions/$RELEASE_PYTHON/bin/python3"
+          if [[ "$RELEASE_PYTHON" == *t ]]; then
+            interpreter="/Library/Frameworks/PythonT.framework/Versions/${RELEASE_PYTHON%t}/bin/python$RELEASE_PYTHON"
+          fi
+          test -x "$interpreter"
+          uv venv --python "$interpreter" "$RELEASE_ROOT/installed"
           python="$RELEASE_ROOT/installed/bin/python"
           uv pip install --python "$python" wheelhouse/*.whl
           "$python" test/release/train_optimization.py --expected-root "$RELEASE_ROOT/installed"
