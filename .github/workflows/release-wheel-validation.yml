@@ -89,6 +89,20 @@ jobs:
           uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
             --output "$RELEASE_ROOT/pipeline.json" --container label=mqt-release-validation -- \
             uvx cibuildwheel==4.2.1 --platform linux
+      - name: Expose container logs for diagnosis and upload
+        if: always()
+        shell: bash
+        env:
+          RELEASE_ROOT: ${{ runner.temp }}/release
+        run: |
+          if [[ -f "$RELEASE_ROOT/pipeline.log" ]]; then
+            tail -n 120 "$RELEASE_ROOT/pipeline.log"
+          fi
+          if [[ -d core/build ]]; then
+            docker run --rm -v "$PWD/core/build:/records" \
+              "quay.io/pypa/manylinux_2_28_$(uname -m):2026.08.04-1" \
+              chown -R "$(id -u):$(id -g)" /records
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
