@@ -1,7 +1,16 @@
 {
   "archive": "mold-2.42.1-replay.tar.gz",
-  "archive_sha256": "784045c8ce2b1d4b46d53ee56dd8c3d9fcbb007e08ef2c6d958a5514838c23a1",
+  "archive_sha256": "f75b936dce7e10a75c3c1ab3dce9a20bc2eee189a4c4fdb47b473a2500615dc8",
   "files": {
+    "mold-2.42.1/consumer/CMakeCache.txt": "cafc181909f2885d7c1c785e368f17db22345cdbbc6fc4d690dc487021379344",
+    "mold-2.42.1/consumer/bolt.log": "4bca6ae6be5a9ecc8ad6ee7d3ebd46efdacd557d95a748b9f13ea15a5c1cb8f2",
+    "mold-2.42.1/consumer/build.log": "179a75156f624e8145a537884d9c30966b72d5bdc31eb5fcfb696c6ccc014cba",
+    "mold-2.42.1/consumer/checks.json": "61897b1600905824d0757c005ccaec1e71f141e8da167c1f9650342fc813bb08",
+    "mold-2.42.1/consumer/configure.log": "050ee53ee37854e761c3c7c54265bbbf03a73b9b064412ab73f92887fdd0d52c",
+    "mold-2.42.1/consumer/failure-recovery.log": "44447511dea143c069e16f5ca8b4d9d0b8cb8006b5c407193dd2545f2e9e8446",
+    "mold-2.42.1/consumer/linker-comment.log": "420d90e1418a074455f12a94c34cfd250685d43aadf501f3b241be01802fbd82",
+    "mold-2.42.1/consumer/rebuild.log": "3b7f107172647e4a77863175be010d630016a5fcb96cd4f7494de98a2590f967",
+    "mold-2.42.1/consumer/run.log": "e559fc7c9df8acba080c57d753682e95ba1d1af21f30e7a8146ec022c5c72e57",
     "mold-2.42.1/inputs.json": "f3a33fbb5f315b7d3b22a1bf95003137c3c7599e2cc710982313fc1f4b200df5",
     "mold-2.42.1/local-reloc-readelf.log": "e63869e67c0c6c71282a346705fbfe2a139e363d9e505b96953ec3400a4c9709",
     "mold-2.42.1/local-reloc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

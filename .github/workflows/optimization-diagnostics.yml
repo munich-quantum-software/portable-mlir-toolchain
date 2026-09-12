@@ -1,7 +1,12 @@
-name: Diagnose macOS study exception handling
+name: SDK study diagnostic checks
 
 on:
   workflow_dispatch:
+    inputs:
+      sdk-run-id:
+        description: "Validate retained Linux SDK archives; empty diagnoses the macOS Core wheel"
+        type: string
+        default: ""
   push:
     branches: [codex/optimized-release-toolchain]
     paths: [.github/workflows/optimization-diagnostics.yml]
@@ -12,7 +17,7 @@ permissions:
 
 jobs:
   diagnose:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk-run-id == ''
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -89,4 +94,60 @@ jobs:
             ${{ runner.temp }}/study/output/core-build/build.ninja
             ${{ runner.temp }}/study/output/core-build/mlir/unittests/Compiler/mqt-core-mlir-unittests-compiler
             ${{ runner.temp }}/study/output/raw
+          if-no-files-found: error
+
+  validate-linux-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk-run-id != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        assertions: ["ON", "OFF"]
+        platform:
+          - { runner: ubuntu-24.04-arm, triple: aarch64-unknown-linux-gnu }
+          - { runner: ubuntu-24.04, triple: x86_64-unknown-linux-gnu }
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
+    env:
+      LLVM_ENABLE_ASSERTIONS: ${{ matrix.assertions }}
+      SDK_ARCHIVE: llvm-mlir_llvmorg-23.1.0_${{ matrix.platform.triple }}${{ matrix.assertions == 'OFF' && '_noassert' || '' }}.tar.zst
+      ZSTD_ARCHIVE: zstd-1.5.7_${{ matrix.platform.triple }}.tar.gz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          python-version: 3.14.7
+          activate-environment: true
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ inputs.sdk-run-id }}
+          github-token: ${{ github.token }}
+          name: ${{ env.SDK_ARCHIVE }}
+          path: ${{ runner.temp }}/sdk-validation
+          skip-decompress: true
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ inputs.sdk-run-id }}
+          github-token: ${{ github.token }}
+          name: ${{ env.ZSTD_ARCHIVE }}
+          path: ${{ runner.temp }}/sdk-validation
+          skip-decompress: true
+      - name: Run the updated installation and BOLT checks
+        env:
+          STUDY_ROOT: ${{ runner.temp }}/sdk-validation
+        run: |
+          uv pip install cmake==4.4.3 ninja==1.13.0
+          mkdir -p "$STUDY_ROOT/records"
+          sha256sum "$STUDY_ROOT/$SDK_ARCHIVE" "$STUDY_ROOT/$ZSTD_ARCHIVE" > "$STUDY_ROOT/records/inputs.sha256"
+          python experiments/linux_optimization.py --output "$STUDY_ROOT/records/validate.json" -- \
+            bash scripts/toolchain/linux/test-installation.sh \
+            -a "$STUDY_ROOT/$SDK_ARCHIVE" -z "$STUDY_ROOT/$ZSTD_ARCHIVE"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: study-sdk-validation-${{ matrix.platform.triple }}-${{ matrix.assertions }}
+          path: ${{ runner.temp }}/sdk-validation/records
           if-no-files-found: error

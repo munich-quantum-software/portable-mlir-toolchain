@@ -99,14 +99,39 @@ Linux memory is the container peak, including filesystem cache. macOS memory is
 the sampled process-tree RSS; macOS swap was not measured. These are individual
 hosted observations, not build-time confidence intervals. Trial archives use
 Python's default zstd compression; production packaging uses `-19 --long=31`.
-The listed artifact sizes are not production release size estimates. Finalist
-packaging must use the production settings before making that comparison.
+The listed artifact sizes are not production release size estimates. The Linux
+OFF/Full production-compression measurements follow below; macOS finalist
+packaging remains pending.
 
 The macOS ThinLTO job completed every recorded step, including build, packaging,
 and upload, before the migration cancellation marked its job cancelled. The
 archive was verified and transferred to the SDK repository. Its earlier harness
 did not run the standalone SDK consumer; the Core build and installed-package
 checks remain required. All eight other SDK variants passed that consumer.
+
+## Production SDK compression
+
+[Recompression](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34686211289)
+of the verified Linux OFF/Full trial SDKs passed using the release zstd 1.5.7
+executables and the production `-19 --long=31 --threads=0` settings. Each
+archive passed checksum validation after compression. The jobs retained the
+resulting archives, updated manifests, input hashes, and resource measurements.
+The [retained records](results/linux-sdk-packaging.tar.gz) and
+[summary manifest](results/linux-sdk-packaging.json) preserve these
+measurements.
+
+| Platform | SDK LTO | Production archive (MiB) | Compression (min) |
+| -------- | ------- | -----------------------: | ----------------: |
+| ARM64    | OFF     |                    297.2 |               6.5 |
+| ARM64    | Full    |                    386.0 |               6.2 |
+| x86-64   | OFF     |                    299.9 |              12.1 |
+| x86-64   | Full    |                    392.0 |              10.4 |
+
+Full-LTO archives are about 30% larger than the corresponding native archives
+with these settings. Compression used four CPUs, peaked below 4.1 GiB, and used
+no swap. These measurements reuse the completed SDK builds; compression time is
+reported separately from the original cold-build jobs. They qualify packaging of
+the Clang 22 study libraries, not a change to the public SDK's compiler.
 
 ## Linux Clang 22 screen
 
@@ -184,9 +209,11 @@ honors explicit RTTI requirements for the adapter and its tests and separates
 the benchmark exception handler from LLVM command-line types. Ordinary benchmark
 file and argument errors return diagnostics directly, and the QDMI adapter no
 longer catches and rethrows an exception merely to translate it. The complete
-local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one skipped.
-macOS wheel validation remains pending. Linux measurements retain their frozen
-Core revision; no previous macOS wheel is accepted.
+local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one skipped. The
+macOS retry passes the QDMI error test, but its stricter benchmark CLI check
+detects an abort for an unknown benchmark. The diagnostic run retains the CLI
+objects and link map to locate that remaining exception boundary. Linux
+measurements retain their frozen Core revision; no macOS wheel is accepted yet.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
@@ -203,6 +230,12 @@ unmodified ARM64 release passes the local-symbol relocation reproducer and both
 Core QIR links previously rejected for duplicate symbols in mixed native/LTO
 archives. The linked programs execute successfully with their expected results.
 Neither the patch nor `--no-relax` or `--no-fork` was used.
+
+The native SDK integration consumer also passes mold linking, BOLT rewriting,
+execution, and byte-for-byte recovery after failed training on ARM64. The SDK
+installation check now uses mold instead of its BFD workaround. Updated hosted
+installation checks will reuse the fresh SDK archives from the qualification
+run, without repeating their builds.
 
 Relinking the earlier full-LTO `mlir-tblgen` also passes relocation inspection
 and execution. BOLT still rejects an ADR in its non-simple `p_ere` function.
