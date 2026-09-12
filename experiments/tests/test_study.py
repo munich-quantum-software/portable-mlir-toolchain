@@ -30,7 +30,7 @@ import pytest
 @pytest.mark.parametrize("machine", [62, 183])
 def test_linker_stack_changes_only_the_size_and_rejects_invalid_input(tmp_path: Path, machine: int) -> None:
     """Keep code and stack permissions unchanged; reject unsupported headers before writing."""
-    script = Path(__file__).resolve().parents[1] / "configure_linker_stack.py"
+    script = Path(__file__).resolve().parents[2] / "scripts/toolchain/linux/configure-linker-stack.py"
     configure = runpy.run_path(str(script))["configure"]
     original = bytearray(120)
     original[:6] = b"\x7fELF\x02\x01"

@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-"""Build experimental Unix SDK libraries while retaining the base SDK's native tools."""
+"""Build Unix SDK library variants while retaining the base SDK's native tools."""
 
 import argparse
 import hashlib
@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import time
@@ -81,6 +82,11 @@ def main():
         if not (base / "bin" / tool).is_file():
             parser.error(f"base SDK is missing {tool}")
     llvm_version = subprocess.check_output([str(base / "bin/llvm-config"), "--version"], text=True).strip()
+    version_file = source / "cmake/Modules/LLVMVersion.cmake"
+    source_versions = dict(re.findall(r"set\(LLVM_VERSION_(MAJOR|MINOR|PATCH)\s+(\d+)\)", version_file.read_text()))
+    source_version = ".".join(source_versions[key] for key in ["MAJOR", "MINOR", "PATCH"])
+    if source_version != llvm_version:
+        parser.error(f"source version {source_version} differs from base SDK version {llvm_version}")
     assertions = subprocess.check_output([str(base / "bin/llvm-config"), "--assertion-mode"], text=True).strip()
     if assertions != "OFF":
         parser.error("release library variants require an assertion-free base SDK")

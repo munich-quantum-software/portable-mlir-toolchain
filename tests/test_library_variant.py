@@ -16,6 +16,7 @@
 """Invalid experimental inputs must not modify an existing SDK."""
 
 from pathlib import Path
+import os
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,37 @@ import unittest
 
 
 class LibraryVariantInputs(unittest.TestCase):
+    def test_source_version_must_match_native_sdk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, sdk = root / "source", root / "sdk"
+            (source / "llvm").mkdir(parents=True)
+            (source / "llvm/CMakeLists.txt").touch()
+            (source / "cmake/Modules").mkdir(parents=True)
+            (source / "cmake/Modules/LLVMVersion.cmake").write_text(
+                "set(LLVM_VERSION_MAJOR 23)\nset(LLVM_VERSION_MINOR 1)\nset(LLVM_VERSION_PATCH 1)\n")
+            (sdk / "lib").mkdir(parents=True)
+            (sdk / "lib/libLLVMCore.a").write_bytes(b"preserve")
+            (sdk / "bin").mkdir()
+            for name in ["llvm-tblgen", "mlir-tblgen", "mlir-pdll", "mlir-src-sharder", "mlir-linalg-ods-yaml-gen"]:
+                (sdk / "bin" / name).touch()
+            compiler = root / "clang"
+            compiler.write_text(f"#!{sys.executable}\nprint('clang version 22.1.8')\n")
+            compiler.chmod(0o755)
+            config = sdk / "bin/llvm-config"
+            config.write_text(f"#!{sys.executable}\nprint('23.1.0')\n")
+            config.chmod(0o755)
+            result = subprocess.run(
+                [sys.executable, str(Path(__file__).parents[1] / "scripts/toolchain/build-library-variant.py"),
+                 "--source", str(source), "--source-id", "a" * 40, "--base-sdk", str(sdk),
+                 "--build", str(root / "build"), "--install", str(root / "install"), "--lto", "OFF"],
+                env=os.environ | {"CC": str(compiler), "CXX": str(compiler)}, capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("source version 23.1.1 differs from base SDK version 23.1.0", result.stderr)
+            self.assertFalse((root / "build").exists())
+            self.assertFalse((root / "install").exists())
+            self.assertEqual((sdk / "lib/libLLVMCore.a").read_bytes(), b"preserve")
+
     def test_overlapping_installation_preserves_sdk(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

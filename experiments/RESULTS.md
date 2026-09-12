@@ -99,9 +99,8 @@ Linux memory is the container peak, including filesystem cache. macOS memory is
 the sampled process-tree RSS; macOS swap was not measured. These are individual
 hosted observations, not build-time confidence intervals. Trial archives use
 Python's default zstd compression; production packaging uses `-19 --long=31`.
-The listed artifact sizes are not production release size estimates. The Linux
-OFF/Full production-compression measurements follow below; macOS finalist
-packaging remains pending.
+The listed artifact sizes are not production release size estimates. Linux and
+macOS production-compression measurements follow below.
 
 The macOS ThinLTO job completed every recorded step, including build, packaging,
 and upload, before the migration cancellation marked its job cancelled. The
@@ -132,6 +131,22 @@ with these settings. Compression used four CPUs, peaked below 4.1 GiB, and used
 no swap. These measurements reuse the completed SDK builds; compression time is
 reported separately from the original cold-build jobs. They qualify packaging of
 the Clang 22 study libraries, not a change to the public SDK's compiler.
+
+The
+[macOS recompression](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34695314027)
+also passed all three variants on the standard three-CPU runner. The
+[records](results/macos-sdk-packaging.tar.gz) and
+[manifest](results/macos-sdk-packaging.json) retain input and output identities.
+
+| macOS SDK LTO | Production archive (MiB) | Compression (min) |
+| ------------- | -----------------------: | ----------------: |
+| OFF           |                    227.7 |               5.8 |
+| Thin          |                    331.4 |               9.4 |
+| Full          |                    327.0 |               6.2 |
+
+LTO archives are 44-46% larger. Sampled process-tree RSS stayed below 3 GiB;
+swap was not measured. These jobs reused the Xcode 26.6 SDK libraries and did
+not rebuild them.
 
 ## Linux Clang 22 screen
 

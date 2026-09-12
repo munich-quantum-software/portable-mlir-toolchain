@@ -20,7 +20,7 @@ if [[ $(uname -s) == Linux ]]; then
   export PATH="/opt/python/cp314-cp314/bin:$PATH"
   manylinux-install-clang -v 22.1.8.1 -c 8b399744aeb49c70048b379b9b3ffc651d86fde808551c8cc4138c4fadc5308e
   mkdir -p "$STUDY_ROOT/output/measurements"
-  python3 "$project/experiments/configure_linker_stack.py" /opt/clang/bin/lld \
+  python3 "$project/scripts/toolchain/linux/configure-linker-stack.py" /opt/clang/bin/lld \
     > "$STUDY_ROOT/output/measurements/linker-stack.json"
   export CC=/opt/clang/bin/clang CXX=/opt/clang/bin/clang++
   export AR=/opt/clang/bin/llvm-ar RANLIB=/opt/clang/bin/llvm-ranlib
