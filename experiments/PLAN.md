@@ -60,9 +60,9 @@ to each source/compiler/platform combination.
       SDK libraries with Core ThinLTO and combined SDK/Core PGO remain the
       recommendation; no matched candidate meets the confidence-supported gate.
 - [ ] Qualify the current Linux and macOS release hooks using LLVM 23.1.1 trial
-      SDKs. Normal SDK qualification, both macOS ABIs, both Linux free-threaded
-      ABIs, and all four Windows release jobs pass. Linux stable jobs repeat
-      after a test-target link dependency correction.
+      SDKs. Normal SDK qualification and all four Windows release jobs pass.
+      Linux and macOS repeat after the final runtime-path correction; the
+      earlier Linux execution passes retained a build-directory RPATH.
 - [ ] Report per-platform decisions and revise companion PRs around measured
       outcomes without publishing a production SDK release.
 

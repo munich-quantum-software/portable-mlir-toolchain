@@ -595,6 +595,46 @@ logs, local before/after configurations, extracted LTO module flags, and the
 runnable reproducer. Fresh Linux and macOS release qualification uses the
 corrected Core revision `1a8514a4ff1675230297db02535c085a5832cebf`.
 
+## Wheel runtime paths and supplementary native tests
+
+The first profile-probe-corrected Linux run passed both free-threaded wheel
+jobs, including installed execution and Clang/GCC consumers. Independent ELF
+inspection then found `/project/build/python/Release/lib64` in the runtime
+search paths of three libraries in each wheel. Those results do not satisfy the
+final packaging gate: the build directory could mask a missing packaged
+dependency.
+
+The driver had added its device build directory through an interface linker
+option, including for targets already using installation RPATHs. The corrected
+option follows each consumer's `BUILD_WITH_INSTALL_RPATH` property. Native test
+executables retain their build-tree lookup; wheel libraries use their relative
+installation paths. Linux release processing now rejects absolute ELF runtime
+search paths before stripping and repair.
+
+All thirteen binaries in a rebuilt ARM64 raw wheel have relative runtime paths.
+The installed numerical, compiler, QIR, CLI, and DD checks pass with the
+original build tree hidden, and loaded MQT libraries resolve inside the
+installation. The path check rejects the three affected binaries from the
+earlier repaired wheel. This local replay uses LLVM 23.1.0 and a retained
+profile; final Linux and macOS qualification with LLVM 23.1.1 repeats at Core
+`1691559de4868923dacc3e565c7c00130d437773`.
+
+The earlier stable Linux jobs also exposed direct `dlopen`, `dlsym`, and
+`dlclose` calls in a test target without its own loader dependency. Adding
+`${CMAKE_DL_LIBS}` reproduces and fixes that manylinux shared-test link failure.
+The temporary qualification harness now uses the repository's native release
+library settings for supplementary C++ tests. Its previous forced shared
+build-tree layout also lacked runtime dependencies and manifests expected by
+those tests. Shared installed wheel compatibility remains checked separately
+with both Clang and GCC. All 3,544 native C++ tests pass locally after the
+corrections, with one existing skip.
+
+The [diagnostics](results/wheel-runtime-paths.tar.gz) and
+[hash manifest](results/wheel-runtime-paths.json) retain earlier hosted records,
+ELF headers, local before/after checks, source changes, and native test results.
+They distinguish the cancelled intermediate run and earlier execution passes
+from final qualification.
+
 ## Released mold qualification
 
 [mold 2.42.1](https://github.com/rui314/mold/releases/tag/v2.42.1) includes the
