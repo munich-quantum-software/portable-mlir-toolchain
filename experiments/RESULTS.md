@@ -1,10 +1,12 @@
 # Portable SDK study results
 
-Both ARM64 comparisons retain native SDK libraries. The matched SDK improves
-balanced latency by about 8.6% with the Clang 23 reference and 3.3% in the
-hosted Clang 22 study, below the required 10%. Windows compatibility passes on
-both architectures. The x86-64 and macOS PGO trials remain in progress. No
-production SDK release or setup default has changed.
+Both Linux architectures retain native SDK libraries. On ARM64, the matched SDK
+improves balanced latency by about 8.6% with the Clang 23 reference and 3.3% in
+the hosted Clang 22 study, below the required 10%. On x86-64, it gains 12.8% on
+the AMD host and 8.5% on the Intel host, failing the requirement to clear the
+gate in both cohorts. Windows compatibility passes on both architectures. The
+macOS PGO trials remain in progress. No production SDK release or setup default
+has changed.
 
 ## Linux ARM64 reference comparison
 
@@ -205,7 +207,29 @@ before producing a validated wheel, so this recipe fails hosted feasibility. The
 measurements, and diagnostics. The kill is consistent with memory pressure;
 kernel OOM events were not retained. Both matched Core-only trials passed. Their
 complete pipelines, including warm rebuild probes, took 156.7 minutes on ARM64
-and 97.5 minutes on x86-64. The x86-64 combined-PGO trial continues.
+and 97.5 minutes on x86-64.
+
+The x86-64 combined-PGO trial completed its cold pipeline. Its Core warm rebuild
+then reached the 300-minute job timeout. Cold completion took 288.4 minutes,
+leaving little margin; the warm result is incomplete. Both validated wheels were
+retained by the post-timeout artifact upload, which took six seconds. This
+timeout does not invalidate the completed wheel checks or the runtime
+comparison. The
+[completed-stage records](results/linux-matched-pgo-completed.tar.gz) and
+[summary manifest](results/linux-matched-pgo-completed.json) preserve all three
+trials, including the interrupted warm rebuild.
+
+| Platform | Matched PGO scope | Cold through validation (min) | Warm rebuild and checks (min) | Peak container memory (GiB) |
+| -------- | ----------------- | ----------------------------: | ----------------------------: | --------------------------: |
+| ARM64    | Core              |                         136.1 |                          20.5 |                        13.9 |
+| x86-64   | Core              |                          85.5 |                          11.9 |                        13.2 |
+| x86-64   | SDK/Core          |                         288.4 |                    Incomplete |                Not retained |
+
+Cold times end after the final repaired-wheel CMake consumer executes and
+exclude artifact transfer. The two completed warm probes use the same scope as
+the native-SDK probes above. Their memory figures include filesystem cache; both
+recorded zero swap. The cancelled job did not retain final memory or swap
+samples, although its container enforced the same 16 GiB limit without swap.
 
 The final ARM64 comparison evaluated all eighteen feasible variants in two
 twelve-round cohorts, collecting 432 samples. Both select the native SDK with
@@ -224,6 +248,33 @@ upper bounds exceed 0.90, so native SDK libraries remain the recommendation. The
 original rankings, host records, and the separate decision calculation. This
 Clang 22 result and the earlier Clang 23 result use different hosts and Core
 revisions; a neutral compiler comparison remains outstanding.
+
+The final x86-64 comparison evaluated all twenty variants in two twelve-round
+cohorts, collecting 480 samples. Both select native SDK libraries with full Core
+LTO, combined SDK/Core PGO, and BOLT as the native finalist. The matched
+finalist adds full SDK LTO and keeps the same PGO scope and BOLT stage.
+
+| Cohort | Host CPU           | Matched/native latency |    95% interval | Matched gain | Runtime gate |
+| ------ | ------------------ | ---------------------: | --------------: | -----------: | ------------ |
+| 1      | AMD EPYC 7763      |                0.87173 | 0.86640–0.87921 |       12.83% | Pass         |
+| 2      | Intel Xeon 6973P-C |                0.91523 | 0.90407–0.93992 |        8.48% | Fail         |
+
+Each cohort compares identical wheel hashes on one host without concurrent
+builds. The hosts use different CPU models; their results are kept separate.
+Neither cohort has a confirmed workload regression above 3%. The Intel cohort
+does not meet the 10% gate, so no matched variant qualifies for adoption. The
+[raw evaluations and decisions](results/linux-x64-clang22-final.tar.gz) and
+[hash manifest](results/linux-x64-clang22-final.json) retain all samples and
+host identities. Native SDK libraries remain the x86-64 recommendation.
+
+The selected native wheels are 38,683,472 bytes on ARM64 and 39,603,882 bytes on
+x86-64. Relative to the Clang 22 native-SDK baseline with Core LTO, PGO, and
+BOLT all disabled, their balanced latency is 14.8–15.1% lower on ARM64 and
+14.6–14.9% lower on x86-64 across the two cohorts. Adding SDK dependency PGO to
+Core-only PGO with full Core LTO and BOLT lowers latency by a further 5.1–5.2%
+on ARM64 and 4.7–4.8% on x86-64. These are point estimates from the retained
+cohort rankings, not confidence intervals or comparisons with a published Core
+wheel.
 
 The first four Linux ThinLTO-SDK wheel jobs crashed in the static, musl-linked
 LLD shipped by manylinux's Clang package. An LLVM-only reproducer also crashed:

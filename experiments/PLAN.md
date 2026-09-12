@@ -49,8 +49,13 @@ to each source/compiler/platform combination.
 - [x] Implement reusable SDK library variants and portable
       measurement/acceptance tooling with focused regression tests.
 - [x] Add bounded Linux/macOS trial workflows and Windows compatibility jobs.
+- [x] Complete both Linux runtime decisions. Native SDKs win the adoption rule:
+      ARM64 matched gains remain below 10%, and x86-64 clears the gate on the
+      AMD host but misses it on the Intel host. Both architectures select full
+      Core LTO, combined SDK/Core PGO, and BOLT with native SDK libraries.
 - [ ] Run complete hosted builds, repaired-wheel checks, and resource
-      measurements.
+      measurements for the remaining macOS PGO finalists and current release
+      hooks using LLVM 23.1.1 trial SDKs.
 - [ ] Report per-platform decisions and revise companion PRs around measured
       outcomes without publishing a production SDK release.
 
