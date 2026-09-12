@@ -120,7 +120,9 @@ jobs:
           root = Path(os.environ['PROFILE_ROOT'])
           root.mkdir()
           source = root / 'module.cpp'
-          source.write_text('extern "C" __attribute__((visibility("default"))) int PyInit_dd() { return 42; }\n')
+          source.write_text('static int value() { return 42; }\n'
+                            'static int (*volatile callback)() = value;\n'
+                            'extern "C" __attribute__((visibility("default"))) int PyInit_dd() { return callback(); }\n')
           compiler = subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip()
           sdk = subprocess.check_output(['xcrun', '--show-sdk-path'], text=True).strip()
           results = {'compiler': compiler,
