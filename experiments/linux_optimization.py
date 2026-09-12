@@ -122,7 +122,18 @@ def run(
             if not windows:
                 peak = max(peak, tree_rss(process.pid))
             free_min = min(free_min, shutil.disk_usage(cwd).free)
-            if container and cgroup is None:
+            if container and container.startswith("label="):
+                listing = subprocess.run(
+                    ["docker", "ps", "--quiet", "--filter", container],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                matches = listing.stdout.split() if listing.returncode == 0 else []
+                if len(matches) == 1:
+                    container = matches[0]
+                    record["container_id"] = container
+            if container and not container.startswith("label=") and cgroup is None:
                 inspect = subprocess.run(
                     [
                         "docker",
@@ -195,7 +206,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cwd", type=Path, default=Path.cwd())
     parser.add_argument("--env", action="append", default=[])
-    parser.add_argument("--container", help="Container name for cgroup memory accounting")
+    parser.add_argument("--container", help="Container name or unique label=KEY[=VALUE] for cgroup accounting")
     parser.add_argument("--systemd-scope", help="Named systemd user scope for native cgroup memory accounting")
     parser.add_argument("--replay", type=Path)
     parser.add_argument("command", nargs=argparse.REMAINDER)

@@ -84,10 +84,10 @@ jobs:
           CPP
             export CIBW_BEFORE_TEST_LINUX='uv run --no-project --python "$(command -v python)" --with cmake==4.4.3 --with ninja==1.13.0 bash "{project}/build/release-validation-cpp.sh" "{project}"'
           fi
-          export CIBW_CONTAINER_ENGINE="docker; create_args: --cpus=4 --memory=16g --memory-swap=16g --name=mqt-release-validation -v$RELEASE_ROOT/sdk:/opt/llvm-23.1.1:ro -v$GITHUB_WORKSPACE/core/build:/project/build"
+          export CIBW_CONTAINER_ENGINE="docker; create_args: --cpus=4 --memory=16g --memory-swap=16g --label=mqt-release-validation -v$RELEASE_ROOT/sdk:/opt/llvm-23.1.1:ro -v$GITHUB_WORKSPACE/core/build:/project/build"
           cd core
           uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
-            --output "$RELEASE_ROOT/pipeline.json" --container mqt-release-validation -- \
+            --output "$RELEASE_ROOT/pipeline.json" --container label=mqt-release-validation -- \
             uvx cibuildwheel==4.2.1 --platform linux
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
