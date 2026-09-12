@@ -3,6 +3,11 @@ name: SDK study diagnostic checks
 on:
   workflow_dispatch:
     inputs:
+      diagnostic:
+        description: "macOS diagnostic to run when sdk-run-id is empty"
+        type: choice
+        options: [wheel, profile]
+        default: wheel
       sdk-run-id:
         description: "Validate retained Linux SDK archives; empty diagnoses the macOS Core wheel"
         type: string
@@ -17,7 +22,7 @@ permissions:
 
 jobs:
   diagnose:
-    if: github.event_name == 'workflow_dispatch' && inputs.sdk-run-id == ''
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk-run-id == '' && inputs.diagnostic != 'profile'
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -94,6 +99,68 @@ jobs:
             ${{ runner.temp }}/study/output/core-build/build.ninja
             ${{ runner.temp }}/study/output/core-build/mlir/unittests/Compiler/mqt-core-mlir-unittests-compiler
             ${{ runner.temp }}/study/output/raw
+          if-no-files-found: error
+
+  profile-import:
+    if: github.event_name == 'workflow_dispatch' && inputs.sdk-run-id == '' && inputs.diagnostic == 'profile'
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Reproduce profiled module loading with nanobind's linker flags
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+          PROFILE_ROOT: ${{ runner.temp }}/profile-import
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, json, os, subprocess, sys
+          from pathlib import Path
+          root = Path(os.environ['PROFILE_ROOT'])
+          root.mkdir()
+          source = root / 'module.cpp'
+          source.write_text('extern "C" __attribute__((visibility("default"))) int PyInit_dd() { return 42; }\n')
+          compiler = subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip()
+          results = {'compiler': compiler,
+                     'compiler_sha256': hashlib.file_digest(open(compiler, 'rb'), 'sha256').hexdigest(),
+                     'compiler_version': subprocess.check_output([compiler, '--version'], text=True),
+                     'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True), 'variants': {}}
+          export = ['-Wl,-exported_symbol,_PyInit_dd']
+          strip = ['-Wl,-dead_strip', '-Wl,-x', '-Wl,-S']
+          variants = {'ir-plain': (['-fprofile-generate'], []),
+                      'ir-strip': (['-fprofile-generate'], strip),
+                      'ir-export': (['-fprofile-generate'], export),
+                      'ir-export-strip': (['-fprofile-generate'], export + strip),
+                      'ir-export-dead-strip': (['-fprofile-generate'], export + ['-Wl,-dead_strip']),
+                      'frontend-export-strip': (['-fprofile-instr-generate'], export + strip)}
+          for name, (profile, link) in variants.items():
+              output = root / (name + '.so')
+              command = [compiler, '-O3', '-std=c++20', '-mmacosx-version-min=13.3', '-fvisibility=hidden',
+                         '-fprofile-update=atomic', *profile, '-bundle', '-undefined', 'dynamic_lookup',
+                         str(source), *link, '-o', str(output)]
+              build = subprocess.run(command, capture_output=True, text=True)
+              result = {'command': command, 'build_status': build.returncode,
+                        'build_stdout': build.stdout, 'build_stderr': build.stderr}
+              if build.returncode == 0:
+                  (root / (name + '-symbols.log')).write_text(subprocess.check_output(
+                      ['xcrun', 'nm', '-m', str(output)], text=True))
+                  env = dict(os.environ, LLVM_PROFILE_FILE=str(root / (name + '-%m-%p.profraw')))
+                  load = subprocess.run([sys.executable, '-c',
+                      'import ctypes, sys; assert ctypes.CDLL(sys.argv[1]).PyInit_dd() == 42', str(output)],
+                      env=env, capture_output=True, text=True)
+                  result.update(load_status=load.returncode, load_stdout=load.stdout, load_stderr=load.stderr,
+                                sha256=hashlib.file_digest(open(output, 'rb'), 'sha256').hexdigest())
+              results['variants'][name] = result
+          (root / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
+          print(json.dumps(results, indent=2))
+          assert results['variants']['ir-plain']['load_status'] == 0
+          PYTHON
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: study-macos-profile-import
+          path: ${{ runner.temp }}/profile-import
           if-no-files-found: error
 
   validate-linux-sdk:
