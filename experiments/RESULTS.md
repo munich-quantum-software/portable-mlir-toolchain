@@ -1,10 +1,10 @@
 # Portable SDK study results
 
-The completed Clang 23 ARM64 comparison retains native SDK libraries: the best
-matched SDK improves balanced latency by about 8.6%, below the required 10%.
-Windows compatibility passes on both architectures. Linux Clang 22 and macOS
-hosted trials remain in progress; their results can change their own platform
-recommendations. No production SDK release or setup default has changed.
+Both ARM64 comparisons retain native SDK libraries. The matched SDK improves
+balanced latency by about 8.6% with the Clang 23 reference and 3.3% in the
+hosted Clang 22 study, below the required 10%. Windows compatibility passes on
+both architectures. The x86-64 and macOS PGO trials remain in progress. No
+production SDK release or setup default has changed.
 
 ## Linux ARM64 reference comparison
 
@@ -188,8 +188,27 @@ before producing a validated wheel, so this recipe fails hosted feasibility. The
 [failure records](results/linux-matched-pgo-failures.tar.gz) and
 [manifest](results/linux-matched-pgo-failures.json) retain commands, resource
 measurements, and diagnostics. The kill is consistent with memory pressure;
-kernel OOM events were not retained. The matched Core-only x86-64 trial passed;
-the ARM64 Core-only and x86-64 combined-PGO trials continue.
+kernel OOM events were not retained. Both matched Core-only trials passed. Their
+complete pipelines, including warm rebuild probes, took 156.7 minutes on ARM64
+and 97.5 minutes on x86-64. The x86-64 combined-PGO trial continues.
+
+The final ARM64 comparison evaluated all eighteen feasible variants in two
+twelve-round cohorts, collecting 432 samples. Both select the native SDK with
+full Core LTO, combined SDK/Core PGO, and BOLT. The best admissible matched
+recipe uses full SDK/Core LTO, Core-only PGO, and BOLT.
+
+| Cohort | Matched/native latency |    95% interval | Matched gain | Runtime gate |
+| ------ | ---------------------: | --------------: | -----------: | ------------ |
+| 1      |                0.96745 | 0.96236–0.97054 |        3.26% | Fail         |
+| 2      |                0.96697 | 0.96393–0.97233 |        3.30% | Fail         |
+
+Neither cohort has a confirmed individual workload regression above 3%. Both
+upper bounds exceed 0.90, so native SDK libraries remain the recommendation. The
+[raw final evaluations](results/linux-arm64-clang22-final.tar.gz) and
+[hash manifest](results/linux-arm64-clang22-final.json) retain all samples,
+original rankings, host records, and the separate decision calculation. This
+Clang 22 result and the earlier Clang 23 result use different hosts and Core
+revisions; a neutral compiler comparison remains outstanding.
 
 The first four Linux ThinLTO-SDK wheel jobs crashed in the static, musl-linked
 LLD shipped by manylinux's Clang package. An LLVM-only reproducer also crashed:
@@ -203,7 +222,7 @@ retries passed. Their complete measured pipelines took 124.3–145.0 minutes. Th
 static musl build is documented in the
 [compiler package recipe](https://github.com/mayeut/static-clang-images/blob/v22.1.8.1/Dockerfile).
 
-## Remaining platform gates
+## macOS screen
 
 The original macOS native-SDK screen failed the unknown-device exception check:
 the original error became `unknown exception`. A
@@ -221,24 +240,59 @@ unit emitted private standard-exception typeinfo through inline library code.
 That typeinfo prevented its RTTI-enabled handler from matching exceptions thrown
 by the benchmark shared library.
 
-Core now compiles LLVM option parsing without exceptions or RTTI, and keeps CLI
-execution and its handler in a separate RTTI-enabled target. Benchmark
-generation allows exceptions to propagate from its existing JSON parser APIs.
-Ordinary file and argument errors return diagnostics directly, and the QDMI
-adapter no longer catches and rethrows an exception merely to translate it. The
-full local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one
-skipped. The
-[macOS native baseline](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34687693217)
-now passes C++ and CLI tests, wheel repair, 1,184 installed Python tests (one
-skipped), and the installed CMake consumer. Its measured pipeline took 10.0
-minutes and peaked at 2.3 GiB of sampled process-tree RSS. Both native-SDK LTO
-recipes also pass. The three matched-SDK recipes remain in progress. Two
-twelve-round native-SDK timing cohorts selected different winners, with
-overlapping confidence intervals; the complete screen remains necessary before
-selecting a PGO recipe. Linux measurements retain their frozen Core revision.
-The Core fixes are independently available in
-[PR #2545](https://github.com/munich-quantum-toolkit/core/pull/2545), based on
-current main, with 3,539 local C++ tests passed and one skipped.
+The frozen study revision uses a separate RTTI-enabled CLI handler. All six
+recipes now pass C++ and CLI tests, wheel repair, 1,184 installed Python tests
+(one skipped), and the installed CMake consumer. The
+[retained wheel records](results/macos-wheel-screen.tar.gz) and
+[summary manifest](results/macos-wheel-screen.json) record each complete
+pipeline and its validation commands.
+
+| SDK LTO | Core LTO | Pipeline (min) | Peak process-tree RSS (GiB) |
+| ------- | -------- | -------------: | --------------------------: |
+| OFF     | OFF      |           10.0 |                         2.3 |
+| OFF     | Thin     |           23.5 |                         2.1 |
+| OFF     | Full     |           15.3 |                         2.4 |
+| Thin    | Thin     |          105.7 |                         2.6 |
+| Thin    | Full     |           90.5 |                         2.6 |
+| Full    | Full     |           67.3 |                         4.4 |
+
+Two twelve-round cohorts evaluated all six variants, collecting 144 samples.
+Both select native SDK libraries with ThinLTO for Core. The first selects full
+SDK/Core LTO among the matched variants; the second selects ThinLTO SDK
+libraries with full Core LTO. Both matched candidates advance because their
+ranking is not stable across cohorts. The
+[raw screen](results/macos-lto-screen.tar.gz) and
+[hash manifest](results/macos-lto-screen.json) preserve the results, including
+their wide confidence intervals.
+
+The initial native-SDK Core PGO trial failed when importing `dd.abi3.so`: its
+profile data referenced the unresolved private alias `l_PyInit_dd.local`.
+Disabling symbol stripping reproduced the same failure. A small instrumented
+module fails with LLVM's `-flat_namespace` and loads when two-level namespaces
+are restored.
+[Upstream MLIR](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.0/mlir/cmake/modules/AddMLIRPython.cmake)
+applies that namespace restoration to its Python modules. The
+[full Core diagnostic](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34695260514)
+passes with that policy: profile generation, training, profile use, C++ tests,
+wheel repair, installed Python checks, and the CMake consumer. It took 12.7
+minutes and peaked at 2.3 GiB. The
+[reproducer and Core records](results/macos-profile-namespace.tar.gz) have a
+[hash manifest](results/macos-profile-namespace.json).
+
+Core `cc3f08f5` applies the namespace restoration to all Python modules. The six
+ordinary recipes are being rebuilt with this revision so that the final PGO
+comparison uses identical source and link policies. Core-only and combined
+SDK/Core PGO advance on native/Thin, Thin/Full, and Full/Full. The earlier
+screening records remain unchanged.
+
+The current-main repair in
+[PR #2545](https://github.com/munich-quantum-toolkit/core/pull/2545) returns
+QDMI and benchmark diagnostics before entering MLIR. Its adapter, generator, and
+CLI compile without exceptions or RTTI; the earlier split CLI and platform
+overrides have been removed. Local validation passed 3,544 C++ tests, with one
+existing test skipped, and all 43 Python QDMI compilation tests. Hosted CI also
+passes on Linux, macOS, and Windows at `bb0ae8208`. These changes do not alter
+the frozen sources of the retained timing samples.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
