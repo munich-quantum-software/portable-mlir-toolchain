@@ -64,6 +64,30 @@ jobs:
             xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 "$flag" "$STUDY_ROOT/exception.cpp" -o "$STUDY_ROOT/exception$flag"
             "$STUDY_ROOT/exception$flag" | tee "$STUDY_ROOT/exception$flag.log"
           done
+          cat > "$STUDY_ROOT/exception-throw.cpp" <<'CPP'
+          #include <stdexcept>
+          void marker() { throw std::out_of_range("known diagnostic marker"); }
+          CPP
+          cat > "$STUDY_ROOT/exception-extra.cpp" <<'CPP'
+          #include <exception>
+          void check(void (*call)()) {
+            try { call(); } catch (const std::exception&) {}
+          }
+          CPP
+          xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -dynamiclib "$STUDY_ROOT/exception-throw.cpp" -o "$STUDY_ROOT/exception-throw.dylib"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path(os.environ['STUDY_ROOT']) / 'exception.cpp'
+          source = path.read_text().replace('int main() {', 'void marker();\nint main() {')
+          source = source.replace('throw std::out_of_range("known diagnostic marker")', 'marker()')
+          path.write_text(source)
+          PY
+          for flag in -fno-rtti -frtti; do
+            xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -fvisibility-inlines-hidden "$flag" -c "$STUDY_ROOT/exception-extra.cpp" -o "$STUDY_ROOT/exception-extra.o"
+            xcrun clang++ -O3 -std=c++20 -mmacosx-version-min=13.3 -frtti "$STUDY_ROOT/exception.cpp" "$STUDY_ROOT/exception-extra.o" "$STUDY_ROOT/exception-throw.dylib" -o "$STUDY_ROOT/exception-mixed$flag"
+            "$STUDY_ROOT/exception-mixed$flag" | tee "$STUDY_ROOT/exception-mixed$flag.log"
+          done
           python3 - <<'PY'
           from pathlib import Path
           path = Path('core/mlir/unittests/Compiler/test_compiler_qdmi_adapter.cpp')
@@ -71,6 +95,11 @@ jobs:
           old = 'EXPECT_NE(message.find("Unknown QDMI device ID"), std::string::npos);'
           assert source.count(old) == 1
           path.write_text(source.replace(old, old[:-1] + ' << message;'))
+          path = Path('core/mlir/CMakeLists.txt')
+          source = path.read_text()
+          old = '  mqt_llvm_target_disable_rtti(${target_name})\n'
+          assert source.count(old) == 1
+          path.write_text(source.replace(old, ''))
           path = Path('core/mlir/lib/Compiler/QDMIAdapter.cpp')
           source = path.read_text()
           old = 'return qdmiError(action, "unknown exception");'
