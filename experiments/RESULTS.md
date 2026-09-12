@@ -72,7 +72,9 @@ hashes and passed fresh installed checks and consumer configure/build/execution.
 ARM64 retains the existing release dependency limit instead of running the full
 Python test group. This is compatibility evidence; Windows optimization settings
 remain unchanged. Full provenance and per-stage timings are in the two workflow
-artifacts.
+artifacts. Fresh Windows builds will also validate Core's shared error-handling
+changes at `9e776ddb4bd1d9eede04a08cb814394367a84884`; the earlier passes above
+cover the original Core revision.
 
 ## Hosted SDK screen
 
@@ -217,9 +219,13 @@ generation allows exceptions to propagate from its existing JSON parser APIs.
 Ordinary file and argument errors return diagnostics directly, and the QDMI
 adapter no longer catches and rethrows an exception merely to translate it. The
 full local Linux C++ suite passes with mold 2.42.1: 3,226 passed and one
-skipped. The earlier macOS retry passed the QDMI error test; the updated CLI
-still requires a fresh macOS wheel check. Linux measurements retain their frozen
-Core revision; no macOS wheel is accepted yet.
+skipped. The
+[macOS native baseline](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34687693217)
+now passes C++ and CLI tests, wheel repair, 1,184 installed Python tests (one
+skipped), and the installed CMake consumer. Its measured pipeline took 10.0
+minutes and peaked at 2.3 GiB of sampled process-tree RSS. The other five macOS
+LTO recipes remain in progress. Linux measurements retain their frozen Core
+revision.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
