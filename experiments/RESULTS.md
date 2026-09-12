@@ -56,25 +56,23 @@ python3 experiments/decide_optimization.py \
 
 ## Windows compatibility
 
-[Native SDK compatibility](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34538055244)
-passes for x64 and ARM64 using the original repaired wheels from
-[the build run](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34535339421).
-Both original jobs passed wheel construction, repair, C++ tests, and installed
-checks. Their test consumer exceeded Windows' default stack size; allocating its
-DD package on the heap fixed the consumer. The retry verified the original wheel
-hashes and passed fresh installed checks and consumer configure/build/execution.
+[Fresh native-SDK compatibility builds](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34688341748)
+pass for x64 and ARM64 at Core `9e776ddb4bd1d9eede04a08cb814394367a84884`,
+including its error-handling fixes. Both jobs passed wheel construction, repair,
+C++ tests, installed checks, and consumer configure/build/execution.
 
 | Platform      | Wheel bytes | Installed Python checks                  | Consumer |
 | ------------- | ----------: | ---------------------------------------- | -------- |
-| Windows x64   |  30,837,035 | 1,183 passed, two skipped                | Pass     |
-| Windows ARM64 |  26,292,256 | Numerical, compiler, QIR, and CLI checks | Pass     |
+| Windows x64   |  30,839,022 | 1,183 passed, two skipped                | Pass     |
+| Windows ARM64 |  26,293,892 | Numerical, compiler, QIR, and CLI checks | Pass     |
 
 ARM64 retains the existing release dependency limit instead of running the full
 Python test group. This is compatibility evidence; Windows optimization settings
-remain unchanged. Full provenance and per-stage timings are in the two workflow
-artifacts. Fresh Windows builds will also validate Core's shared error-handling
-changes at `9e776ddb4bd1d9eede04a08cb814394367a84884`; the earlier passes above
-cover the original Core revision.
+remain unchanged. The [retained records](results/windows-compatibility.tar.gz)
+and [manifest](results/windows-compatibility.json) preserve wheel hashes,
+compiler identity, per-stage commands, timings, and validation logs. The
+consumer allocates its DD package on the heap to fit Windows' default stack
+size.
 
 ## Hosted SDK screen
 
@@ -177,11 +175,21 @@ Two independent twelve-round cohorts per architecture evaluated sixteen wheel
 variants, for 768 fresh-process samples. All four cohorts selected full Core
 LTO, combined SDK/Core PGO, and BOLT as the native-SDK finalist. All four
 selected full SDK/Core LTO with BOLT as the matched recipe to advance to PGO.
-These are screening choices, not adoption decisions: the matched Core-only and
-combined PGO builds are still running. The
+These are screening choices, not adoption decisions. The
 [raw screens](results/linux-clang22-screen.tar.gz) and
 [manifest](results/linux-clang22-screen.json) retain samples, artifact hashes,
 host records, rankings, and finalist selections.
+
+The ARM64 matched-SDK combined-PGO trial failed during the instrumented Core
+build. LLD was killed while linking `libmqt-core-qdmi-ddsim-device.so`, with
+14.8 GiB recorded container memory and no swap. The job already used one
+concurrent link and one LTO partition. Its pipeline stopped after 84.7 minutes,
+before producing a validated wheel, so this recipe fails hosted feasibility. The
+[failure records](results/linux-matched-pgo-failures.tar.gz) and
+[manifest](results/linux-matched-pgo-failures.json) retain commands, resource
+measurements, and diagnostics. The kill is consistent with memory pressure;
+kernel OOM events were not retained. The matched Core-only x86-64 trial passed;
+the ARM64 Core-only and x86-64 combined-PGO trials continue.
 
 The first four Linux ThinLTO-SDK wheel jobs crashed in the static, musl-linked
 LLD shipped by manylinux's Clang package. An LLVM-only reproducer also crashed:
@@ -223,9 +231,14 @@ skipped. The
 [macOS native baseline](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34687693217)
 now passes C++ and CLI tests, wheel repair, 1,184 installed Python tests (one
 skipped), and the installed CMake consumer. Its measured pipeline took 10.0
-minutes and peaked at 2.3 GiB of sampled process-tree RSS. The other five macOS
-LTO recipes remain in progress. Linux measurements retain their frozen Core
-revision.
+minutes and peaked at 2.3 GiB of sampled process-tree RSS. Both native-SDK LTO
+recipes also pass. The three matched-SDK recipes remain in progress. Two
+twelve-round native-SDK timing cohorts selected different winners, with
+overlapping confidence intervals; the complete screen remains necessary before
+selecting a PGO recipe. Linux measurements retain their frozen Core revision.
+The Core fixes are independently available in
+[PR #2545](https://github.com/munich-quantum-toolkit/core/pull/2545), based on
+current main, with 3,539 local C++ tests passed and one skipped.
 
 The remaining work is repaired-wheel validation, Core-only and combined PGO for
 native and matched finalists, paired runtime evaluation, full cold/warm costs,
@@ -245,9 +258,11 @@ Neither the patch nor `--no-relax` or `--no-fork` was used.
 
 The native SDK integration consumer also passes mold linking, BOLT rewriting,
 execution, and byte-for-byte recovery after failed training on ARM64. The SDK
-installation check now uses mold instead of its BFD workaround. Updated hosted
-installation checks will reuse the fresh SDK archives from the qualification
-run, without repeating their builds.
+installation check now uses mold instead of its BFD workaround.
+[Updated hosted installation checks](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34690021713)
+pass on both Linux architectures and assertion modes using the fresh SDK
+archives. The assertion-free consumers also pass BOLT rewriting and
+byte-for-byte recovery after failed training.
 
 Relinking the earlier full-LTO `mlir-tblgen` also passes relocation inspection
 and execution. BOLT still rejects an ADR in its non-simple `p_ere` function.
@@ -257,7 +272,10 @@ The selected SDK design retains native tools without BOLT rewriting.
 The [replay records](results/mold-2.42.1-replay.tar.gz) and their
 [hash manifest](results/mold-2.42.1-replay.json) retain both successes and the
 BOLT failure. The Linux SDK recipe now selects mold 2.42.1. Fresh native SDK
-builds and installation tests on both architectures and assertion modes are
-running in the
+builds and installation tests on both architectures and assertion modes passed
+in the
 [Linux qualification workflow](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34683842047).
-Existing runtime samples continue to identify their original linker binaries.
+The [hosted records](results/mold-2.42.1-hosted.tar.gz) and
+[manifest](results/mold-2.42.1-hosted.json) retain all four build logs, archive
+hashes, and the subsequent mold consumer checks. Existing runtime samples
+continue to identify their original linker binaries.
