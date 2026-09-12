@@ -6,7 +6,7 @@ on:
       platform:
         description: Platform to qualify with the retained SDK artifacts
         type: choice
-        options: [linux, windows]
+        options: [linux, macos, windows]
         default: linux
       sdk-run-id:
         description: Native LLVM 23.1.1 qualification artifacts
@@ -70,6 +70,20 @@ jobs:
           mkdir -p "$RELEASE_ROOT/sdk" "$GITHUB_WORKSPACE/core/build"
           uv run --no-project --python 3.14.7 python experiments/extract_study_sdk.py \
             "$RELEASE_ROOT"/download/*.tar.zst "$RELEASE_ROOT/sdk"
+          if [[ "$CIBW_BUILD" == cp311-* ]]; then
+            cat > "$GITHUB_WORKSPACE/core/build/release-validation-cpp.sh" <<'CPP'
+          set -euo pipefail
+          project=${1:?Core source directory}
+          build="$project/build/release-validation-cpp"
+          cmake -S "$project" -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_UNITY_BUILD=ON -DBUILD_MQT_CORE_SHARED_LIBS=ON \
+            -DBUILD_MQT_CORE_BINDINGS=OFF -DBUILD_MQT_CORE_TESTS=ON \
+            -DCMAKE_PROJECT_INCLUDE_BEFORE="$project/build/release-pgo.cmake"
+          cmake --build "$build" -j 4
+          ctest --test-dir "$build" --output-on-failure -j 4
+          CPP
+            export CIBW_BEFORE_TEST_LINUX='uv run --no-project --python "$(command -v python)" --with cmake==4.4.3 --with ninja==1.13.0 bash "{project}/build/release-validation-cpp.sh" "{project}"'
+          fi
           export CIBW_CONTAINER_ENGINE="docker; create_args: --cpus=4 --memory=16g --memory-swap=16g --name=mqt-release-validation -v$RELEASE_ROOT/sdk:/opt/llvm-23.1.1:ro -v$GITHUB_WORKSPACE/core/build:/project/build"
           cd core
           uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
@@ -86,6 +100,93 @@ jobs:
             core/build/release-pgo-*/*.log
             core/build/release-pgo-*/*.profdata
             core/build/release-pgo-*/sdk-build/variant-*.json
+            core/build/release-validation-cpp/Testing/Temporary/*.log
+            core/build/release-validation-cpp/CMakeCache.txt
+            ${{ runner.temp }}/release/pipeline*
+          if-no-files-found: error
+
+  macos:
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'macos'
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - { abi: cp311, version: "3.11" }
+          - { abi: cp315t, version: "3.15t" }
+    runs-on: macos-26
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: munich-quantum-toolkit/core
+          ref: ${{ inputs.core-ref }}
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          python-version: 3.14.7
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ inputs.sdk-run-id }}
+          github-token: ${{ github.token }}
+          name: llvm-mlir_llvmorg-23.1.1_arm64-apple-darwin_noassert.tar.zst
+          path: ${{ runner.temp }}/release/download
+          skip-decompress: true
+      - name: Build and validate the production macOS wheel
+        shell: bash
+        env:
+          RELEASE_ROOT: ${{ runner.temp }}/release
+          RELEASE_PYTHON: ${{ matrix.python.version }}
+          CIBW_BUILD: ${{ matrix.python.abi }}-*
+          CIBW_ARCHS: arm64
+          CMAKE_BUILD_PARALLEL_LEVEL: "3"
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+        run: |
+          set -euo pipefail
+          mkdir -p "$RELEASE_ROOT/sdk"
+          uv run --no-project --python 3.14.7 python experiments/extract_study_sdk.py \
+            "$RELEASE_ROOT"/download/*.tar.zst "$RELEASE_ROOT/sdk"
+          export MLIR_DIR="$RELEASE_ROOT/sdk/lib/cmake/mlir" LLVM_DIR="$RELEASE_ROOT/sdk/lib/cmake/llvm"
+          export PATH="$RELEASE_ROOT/sdk/bin:$HOME/.local/bin:$PATH"
+          export MQT_CORE_QDMI_CONFIG_JSON='{"schema-version":1,"qdmi":{"devices":[]}}'
+          uv tool install cmake==4.4.3
+          uv tool install ninja==1.13.0
+          cd core
+          uv run --no-project --python 3.14.7 python ../experiments/linux_optimization.py \
+            --output "$RELEASE_ROOT/pipeline.json" -- uvx cibuildwheel==4.2.1 --platform macos
+          uv venv --python "$RELEASE_PYTHON" "$RELEASE_ROOT/installed"
+          python="$RELEASE_ROOT/installed/bin/python"
+          uv pip install --python "$python" wheelhouse/*.whl
+          "$python" test/release/train_optimization.py --expected-root "$RELEASE_ROOT/installed"
+          package=$("$python" -c 'from pathlib import Path; import mqt.core; print(Path(mqt.core.__file__).parent)')
+          cmake -S test/release/consumer -B build/consumer -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$package" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3
+          cmake --build build/consumer -j 3
+          build/consumer/consumer
+          if [[ "$RELEASE_PYTHON" == 3.11 ]]; then
+            cmake --preset release -DENABLE_IPO=OFF
+            cmake --build --preset release -j 3
+            ctest --preset release
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: release-validation-macos-${{ matrix.python.abi }}
+          compression-level: 0
+          path: |
+            core/wheelhouse/*.whl
+            core/build/release-pgo-*/*.json
+            core/build/release-pgo-*/*.log
+            core/build/release-pgo-*/*.profdata
+            core/build/release-pgo-*/sdk-build/variant-*.json
+            core/build/consumer/CMakeCache.txt
+            core/build/release/Testing/Temporary/*.log
             ${{ runner.temp }}/release/pipeline*
           if-no-files-found: error
 
