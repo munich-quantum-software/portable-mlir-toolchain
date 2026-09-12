@@ -1,0 +1,114 @@
+name: Measure production SDK compression
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifacts:
+        description: "SDK study artifact records: name, run, runner, arch, triple"
+        type: string
+        required: true
+  push:
+    branches: [codex/optimized-release-toolchain]
+    paths: [.github/workflows/optimization-packaging.yml]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact: ${{ fromJSON(inputs.artifacts) }}
+    runs-on: ${{ matrix.artifact.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: 0.12.5
+          python-version: 3.14.7
+          activate-environment: true
+          enable-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: ${{ matrix.artifact.run }}
+          github-token: ${{ github.token }}
+          name: study-sdk-${{ matrix.artifact.name }}
+          path: ${{ runner.temp }}/packaging/input
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          run-id: "34411299839"
+          github-token: ${{ github.token }}
+          name: zstd-1.5.7_${{ matrix.artifact.triple }}.tar.gz
+          path: ${{ runner.temp }}/packaging/zstd
+          skip-decompress: true
+      - name: Verify and recompress the SDK
+        shell: bash
+        env:
+          STUDY_ROOT: ${{ runner.temp }}/packaging
+          STUDY_ARCH: ${{ matrix.artifact.arch }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ["STUDY_ROOT"])
+          manifest = json.loads((root / "input/sdk-artifact.json").read_text())
+          with (root / "input/sdk.tar.zst").open("rb") as stream:
+              assert hashlib.file_digest(stream, "sha256").hexdigest() == manifest["archive_sha256"]
+          PY
+          mkdir -p "$STUDY_ROOT/output"
+          tar -xzf "$STUDY_ROOT"/zstd/*.tar.gz -C "$STUDY_ROOT/zstd"
+          chmod +x "$STUDY_ROOT/zstd/zstd"
+          "$STUDY_ROOT/zstd/zstd" --version > "$STUDY_ROOT/output/zstd-version.txt"
+          python experiments/linux_optimization.py --output "$STUDY_ROOT/output/extract.json" -- \
+            python experiments/extract_study_sdk.py "$STUDY_ROOT/input/sdk.tar.zst" "$STUDY_ROOT/sdk"
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            python experiments/linux_optimization.py --output "$STUDY_ROOT/output/compress.json" \
+              --container mqt-packaging -- docker run --rm --name mqt-packaging \
+              --cpus=4 --memory=16g --memory-swap=16g -v "$STUDY_ROOT:/study" \
+              "quay.io/pypa/manylinux_2_28_${STUDY_ARCH}:2026.08.04-1" \
+              bash -e -o pipefail -c 'tar -C /study/sdk -cf - . | /study/zstd/zstd -19 --long=31 --threads=0 -f -o /study/output/sdk.tar.zst -'
+          else
+            python experiments/linux_optimization.py --output "$STUDY_ROOT/output/compress.json" -- \
+              bash -e -o pipefail -c 'tar -C "$1/sdk" -cf - . | "$1/zstd/zstd" -19 --long=31 --threads=0 -f -o "$1/output/sdk.tar.zst" -' _ "$STUDY_ROOT"
+          fi
+          python experiments/linux_optimization.py --output "$STUDY_ROOT/output/verify.json" -- \
+            "$STUDY_ROOT/zstd/zstd" -t --long=31 "$STUDY_ROOT/output/sdk.tar.zst"
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ["STUDY_ROOT"])
+          def digest(path):
+              with path.open("rb") as stream:
+                  return hashlib.file_digest(stream, "sha256").hexdigest()
+          manifest = json.loads((root / "input/sdk-artifact.json").read_text())
+          manifest["trial_archive_sha256"] = manifest["archive_sha256"]
+          manifest["archive_sha256"] = digest(root / "output/sdk.tar.zst")
+          (root / "output/sdk-artifact.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          record = {"trial_bytes": (root / "input/sdk.tar.zst").stat().st_size,
+                    "production_bytes": (root / "output/sdk.tar.zst").stat().st_size,
+                    "zstd_sha256": digest(root / "zstd/zstd"), "level": 19, "window_log": 31}
+          (root / "output/packaging.json").write_text(json.dumps(record, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: study-packaged-sdk-${{ matrix.artifact.name }}
+          path: |
+            ${{ runner.temp }}/packaging/output/sdk.tar.zst
+            ${{ runner.temp }}/packaging/output/sdk-artifact.json
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: study-packaging-records-${{ matrix.artifact.name }}
+          path: |
+            ${{ runner.temp }}/packaging/output/*.json
+            ${{ runner.temp }}/packaging/output/*.log
+            ${{ runner.temp }}/packaging/output/*.txt
+          if-no-files-found: error

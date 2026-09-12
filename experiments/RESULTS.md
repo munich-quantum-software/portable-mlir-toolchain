@@ -171,10 +171,12 @@ static musl build is documented in the
 ## Remaining platform gates
 
 The original macOS native-SDK screen failed the unknown-device exception check:
-the original error became `unknown exception`. A minimal reproducer shows that
-linking a translation unit which catches `std::exception` without RTTI can
-prevent an otherwise RTTI-enabled handler from matching a standard exception
-thrown by a shared library. Enabling RTTI only in the QDMI adapter was therefore
+the original error became `unknown exception`. A
+[minimal reproducer](results/macos-exception-reproducer.tar.gz), with a
+[hash manifest](results/macos-exception-reproducer.json), shows that linking a
+translation unit which catches `std::exception` without RTTI can prevent an
+otherwise RTTI-enabled handler from matching a standard exception thrown by a
+shared library. Enabling RTTI only in the QDMI adapter was therefore
 insufficient.
 
 macOS trials now use Core `8d520eb04fc301b5dba85a8e4c2587ba410fb533`, which
