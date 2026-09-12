@@ -16,6 +16,11 @@ on:
         description: Exact Core integration commit
         type: string
         required: true
+      linux-abi:
+        description: Linux Python ABIs to qualify
+        type: choice
+        options: [all, cp311]
+        default: all
   push:
     branches: [codex/release-wheel-validation]
     paths: [.github/workflows/release-wheel-validation.yml]
@@ -33,7 +38,7 @@ jobs:
         platform:
           - { runner: ubuntu-24.04, arch: x86_64 }
           - { runner: ubuntu-24.04-arm, arch: aarch64 }
-        abi: [cp311, cp315t]
+        abi: ${{ fromJSON(inputs.linux-abi == 'cp311' && '["cp311"]' || '["cp311", "cp315t"]') }}
     runs-on: ${{ matrix.platform.runner }}
     timeout-minutes: 300
     steps:
