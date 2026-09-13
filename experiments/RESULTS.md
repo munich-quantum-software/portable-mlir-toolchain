@@ -112,18 +112,62 @@ both architectures. Their [records](results/windows-compatibility.tar.gz) and
 [manifest](results/windows-compatibility.json) remain available. The consumer
 allocates its DD package on the heap to fit Windows' default stack size.
 
+## Current Linux release qualification
+
+[All four current Linux ABI jobs](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34721263840)
+pass the actual cibuildwheel 4.2.1 hooks at Core
+`1691559de4868923dacc3e565c7c00130d437773`, using native assertion-free LLVM
+23.1.1 SDKs and prebuilt manylinux Clang 22.1.8. Each job trains a fresh
+combined SDK/Core profile, applies full Core LTO, and runs BOLT. SDK PGO
+rebuilds 164 linked archive targets on ARM64 and 163 on x86-64 while reusing the
+native SDK tools.
+
+| Platform | Python ABI | Wheel bytes | Complete wheel job (min) | SDK + wheel job work (min) | Container peak (GiB) |
+| -------- | ---------- | ----------: | -----------------------: | -------------------------: | -------------------: |
+| ARM64    | cp311      |  38,334,933 |                    122.8 |                      218.7 |                 11.5 |
+| ARM64    | cp315t     |  38,339,798 |                    102.4 |                      198.3 |                 11.3 |
+| x86-64   | cp311      |  39,329,585 |                    192.1 |                      316.7 |                 12.5 |
+| x86-64   | cp315t     |  39,329,309 |                    166.5 |                      291.2 |                 11.9 |
+
+Every repaired wheel passes installed numerical, compiler, QIR, CLI, and DD
+checks, plus CMake consumers built with Clang 22.1.8 and GCC 14.2.1. Both
+stable-ABI jobs additionally pass 1,353 Python tests with two skips and 3,544
+C++ tests with one existing skip. Free-threaded jobs run the targeted installed
+checks. Each wheel has non-empty execution profiles for all five BOLT targets.
+
+Direct inspection of all 13 ELF binaries per wheel confirms the expected
+architecture, relative runtime search paths, and no absolute dependency paths.
+Their maximum required GLIBC symbol version is 2.27; repaired wheels carry both
+manylinux 2.27 and 2.28 tags. Final CMake configurations pass their PIC probes
+while retaining target-scoped profile-use options.
+
+Complete job times include provisioning, instrumentation, training, SDK and Core
+rebuilding, BOLT, stripping, repair, applicable tests, consumers, and artifact
+transfer. Each container has four CPUs, 16 GiB of memory, and no swap; the
+recorded cgroup peaks include filesystem cache and the supplementary stable-ABI
+C++ build. All four jobs fit the five-hour budget. SDK + wheel work adds the
+complete fresh native SDK cost reported below; this is summed job work, not
+observed end-to-end latency or the duration of one job.
+
+The [qualification records](results/linux-release-qualification.tar.gz) and
+[hash manifest](results/linux-release-qualification.json) retain profiles,
+commands, source and compiler identities, CMake configurations, raw logs, test
+results, repaired binary headers, wheel hashes, and resource measurements. They
+also retain the supplementary local CMake consumer check with its original build
+tree hidden, identified separately from the hosted qualification.
+
 ## Current macOS release qualification
 
-[Both current macOS ABI jobs](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34714749193)
+[Both current macOS ABI jobs](https://github.com/munich-quantum-software/portable-mlir-toolchain/actions/runs/34721264654)
 pass the actual cibuildwheel 4.2.1 hooks at Core
-`1a8514a4ff1675230297db02535c085a5832cebf`, using the native assertion-free LLVM
+`1691559de4868923dacc3e565c7c00130d437773`, using the native assertion-free LLVM
 23.1.1 SDK. Each trains its own profile and rebuilds 164 linked SDK archive
 targets, with Core ThinLTO and three build workers from Xcode 26.6.
 
 | Python ABI | Wheel bytes | Complete wheel job (min) | SDK + wheel job work (min) | Cibuildwheel RSS (GiB) |
 | ---------- | ----------: | -----------------------: | -------------------------: | ---------------------: |
-| cp311      |  24,973,867 |                     89.6 |                      189.7 |                    2.9 |
-| cp315t     |  24,976,165 |                    102.7 |                      202.7 |                    3.0 |
+| cp311      |  24,972,221 |                     95.9 |                      195.9 |                    3.0 |
+| cp315t     |  24,975,342 |                     77.0 |                      177.1 |                    3.0 |
 
 Both repaired wheels pass installed numerical, compiler, QIR, CLI, DD, and CMake
 consumer checks. The stable-ABI job additionally passes 1,363 Python tests and
@@ -592,8 +636,9 @@ fresh-configuration failure.
 The [diagnostic records](results/pgo-feature-probes.tar.gz) and
 [hash manifest](results/pgo-feature-probes.json) retain hosted profiles and
 logs, local before/after configurations, extracted LTO module flags, and the
-runnable reproducer. Fresh Linux and macOS release qualification uses the
-corrected Core revision `1a8514a4ff1675230297db02535c085a5832cebf`.
+runnable reproducer. Final Linux and macOS release qualification passes at Core
+`1691559de4868923dacc3e565c7c00130d437773`, which includes the compiler-probe
+and runtime-path corrections.
 
 ## Wheel runtime paths and supplementary native tests
 
@@ -614,9 +659,10 @@ search paths before stripping and repair.
 All thirteen binaries in a rebuilt ARM64 raw wheel have relative runtime paths.
 The installed numerical, compiler, QIR, CLI, and DD checks pass with the
 original build tree hidden, and loaded MQT libraries resolve inside the
-installation. The path check rejects the three affected binaries from the
-earlier repaired wheel. This local replay uses LLVM 23.1.0 and a retained
-profile; final Linux and macOS qualification with LLVM 23.1.1 repeats at Core
+installation. Both Clang and GCC CMake consumers also pass with the build tree
+hidden. The path check rejects the three affected binaries from the earlier
+repaired wheel. This local replay uses LLVM 23.1.0 and a retained profile; final
+Linux and macOS qualification with LLVM 23.1.1 passes at Core
 `1691559de4868923dacc3e565c7c00130d437773`.
 
 The earlier stable Linux jobs also exposed direct `dlopen`, `dlsym`, and

@@ -1,8 +1,8 @@
 # Portable SDK and Core optimization study
 
-Status: trial execution runs in this repository. The SDK variant builder, wheel
-validation, paired evaluation, and acceptance checks are implemented. Production
-release selection remains unchanged until the adoption gates pass.
+Status: complete. The study selects native SDK libraries on every platform, and
+the selected Core recipes pass current release qualification with trial SDKs. No
+production SDK release or public setup default has changed.
 
 ## Goal and scope
 
@@ -40,39 +40,32 @@ to each source/compiler/platform combination.
   producer-matched checks do not establish compatibility with older compiler
   ABIs.
 
-## Work remaining
+## Outcome
 
-- [x] Complete native-SDK PGO controls and two quiet paired ARM64 evaluations.
-      The matched Clang 23 finalist gains about 8.6%, below the 10% gate; see
-      [results](RESULTS.md). Windows compatibility also passes on both
-      architectures.
-- [x] Implement reusable SDK library variants and portable
-      measurement/acceptance tooling with focused regression tests.
-- [x] Add bounded Linux/macOS trial workflows and Windows compatibility jobs.
-- [x] Complete both Linux runtime decisions. Native SDKs win the adoption rule:
-      ARM64 matched gains remain below 10%, and x86-64 clears the gate on the
-      AMD host but misses it on the Intel host. Both architectures select full
-      Core LTO, combined SDK/Core PGO, and BOLT with native SDK libraries.
-- [x] Compare the prebuilt Clang 22 recipe with retained Clang 23 and GCC 14
-      references on one quiet host in two cohorts. The selected Clang recipes
-      have similar latency and no confirmed workload regressions above 3%.
-- [x] Complete all twelve macOS recipes and two final runtime cohorts. Native
-      SDK libraries with Core ThinLTO and combined SDK/Core PGO remain the
-      recommendation; no matched candidate meets the confidence-supported gate.
-- [ ] Qualify the current Linux and macOS release hooks using LLVM 23.1.1 trial
-      SDKs. Normal SDK qualification and all four Windows release jobs pass.
-      Linux and macOS repeat after the final runtime-path correction; the
-      earlier Linux execution passes retained a build-directory RPATH.
-- [ ] Report per-platform decisions and revise companion PRs around measured
-      outcomes without publishing a production SDK release.
+Both Linux architectures select native SDK libraries with full Core LTO,
+combined SDK/Core PGO, and BOLT. macOS selects native SDK libraries with Core
+ThinLTO and combined PGO. No matched candidate meets the confidence-supported
+10% adoption gate in both cohorts. Windows retains its compiler and optimization
+settings.
+
+Native LLVM 23.1.1 SDK builds and installed consumers pass on all five platforms
+with assertions enabled and disabled. All ten current platform/ABI wheel
+qualification jobs pass, including the final Linux and macOS runtime-path and
+compiler-probe corrections. The [decision report](RESULTS.md) records exact
+revisions, runtime comparisons, sizes, cold/warm costs, compatibility limits,
+resource measurements, and replayable evidence.
+
+Companion changes implement these selections without publishing an SDK release.
+Production activation requires reviewed companion merges and publication of the
+assertion-free SDK archives; public setup defaults retain assertions.
 
 ## Validation
 
 Reuse `test/release/benchmark_optimization.py`, `train_optimization.py`,
 `train_cpp_optimization.py`, and `evaluate_optimization.py`. Preserve raw
 commands, artifact hashes, paired samples, semantic tests, wheel repair results,
-CMake consumers, and resource accounting. Run focused runner/decision tests and
-repository lint before publication. All hosted study jobs run in
+CMake consumers, and resource accounting. The fourteen study/library-builder
+tests and repository hooks pass. All hosted study jobs run in
 `munich-quantum-software/portable-mlir-toolchain`; the pinned Core checkout
 supplies training workloads, tests, and the package source.
 
@@ -83,15 +76,13 @@ PGO provisioning builds only matching compiler-rt profiling support and
 22's raw profile format. The matching components pass a real generate/merge/use
 check.
 
-Cache probes use an explicit cache and profile identity. A ThinLTO SDK support
-library check recorded 182 cold compilations followed by 182 cache hits after
-cleaning the build output, without cache errors. This proves the cache
-mechanism; completed hosted cold/warm costs are recorded in the results. Warm
-results cover clean SDK/Core rebuilds and semantic checks with the same profile,
-and exclude fresh training, BOLT, repair, compression, and upload.
+Cache probes use an explicit cache and profile identity. Warm results cover
+clean SDK/Core rebuilds and semantic checks with the same profile, and exclude
+fresh training, BOLT, repair, compression, and upload. They do not substitute
+for complete fresh release costs.
 
-Current package checks build C++ tests separately on Windows and use the actual
-shared-library directories for Unix test execution. Linux wheels must repair to
-manylinux 2.28 and pass both producer-Clang and GCC CMake consumers. macOS
+Supplementary C++ tests use the native release library settings. Installed
+shared-wheel consumers provide a separate compatibility check. Linux wheels
+repair to manylinux 2.28 and pass both producer-Clang and GCC consumers. macOS
 producer and consumer identities include Xcode and SDK versions, with deployment
 targets 11.0 for the SDK and 13.3 for Core.
