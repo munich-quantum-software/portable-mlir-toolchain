@@ -39,7 +39,7 @@ done
 [[ -z "${ZSTD_ARCHIVE_PATH:-}" ]] && usage
 
 ensure_ninja "$NINJA_VERSION"
-export MACOSX_DEPLOYMENT_TARGET="11.0"
+export MACOSX_DEPLOYMENT_TARGET="13.3"
 
 ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 mkdir -p "$(dirname "$ZSTD_ARCHIVE_PATH")"

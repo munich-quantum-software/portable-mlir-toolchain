@@ -9,7 +9,8 @@ are also provided as separate assets for each supported platform to facilitate
 decompression.
 
 Windows builds support Release mode only. The Linux and macOS build scripts also
-support Debug mode. macOS builds require Apple silicon (`arm64`).
+support Debug mode. macOS builds require macOS 13.3 or newer on Apple silicon
+(`arm64`).
 
 ## Installation
 
@@ -35,3 +36,15 @@ If desired, you can run the staged build scripts directly. Refer to
 
 The usage is documented in each script. Linux builds run in a manylinux
 container and therefore require Docker on the host system.
+
+## Assertion-free release builds
+
+Archives ending in `_noassert.tar.zst` disable LLVM assertions and the
+associated ABI-breaking checks. Archives without this suffix retain assertions.
+Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF`; release
+CI builds and tests both. Always use headers and libraries from the same
+variant. Both variants contain native static libraries and native tools.
+
+Assertion-free Linux SDKs include `llvm-bolt`, `merge-fdata`, and the BOLT
+instrumentation runtime. Consumers own profiling, optimization, and validation
+of their final binaries. Keep symbols and relocations until BOLT finishes.

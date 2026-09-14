@@ -74,6 +74,7 @@ cmake -G Ninja \
   -S "$INTEGRATION_SRC" \
   -B "$TEST_BUILD_DIR" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+  -DEXPECTED_LLVM_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
   "-DCMAKE_PREFIX_PATH=$TEST_MLIR_DIR" \
   -DLLVM_USE_LINKER=mold
 log_done
@@ -85,5 +86,13 @@ log_done
 log_step "Running integration test binary"
 "$TEST_BUILD_DIR/hello_mlir"
 log_done
+
+if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
+  log_step "Verifying release build tools"
+  llvm-bolt --version
+  [[ -x "$TEST_MLIR_DIR/bin/merge-fdata" ]]
+  [[ -f "$TEST_MLIR_DIR/lib/libbolt_rt_instr.a" ]]
+  log_done
+fi
 
 echo "Integration test passed!"

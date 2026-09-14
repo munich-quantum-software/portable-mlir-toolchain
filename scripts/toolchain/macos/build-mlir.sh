@@ -42,7 +42,7 @@ done
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 ensure_ninja "$NINJA_VERSION"
-export MACOSX_DEPLOYMENT_TARGET="11.0"
+export MACOSX_DEPLOYMENT_TARGET="13.3"
 
 ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 MLIR_ARCHIVE_PATH="$(resolve_abs_path "$MLIR_ARCHIVE_PATH")"
@@ -82,7 +82,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
   -DLLVM_BUILD_TESTS=OFF \
   -DLLVM_INCLUDE_TESTS=OFF \
   -DLLVM_INCLUDE_BENCHMARKS=OFF \
-  -DLLVM_ENABLE_ASSERTIONS=ON \
+  -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
   -DLLVM_ENABLE_LTO=OFF \
   -DLLVM_ENABLE_LIBXML2=OFF \
   -DLLVM_ENABLE_LIBEDIT=OFF \
@@ -97,10 +97,11 @@ log_step "Build and install MLIR (${BUILD_TYPE})"
 cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
 log_done
 
+
 log_step "Stripping debug symbols"
-if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
-  find "$install_dir/bin" -type f -perm -111 -exec strip -S {} + 2>/dev/null || true
-  find "$install_dir/lib" -name "*.a" -exec strip -S {} + 2>/dev/null || true
+if [[ "$BUILD_TYPE" == "Release" ]]; then
+  find "$install_dir/bin" -type f -perm -111 -exec "$install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
+  find "$install_dir/lib" -name "*.a" -exec "$install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
 fi
 log_done
 
