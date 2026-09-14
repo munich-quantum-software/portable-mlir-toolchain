@@ -45,7 +45,10 @@ jobs:
         id: changed-linux-files
         uses: Ana06/get-changed-files@25f79e676e7ea1868813e21465014798211fad8c # v2.3.0
         with:
-          filter: scripts/toolchain/linux/**
+          filter: |
+            scripts/toolchain/linux/**
+            scripts/toolchain/rebuild-libraries.py
+            tests/**
       - name: Set a flag for running Linux builds
         if: github.event_name != 'pull_request' || steps.changed-linux-files.outputs.added_modified_renamed != ''
         id: linux-changes
@@ -55,7 +58,10 @@ jobs:
         id: changed-macos-files
         uses: Ana06/get-changed-files@25f79e676e7ea1868813e21465014798211fad8c # v2.3.0
         with:
-          filter: scripts/toolchain/macos/**
+          filter: |
+            scripts/toolchain/macos/**
+            scripts/toolchain/rebuild-libraries.py
+            tests/**
       - name: Set a flag for running macOS builds
         if: github.event_name != 'pull_request' || steps.changed-macos-files.outputs.added_modified_renamed != ''
         id: macos-changes

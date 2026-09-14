@@ -97,6 +97,11 @@ log_step "Build and install MLIR (${BUILD_TYPE})"
 cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
 log_done
 
+if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
+  mkdir -p "$install_dir/share/mqt-mlir"
+  cp "$SCRIPT_DIR/../rebuild-libraries.py" "$install_dir/share/mqt-mlir/"
+fi
+
 log_step "Stripping debug symbols"
 if [[ "$BUILD_TYPE" == "Release" ]]; then
   find "$install_dir/bin" -type f -perm -111 -exec "$install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true

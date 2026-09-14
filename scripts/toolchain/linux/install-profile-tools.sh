@@ -37,7 +37,7 @@ cmake -S "$root/source/runtimes" -B "$root/runtime" -G Ninja \
   -DCOMPILER_RT_BUILD_SCUDO_STANDALONE=OFF -DCOMPILER_RT_INCLUDE_TESTS=OFF \
   -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=ON \
   -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
-cmake --build "$root/runtime" --target profile -j "${STUDY_JOBS:-4}"
+cmake --build "$root/runtime" --target profile -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
 runtime_dir=$($CC -print-resource-dir)/lib/$triple
 mkdir -p "$runtime_dir"
 cp "$root/runtime/compiler-rt/lib/$triple/libclang_rt.profile.a" "$runtime_dir/"
@@ -47,7 +47,7 @@ cmake -S "$root/source/llvm" -B "$root/tools" -G Ninja \
   -DLLVM_ENABLE_LIBXML2=OFF -DLLVM_ENABLE_LIBEDIT=OFF -DLLVM_ENABLE_LIBPFM=OFF \
   -DLLVM_ENABLE_ZSTD=OFF -DLLVM_ENABLE_WARNINGS=OFF -DLLVM_USE_LINKER=lld \
   -DLLVM_PARALLEL_LINK_JOBS=1 -DCMAKE_AR="${AR:?}" -DCMAKE_RANLIB="${RANLIB:?}"
-cmake --build "$root/tools" --target llvm-profdata -j "${STUDY_JOBS:-4}"
+cmake --build "$root/tools" --target llvm-profdata -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
 printf 'int main() { return 0; }\n' > "$root/probe.cpp"
 "$CXX" -fprofile-generate "$root/probe.cpp" -o "$root/generate"
 LLVM_PROFILE_FILE="$root/probe.profraw" "$root/generate"
@@ -55,4 +55,3 @@ LLVM_PROFILE_FILE="$root/probe.profraw" "$root/generate"
 "$CXX" -fprofile-use="$root/probe.profdata" -Werror "$root/probe.cpp" -o "$root/use"
 "$root/use"
 "$root/tools/bin/llvm-profdata" show --all-functions --counts "$root/probe.profdata"
-sha256sum "$root/tools/bin/llvm-profdata" "$runtime_dir/libclang_rt.profile.a" > "$root/tools.sha256"

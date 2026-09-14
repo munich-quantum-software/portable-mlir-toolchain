@@ -88,15 +88,13 @@ log_step "Running integration test binary"
 log_done
 
 if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  log_step "BOLT integration and failure recovery"
-  cp "$TEST_BUILD_DIR/hello_mlir" "$TEST_BUILD_DIR/original"
-  mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- "$TEST_BUILD_DIR/hello_mlir"
-  cp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
-  if mqt-bolt-optimize "$TEST_BUILD_DIR/hello_mlir" -- false > "$TEST_BUILD_DIR/expected-failure.log" 2>&1; then
-    echo "Error: BOLT accepted a failed training command" >&2
-    exit 1
-  fi
-  cmp "$TEST_BUILD_DIR/original" "$TEST_BUILD_DIR/hello_mlir"
+  log_step "Verifying release build tools"
+  llvm-bolt --version
+  [[ -x "$TEST_MLIR_DIR/bin/merge-fdata" ]]
+  [[ -f "$TEST_MLIR_DIR/lib/libbolt_rt_instr.a" ]]
+  python3 "$TEST_MLIR_DIR/share/mqt-mlir/rebuild-libraries.py" --help
+  python3 -m unittest discover -s "$REPO_ROOT/tests" -p 'test_rebuild_libraries.py'
+  bash -n "$TEST_MLIR_DIR/share/mqt-mlir/install-profile-tools.sh"
   log_done
 fi
 

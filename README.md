@@ -38,57 +38,38 @@ container and therefore require Docker on the host system.
 
 ## Assertion-free release builds
 
-Release archives ending in `_noassert.tar.zst` disable LLVM assertions and the
+Archives ending in `_noassert.tar.zst` disable LLVM assertions and the
 associated ABI-breaking checks. Archives without this suffix retain assertions.
-Use the assertion-free variant for production builds and the assertion-enabled
-variant for compiler development. Always compile against the headers and
-libraries from the same variant.
+Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF`; release
+CI builds and tests both. Always use headers and libraries from the same
+variant. Both variants contain native static libraries and native tools.
 
-Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF` in the
-environment. Release CI builds and tests both variants. Both contain native
-static libraries; LLVM/MLIR builds do not use LTO or BOLT optimization.
-Consumers may enable LTO for their own code and apply BOLT after final linking.
-LTO cannot optimize across the native SDK library boundary.
+Assertion-free Linux SDKs include `llvm-bolt`, `merge-fdata`, and the BOLT
+instrumentation runtime. Consumers own profiling, optimization, and validation
+of their final binaries. Keep symbols and relocations until BOLT finishes.
 
-Linux builds use mold and the manylinux 2.28 image tag `2026.08.04-1`, selected
-from cibuildwheel 4.2.0. Update the SDK image pin regularly; consumers may use
-cibuildwheel's defaults independently. macOS uses the runner's default Xcode.
-Linux and macOS release packaging uses `llvm-strip` for tools and archives.
+## Profile-guided library rebuilding
 
-Assertion-free Linux SDKs also supply `llvm-bolt`, `merge-fdata`, the
-instrumentation runtime, and `mqt-bolt-optimize` for consumer builds. Shipping
-these tools avoids rebuilding LLVM to obtain BOLT. The helper accepts a final
-ELF binary followed by `--` and a training command, validates the result, and
-restores the original on failure. It uses `-lite` to rewrite profiled functions.
-Preserve symbols and relocations until BOLT finishes, then use `llvm-strip` and
-validate again.
+Assertion-free Unix SDKs install `share/mqt-mlir/rebuild-libraries.py`. It
+rebuilds a consumer's LLVM/MLIR archive dependencies with Clang PGO, reuses the
+native SDK generators, and installs matching headers and CMake exports. The
+resulting libraries contain native code. Training belongs to the consumer.
 
-## Experimental library variants
+Set `CC`, `CXX`, `AR`, and `RANLIB` to the consumer's Clang or Apple Clang tools
+and `CMAKE_BUILD_PARALLEL_LEVEL` to the available build capacity. Pass
+`--source`, `--base-sdk`, `--build`, `--install`, and a JSON `--targets` list of
+archive target names. Omit `--profile` to instrument the libraries, then repeat
+with `--profile FILE` after training. Start each release with fresh build and
+installation directories; keep the source, compiler, and targets fixed between
+these two calls. Source versions must match the assertion-free base SDK.
 
-`scripts/toolchain/build-library-variant.py` rebuilds LLVM/MLIR static libraries
-with Clang or Apple Clang while reusing the base SDK's native executables. This
-is trial tooling; published archive names and installation defaults are
-unchanged.
+For manylinux's static Clang 22.1.8 package, the Linux SDK also installs
+`share/mqt-mlir/install-profile-tools.sh`. Run it with a work directory to build
+the matching profiling runtime and `llvm-profdata` omitted by that package. The
+script checks a complete generate/merge/use cycle. Its `llvm-profdata` is at
+`WORK_DIR/tools/bin/llvm-profdata`; LLVM 23's tool cannot read Clang 22's raw
+profiles.
 
-Pass separate source, base SDK, build, and installation directories, an
-immutable `--source-id`, and `--lto OFF`, `Thin`, or `Full`. Set `CC`, `CXX`,
-and matching archive tools explicitly. `--phase generate` instruments libraries;
-`--phase use` requires the consuming project's merged `--profile`. Core owns
-training inputs. An optional JSON `--targets` list restricts rebuilding to a
-measured dependency closure; the manifest distinguishes this from rebuilding all
-archives.
-
-The build identity fixes the source identifier, compiler, base archive hashes,
-assertion mode, LTO mode, and additional CMake definitions. Reusing a directory
-with a different identity fails. Generated headers and CMake exports are
-installed with the libraries. Phase reports preserve command failures and
-profile hashes. Neither the profile data nor the compiler is required to consume
-native PGO archives; LTO archives require compatible compiler/linker tooling.
-
-The manylinux Clang 22.1.8 package omits its profiling runtime and
-`llvm-profdata`. In that container, run
-`scripts/toolchain/linux/install-profile-tools.sh WORK_DIR` with `CC`, `CXX`,
-`AR`, and `RANLIB` set to that compiler's tools. The script builds only the
-matching profiling components, verifies a generate/merge/use cycle, and records
-their hashes. Set `LLVM_PROFDATA=WORK_DIR/tools/bin/llvm-profdata` for training;
-LLVM 23's profiler cannot read Clang 22's raw profiles.
+The
+[optimization study and raw results](https://github.com/munich-quantum-software/portable-mlir-toolchain/tree/592d4c6be117ea88dfa2cbfc44f695082fd278a8/experiments)
+remain in git history. Production builds use native SDK libraries.

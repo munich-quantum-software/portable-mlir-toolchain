@@ -1,12 +1,6 @@
 name: 🐧 Build Portable MLIR Toolchain
 
 on:
-  workflow_dispatch:
-    inputs:
-      llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-23.1.0)"
-        required: true
-        type: string
   workflow_call:
     inputs:
       llvm-project-ref:

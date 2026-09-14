@@ -236,8 +236,9 @@ build_mlir() {
   if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
     local script_root
     script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-    cp "$script_root/scripts/toolchain/linux/bolt-optimize.py" "$mlir_install_dir/bin/mqt-bolt-optimize"
-    export PATH="$mlir_install_dir/bin:$PATH"
+    mkdir -p "$mlir_install_dir/share/mqt-mlir"
+    cp "$script_root/scripts/toolchain/rebuild-libraries.py" "$mlir_install_dir/share/mqt-mlir/"
+    cp "$script_root/scripts/toolchain/linux/install-profile-tools.sh" "$mlir_install_dir/share/mqt-mlir/"
   fi
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
@@ -256,10 +257,6 @@ build_mlir() {
     find "$llvm_lib_dir" -name "*.a" -exec "$mlir_install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
   fi
   log_done
-
-  if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-    python3 "$script_root/tests/bolt/train.py" "$mlir_install_dir"
-  fi
 
   compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
 

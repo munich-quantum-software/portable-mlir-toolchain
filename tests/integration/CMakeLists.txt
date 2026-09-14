@@ -47,11 +47,3 @@ add_definitions(${LLVM_DEFINITIONS_LIST})
 add_llvm_executable(hello_mlir main.cpp)
 target_link_libraries(hello_mlir PRIVATE MLIRIR MLIRSupport LLVMSupport)
 llvm_update_compile_flags(hello_mlir)
-
-if(UNIX
-   AND NOT APPLE
-   AND NOT LLVM_ENABLE_ASSERTIONS)
-  target_link_options(hello_mlir PRIVATE "LINKER:--emit-relocs")
-  target_compile_options(
-    hello_mlir PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fno-reorder-blocks-and-partition>")
-endif()
