@@ -190,7 +190,7 @@ jobs:
           uv venv --python "$interpreter" "$RELEASE_ROOT/installed"
           python="$RELEASE_ROOT/installed/bin/python"
           uv pip install --python "$python" wheelhouse/*.whl
-          "$python" test/release/train_optimization.py --expected-root "$RELEASE_ROOT/installed"
+          "$python" test/release/train_pgo.py --expected-root "$RELEASE_ROOT/installed"
           package=$("$python" -c 'from pathlib import Path; import mqt.core; print(Path(mqt.core.__file__).parent)')
           cmake -S test/release/consumer -B build/consumer -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$package" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3
@@ -294,7 +294,7 @@ jobs:
           Invoke-Checked -Command uv -Arguments @('venv', '--python', $interpreters[0].FullName, $installed) -ErrorMessage 'Installed environment creation failed'
           $python = "$installed/Scripts/python.exe"
           Invoke-Checked -Command uv -Arguments @('pip', 'install', '--python', $python, $wheels[0].FullName) -ErrorMessage 'Repaired wheel installation failed'
-          Invoke-Checked -Command $python -Arguments @('test/release/train_optimization.py', '--expected-root', $installed) -ErrorMessage 'Installed numerical, compiler, QIR and CLI checks failed'
+          Invoke-Checked -Command $python -Arguments @('test/release/train_pgo.py', '--expected-root', $installed) -ErrorMessage 'Installed numerical, compiler, QIR and CLI checks failed'
           $package = "$installed/Lib/site-packages/mqt/core"
           $dllPaths = Get-ChildItem "$installed/Lib/site-packages" -Filter *.dll -Recurse | ForEach-Object { $_.DirectoryName } | Sort-Object -Unique
           $env:PATH = ($dllPaths -join ';') + ';' + $env:PATH
