@@ -8,6 +8,23 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.09.15]
+
+### Distribution
+
+- LLVM tag: `llvmorg-23.1.1`
+- zstd version: `1.5.7`
+- mold version: `2.42.1`
+
+### Added
+
+- 📦 Provide assertion-free SDK archives alongside development SDKs, with BOLT
+  tools and its instrumentation runtime on Linux ([#94]) ([**@burgholzer**])
+
+### Changed
+
+- 🍎 Raise the minimum macOS version to 13.3 ([#94]) ([**@burgholzer**])
+
 ## [2026.09.11]
 
 ### Distribution
@@ -287,7 +304,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.09.11...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.09.15...HEAD
+[2026.09.15]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.09.15
 [2026.09.11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.09.11
 [2026.08.31]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.08.31
 [2026.08.11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.08.11
@@ -311,6 +329,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 [2025.12.22]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2025.12.22
 
 <!-- PR links -->
+
+[#94]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/94
 
 [#97]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/97
 [#93]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/93

@@ -42,7 +42,7 @@ done
 [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]] && { echo "Error: build type must be Release or Debug" >&2; exit 1; }
 
 ensure_ninja "$NINJA_VERSION"
-export MACOSX_DEPLOYMENT_TARGET="11.0"
+export MACOSX_DEPLOYMENT_TARGET="13.3"
 
 ZSTD_ARCHIVE_PATH="$(resolve_abs_path "$ZSTD_ARCHIVE_PATH")"
 MLIR_ARCHIVE_PATH="$(resolve_abs_path "$MLIR_ARCHIVE_PATH")"
@@ -97,10 +97,6 @@ log_step "Build and install MLIR (${BUILD_TYPE})"
 cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
 log_done
 
-if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  mkdir -p "$install_dir/share/mqt-mlir"
-  cp "$SCRIPT_DIR/../rebuild-libraries.py" "$install_dir/share/mqt-mlir/"
-fi
 
 log_step "Stripping debug symbols"
 if [[ "$BUILD_TYPE" == "Release" ]]; then

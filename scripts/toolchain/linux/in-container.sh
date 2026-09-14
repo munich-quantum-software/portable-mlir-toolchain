@@ -233,13 +233,6 @@ build_mlir() {
   log_done
   rm -rf "$repo_dir" "$build_dir"
 
-  if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-    local script_root
-    script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
-    mkdir -p "$mlir_install_dir/share/mqt-mlir"
-    cp "$script_root/scripts/toolchain/rebuild-libraries.py" "$mlir_install_dir/share/mqt-mlir/"
-    cp "$script_root/scripts/toolchain/linux/install-profile-tools.sh" "$mlir_install_dir/share/mqt-mlir/"
-  fi
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
   cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"

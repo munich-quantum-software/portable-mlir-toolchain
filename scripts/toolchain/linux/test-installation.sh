@@ -92,9 +92,6 @@ if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
   llvm-bolt --version
   [[ -x "$TEST_MLIR_DIR/bin/merge-fdata" ]]
   [[ -f "$TEST_MLIR_DIR/lib/libbolt_rt_instr.a" ]]
-  python3 "$TEST_MLIR_DIR/share/mqt-mlir/rebuild-libraries.py" --help
-  python3 -m unittest discover -s "$REPO_ROOT/tests" -p 'test_rebuild_libraries.py'
-  bash -n "$TEST_MLIR_DIR/share/mqt-mlir/install-profile-tools.sh"
   log_done
 fi
 

@@ -85,8 +85,4 @@ log_step "Running integration test binary"
 "$TEST_BUILD_DIR/hello_mlir"
 log_done
 
-if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
-  python3 "$TEST_MLIR_DIR/share/mqt-mlir/rebuild-libraries.py" --help
-fi
-
 echo "Integration test passed!"
