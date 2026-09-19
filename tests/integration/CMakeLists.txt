@@ -21,6 +21,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(MLIR REQUIRED CONFIG)
 
+if(DEFINED EXPECTED_LLVM_ASSERTIONS AND NOT "${LLVM_ENABLE_ASSERTIONS}" STREQUAL
+                                        "${EXPECTED_LLVM_ASSERTIONS}")
+  message(FATAL_ERROR "Installed LLVM assertions do not match the requested variant")
+endif()
+
 if(LLVM_ENABLE_RTTI)
   message(FATAL_ERROR "The portable MLIR toolchain must be built without RTTI")
 endif()
@@ -36,7 +41,8 @@ include(HandleLLVMOptions)
 
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS} ${MLIR_INCLUDE_DIRS})
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
-add_definitions(${LLVM_DEFINITIONS})
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND "${LLVM_DEFINITIONS}")
+add_definitions(${LLVM_DEFINITIONS_LIST})
 
 add_llvm_executable(hello_mlir main.cpp)
 target_link_libraries(hello_mlir PRIVATE MLIRIR MLIRSupport LLVMSupport)

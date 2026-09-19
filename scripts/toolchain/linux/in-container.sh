@@ -198,6 +198,11 @@ build_mlir() {
   local mold_bin_dir="$mold_extract_dir/bin"
   export PATH="$mold_bin_dir:$PATH"
 
+  local llvm_projects=mlir
+  if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
+    llvm_projects="mlir;bolt"
+  fi
+
   log_step "CMake configure MLIR (${BUILD_TYPE})"
   cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
@@ -205,13 +210,13 @@ build_mlir() {
     -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
-    -DLLVM_ENABLE_PROJECTS=mlir \
+    -DLLVM_ENABLE_PROJECTS="$llvm_projects" \
     -DLLVM_BUILD_EXAMPLES=OFF \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
     -DLLVM_BUILD_TESTS=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
-    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
     -DLLVM_ENABLE_LTO=OFF \
     -DLLVM_ENABLE_LIBXML2=OFF \
     -DLLVM_ENABLE_LIBEDIT=OFF \
@@ -226,6 +231,8 @@ build_mlir() {
   log_step "Build and install MLIR (${BUILD_TYPE})"
   cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
   log_done
+  rm -rf "$repo_dir" "$build_dir"
+
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
   cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"
@@ -238,15 +245,15 @@ build_mlir() {
   fi
 
   log_step "Stripping debug symbols"
-  if [[ "$BUILD_TYPE" == "Release" ]] && command -v strip >/dev/null 2>&1; then
-    find "$mlir_install_dir/bin" -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true
-    find "$llvm_lib_dir" -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
+  if [[ "$BUILD_TYPE" == "Release" ]]; then
+    find "$mlir_install_dir/bin" -type f -executable -exec "$mlir_install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
+    find "$llvm_lib_dir" -name "*.a" -exec "$mlir_install_dir/bin/llvm-strip" --strip-debug {} + 2>/dev/null || true
   fi
   log_done
 
   compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
 
-  rm -rf "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
+  rm -rf "$mold_extract_dir" "$mlir_install_dir"
 }
 
 case "$STAGE" in
