@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       runs-on:
-        description: "GitHub runner label (e.g., ubuntu-24.04)"
+        description: "GitHub runner label (e.g., ubuntu-26.04)"
         required: true
         type: string
       zstd-version:
@@ -27,9 +27,9 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'ubuntu-24.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.gz
-  MOLD_ARCHIVE_PATH: mold-${{ inputs.mold-version }}_${{ inputs.runs-on == 'ubuntu-24.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.zst
-  MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'ubuntu-24.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.zst
+  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'ubuntu-26.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.gz
+  MOLD_ARCHIVE_PATH: mold-${{ inputs.mold-version }}_${{ inputs.runs-on == 'ubuntu-26.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.zst
+  MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'ubuntu-26.04' && 'x86_64-unknown-linux-gnu' || 'aarch64-unknown-linux-gnu' }}.tar.zst
 
 jobs:
   build-zstd:
