@@ -34,4 +34,14 @@ If desired, you can run the staged build scripts directly. Refer to
   `scripts/toolchain/windows/build-mlir.ps1` for Windows.
 
 The usage is documented in each script. Linux builds run in a manylinux
-container and therefore require Docker on the host system.
+container and therefore require Docker on the host system. Windows LLVM builds
+require Visual Studio and `clang-cl` on `PATH`. The installation test uses MSVC.
+
+## Assertion-free release builds
+
+Archives ending in `_noassert.tar.zst` disable LLVM assertions and the
+associated ABI-breaking checks. Archives without this suffix retain assertions.
+Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF`; release
+CI builds and tests both. Always use headers and libraries from the same
+variant. Both variants contain native static libraries and tools, with LLVM
+exception handling and RTTI disabled.

@@ -211,7 +211,9 @@ build_mlir() {
     -DLLVM_BUILD_TESTS=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
-    -DLLVM_ENABLE_ASSERTIONS=ON \
+    -DLLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}" \
+    -DLLVM_ENABLE_EH=OFF \
+    -DLLVM_ENABLE_RTTI=OFF \
     -DLLVM_ENABLE_LTO=OFF \
     -DLLVM_ENABLE_LIBXML2=OFF \
     -DLLVM_ENABLE_LIBEDIT=OFF \
@@ -226,6 +228,8 @@ build_mlir() {
   log_step "Build and install MLIR (${BUILD_TYPE})"
   cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
   log_done
+
+  rm -rf "$repo_dir" "$build_dir"
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
   cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"
@@ -246,7 +250,7 @@ build_mlir() {
 
   compress_dir_to_archive "$mlir_install_dir" "$IO_DIR/mlir.tar.zst" "$zstd_exe"
 
-  rm -rf "$mold_extract_dir" "$mlir_install_dir" "$repo_dir" "$build_dir"
+  rm -rf "$mold_extract_dir" "$mlir_install_dir"
 }
 
 case "$STAGE" in
