@@ -58,7 +58,6 @@ $pathsToRemove = @(
     'C:\Program Files\ghc',
     'C:\Program Files\Google',
     'C:\Program Files\Internet Explorer',
-    'C:\Program Files\LLVM',
     'C:\Program Files\Microsoft\Edge',
     'C:\Program Files\Mozilla Firefox',
     'C:\Program Files\MySQL',

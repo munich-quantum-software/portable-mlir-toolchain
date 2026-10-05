@@ -444,6 +444,8 @@ function Get-LlvmCommonCMakeArgs {
         '-B', $BuildDir,
         '-G', 'Ninja',
         '-DCMAKE_BUILD_TYPE=Release',
+        '-DCMAKE_C_COMPILER=clang-cl',
+        '-DCMAKE_CXX_COMPILER=clang-cl',
         "-DCMAKE_INSTALL_PREFIX=$InstallPrefix",
         "-DLLVM_TARGETS_TO_BUILD=$HostTarget",
         "-DLLVM_ENABLE_PROJECTS=$Projects",

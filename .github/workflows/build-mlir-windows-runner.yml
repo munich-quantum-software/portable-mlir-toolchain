@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       runs-on:
-        description: "GitHub runner label (e.g., windows-2022)"
+        description: "GitHub runner label (e.g., windows-2025)"
         required: true
         type: string
       zstd-version:
@@ -27,8 +27,8 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
-  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.gz
-  LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
+  ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.gz
+  LLD_ARCHIVE_PATH: lld-${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}.tar.zst
 
 jobs:
   build-zstd:
@@ -108,7 +108,7 @@ jobs:
     name: "${{ inputs.runs-on }}: Build MLIR (Release, assertions=${{ matrix.assertions }})"
     env:
       LLVM_ENABLE_ASSERTIONS: ${{ matrix.assertions }}
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}${{ matrix.assertions == 'OFF' && '_noassert' || '' }}.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}${{ matrix.assertions == 'OFF' && '_noassert' || '' }}.tar.zst
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -162,7 +162,7 @@ jobs:
     name: "${{ inputs.runs-on }}: Test MLIR Installation (Release, assertions=${{ matrix.assertions }})"
     env:
       LLVM_ENABLE_ASSERTIONS: ${{ matrix.assertions }}
-      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2022' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}${{ matrix.assertions == 'OFF' && '_noassert' || '' }}.tar.zst
+      MLIR_ARCHIVE_PATH: llvm-mlir_${{ inputs.llvm-project-ref }}_${{ inputs.runs-on == 'windows-2025' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}${{ matrix.assertions == 'OFF' && '_noassert' || '' }}.tar.zst
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

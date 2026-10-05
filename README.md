@@ -34,7 +34,8 @@ If desired, you can run the staged build scripts directly. Refer to
   `scripts/toolchain/windows/build-mlir.ps1` for Windows.
 
 The usage is documented in each script. Linux builds run in a manylinux
-container and therefore require Docker on the host system.
+container and therefore require Docker on the host system. Windows LLVM builds
+require Visual Studio and `clang-cl` on `PATH`. The installation test uses MSVC.
 
 ## Assertion-free release builds
 
