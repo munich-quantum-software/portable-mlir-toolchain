@@ -26,8 +26,9 @@ if(DEFINED EXPECTED_LLVM_ASSERTIONS AND NOT "${LLVM_ENABLE_ASSERTIONS}" STREQUAL
   message(FATAL_ERROR "Installed LLVM assertions do not match the requested variant")
 endif()
 
-if(NOT LLVM_ENABLE_EH OR NOT LLVM_ENABLE_RTTI)
-  message(FATAL_ERROR "The portable MLIR toolchain must retain exception handling and RTTI")
+if(LLVM_ENABLE_EH OR LLVM_ENABLE_RTTI)
+  message(
+    FATAL_ERROR "The portable MLIR toolchain must be built without exception handling and RTTI")
 endif()
 
 message(STATUS "Found MLIR ${MLIR_PACKAGE_VERSION} in: ${MLIR_DIR}")
