@@ -55,6 +55,7 @@ run_manylinux_stage() {
     -e BUILD_WORKSPACE=/build
     -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
     -e BUILD_TYPE="$build_type"
+    -e LLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}"
   )
 
   if [[ -n "$llvm_project_ref" ]]; then

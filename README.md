@@ -35,3 +35,12 @@ If desired, you can run the staged build scripts directly. Refer to
 
 The usage is documented in each script. Linux builds run in a manylinux
 container and therefore require Docker on the host system.
+
+## Assertion-free release builds
+
+Archives ending in `_noassert.tar.zst` disable LLVM assertions and the
+associated ABI-breaking checks. Archives without this suffix retain assertions.
+Build scripts accept `LLVM_ENABLE_ASSERTIONS=ON` (the default) or `OFF`; release
+CI builds and tests both. Always use headers and libraries from the same
+variant. Both variants contain native static libraries and tools, with exception
+handling and RTTI enabled. PGO and BOLT are not part of these builds.
