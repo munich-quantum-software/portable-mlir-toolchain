@@ -87,4 +87,12 @@ log_step "Running integration test binary"
 "$TEST_BUILD_DIR/hello_mlir"
 log_done
 
+if [[ "${LLVM_ENABLE_ASSERTIONS:-ON}" == "OFF" ]]; then
+  log_step "Verifying release build tools"
+  llvm-bolt --version
+  [[ -x "$TEST_MLIR_DIR/bin/merge-fdata" ]]
+  [[ -f "$TEST_MLIR_DIR/lib/libbolt_rt_instr.a" ]]
+  log_done
+fi
+
 echo "Integration test passed!"
