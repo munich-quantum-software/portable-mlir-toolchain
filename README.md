@@ -37,46 +37,33 @@ The usage is documented in each script. Linux builds run in a manylinux
 container and therefore require Docker on the host system. Windows LLVM builds
 require Visual Studio and `clang-cl` on `PATH`. The installation test uses MSVC.
 
-### eMudhra CA incident: build prerequisites
+### Temporary eMudhra build prerequisite
 
-The [October 2026 eMudhra incident](https://emudhra.we-have-a-problem.com/)
-affects HTTPS clients that still trust the compromised intermediates. The Linux
-and macOS build scripts use `curl` to download LLVM, mold, and zstd sources.
-Before running them, update the CA package used by the actual downloader
-according to the advisory. For Linux builds, this means the manylinux
-container's trust store as well as any host-side downloader; updating the Docker
-host alone does not update an existing image. The Docker daemon's trust store
-must also be patched before pulling the image from quay.io.
+Before networked builds, apply the
+[eMudhra advisory](https://emudhra.we-have-a-problem.com/) to the actual
+downloader: Linux container and macOS curl stores, Windows PowerShell's host
+store, and the Docker daemon before image pulls. An attacker controlling the
+network path can substitute build inputs if those stores still trust an affected
+chain. Same-channel checksums do not repair that trust.
 
-If a distribution update is unavailable, follow the advisory's platform-specific
-distrust instructions or supply an independently verified patched PEM bundle via
-`CURL_CA_BUNDLE` in the environment where `curl` runs. The Linux wrapper
-currently has no bundle passthrough option and pins a pre-incident manylinux
-image. For an immediate local workaround, place the independently verified
-bundle at `incident-ca.pem` in the repository checkout and add this line
-immediately before `sudo docker run` in `scripts/toolchain/linux/common.sh`:
+The Linux wrapper pins a pre-incident manylinux image and does not forward a
+host `CURL_CA_BUNDLE`. Until that image's store is verified fixed, place an
+independently verified patched PEM at `incident-ca.pem` in the checkout, add
+`/incident-ca.pem` to the file reported by
+`git rev-parse --git-path info/exclude`, and insert this before
+`sudo docker run` in `scripts/toolchain/linux/common.sh`:
 
 ```bash
 env_args+=( -e CURL_CA_BUNDLE=/work/incident-ca.pem )
 ```
 
-The existing checkout mount makes the bundle available at that container path.
-Add `/incident-ca.pem` to `.git/info/exclude` to keep the local bundle out of
-Git. Keep this as a local change, do not publish an organization-specific CA
-bundle, and remove it once the pinned image's trust store is verified patched.
-Setting `CURL_CA_BUNDLE` only on the host has no effect on this wrapper's
-containers. Inspect custom CA additions too, and verify the final trust store
-against all affected chains using the advisory's offline instructions.
-
-On macOS, browser and Keychain revocation updates do not establish that the PEM
-bundle used by `/usr/bin/curl` is patched. Use the advisory's curl guidance or
-an independently verified patched bundle. Keep certificate verification enabled;
-`curl -k` is not a workaround. Updating build-tool versions or checking a hash
-downloaded through the same compromised TLS channel does not repair CA trust.
-Most source downloads rely on TLS without an independently pinned checksum, so
-compromised trust can result in executing attacker-controlled code during a
-build. Windows builds use PowerShell `Invoke-WebRequest`; apply Microsoft's
-incident trust updates to the Windows host before downloading sources.
+The existing checkout mount exposes the file at `/work/incident-ca.pem`. Keep
+the bundle and script edit local; do not publish an organization-specific CA
+bundle. Verify the effective store, including custom roots, against all affected
+chains. macOS browser/Keychain updates do not establish that curl's PEM is
+fixed. Keep TLS verification enabled. Remove the local workaround once the
+pinned image's effective store is verified fixed; host and other platform stores
+remain separate.
 
 ## Assertion-free release builds
 
