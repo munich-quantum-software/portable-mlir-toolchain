@@ -37,6 +37,15 @@ done
 # shellcheck source=./common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 
+if [[ "${PMT_IN_CONTAINER:-0}" != 1 ]]; then
+  io_dir=$(mktemp -d)
+  trap 'rm -rf "$io_dir"' EXIT
+  cp "$ZSTD_ARCHIVE_PATH" "$io_dir/zstd.tar.gz"
+  cp "$MLIR_ARCHIVE_PATH" "$io_dir/mlir.tar.zst"
+  run_manylinux_stage test-installation "$io_dir" "" "$BUILD_TYPE"
+  exit
+fi
+
 echo "Testing installation from ${MLIR_ARCHIVE_PATH}..."
 
 TEST_ZSTD_DIR=$(mktemp -d)
@@ -55,9 +64,8 @@ log_step "Verifying key binaries"
 export PATH="$TEST_MLIR_DIR/bin:$PATH"
 mlir-opt --version
 mlir-translate --version
-if [[ -x "$TEST_MLIR_DIR/bin/mold" ]]; then
-  "$TEST_MLIR_DIR/bin/mold" --version
-fi
+"$TEST_MLIR_DIR/bin/mold" --version
+"$TEST_MLIR_DIR/bin/mold" -run gcc --version
 log_done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

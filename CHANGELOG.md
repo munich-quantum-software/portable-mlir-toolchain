@@ -8,6 +8,22 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+### Changed
+
+- Require macOS 13.3 or newer for Apple Silicon binaries.
+- Bundle mold 3.0.0, built with Rust 1.95.0 inside manylinux.
+- Require PowerShell 7.4 or newer for Windows build scripts.
+- Require a signed, GitHub-verified annotated tag on the workflow revision
+  before publishing a release; resolve the LLVM source once for all platform
+  builds.
+
+### Fixed
+
+- Test affected platforms for shared-script, workflow, integration-test, and
+  deleted-file changes.
+- Isolate local build workspaces and propagate Windows archive-pipeline
+  failures.
+
 ## [2026.10.27]
 
 ### Distribution

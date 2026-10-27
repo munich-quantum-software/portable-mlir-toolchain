@@ -29,55 +29,45 @@ $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
+Invoke-WithTempSession -ScriptBlock {
     param($tempRoot)
 
-    $cleanupPaths = @()
-    try {
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
-        $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
+    $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
+    $resolvedLldArchivePath = Resolve-ExistingPath -Path $LldArchivePath -Description 'lld archive'
 
-        $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempZstdDir
-        $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
+    $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
+    $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
 
-        $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempLldExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
+    $tempLldExtractDir = New-ScopedTempDir -RootPath $tempRoot
+    Decompress-ArchiveToDirectory -ArchivePath $resolvedLldArchivePath -DestinationDir $tempLldExtractDir -ZstdExePath $resolvedZstdExePath
 
-        $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
+    $env:PATH = "$($tempLldExtractDir)\bin;$env:PATH"
 
-        $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempInstallDir
+    $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
 
-        $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempBuildDir
+    $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
 
-        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef -RepoDir (Join-Path $tempRoot 'llvm-project')
-        $cleanupPaths += $repoDir
+    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef -RepoDir (Join-Path $tempRoot 'llvm-project')
 
-        Invoke-InDirectory -Path $repoDir -ScriptBlock {
-            $cmakeArgs = Get-LlvmCommonCMakeArgs `
-                -BuildDir $tempBuildDir `
-                -InstallPrefix $tempInstallDir `
-                -HostTarget $archInfo.HostTarget `
-                -Projects 'mlir' `
-                -EnableLld
+    Invoke-InDirectory -Path $repoDir -ScriptBlock {
+        $cmakeArgs = Get-LlvmCommonCMakeArgs `
+            -BuildDir $tempBuildDir `
+            -InstallPrefix $tempInstallDir `
+            -HostTarget $archInfo.HostTarget `
+            -Projects 'mlir' `
+            -EnableLld
 
-            Write-Step 'CMake configure MLIR (Release)'
-            Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'MLIR cmake configure failed'
-            Write-Done
+        Write-Step 'CMake configure MLIR (Release)'
+        & cmake @cmakeArgs
+        Write-Done
 
-            Write-Step 'Build and install MLIR (Release)'
-            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install', '--config', 'Release') -ErrorMessage 'MLIR build/install failed'
-            Write-Done
-        }
-
-        # Vendor the lld installation into the MLIR archive to ensure lld is available in the test environment without needing to set up additional PATH entries.
-        Copy-Item -Path (Join-Path $tempLldExtractDir 'bin\*') -Destination (Join-Path $tempInstallDir 'bin') -Recurse -Force
-
-        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
-    } finally {
-        Remove-PathsIfExists -Paths $cleanupPaths
+        Write-Step 'Build and install MLIR (Release)'
+        cmake '--build' $tempBuildDir '--target' 'install' '--config' 'Release'
+        Write-Done
     }
+
+    # Vendor the lld installation into the MLIR archive to ensure lld is available in the test environment without needing to set up additional PATH entries.
+    Copy-Item -Path (Join-Path $tempLldExtractDir 'bin\*') -Destination (Join-Path $tempInstallDir 'bin') -Recurse -Force
+
+    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $MlirArchivePath -ZstdExePath $resolvedZstdExePath
 }

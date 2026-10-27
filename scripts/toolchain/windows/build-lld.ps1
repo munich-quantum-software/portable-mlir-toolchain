@@ -28,44 +28,35 @@ $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
+Invoke-WithTempSession -ScriptBlock {
     param($tempRoot)
 
-    $cleanupPaths = @()
-    try {
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
+    $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
 
-        $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempZstdDir
-        $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
+    $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
+    $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
 
-        $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempInstallDir
+    $tempInstallDir = New-ScopedTempDir -RootPath $tempRoot
 
-        $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempBuildDir
+    $tempBuildDir = New-ScopedTempDir -RootPath $tempRoot
 
-        $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef
-        $cleanupPaths += $repoDir
+    $repoDir = Initialize-LlvmSourceTree -LlvmProjectRef $LlvmProjectRef -RepoDir (Join-Path $tempRoot 'llvm-project')
 
-        Invoke-InDirectory -Path $repoDir -ScriptBlock {
-            $cmakeArgs = Get-LlvmCommonCMakeArgs `
-                -BuildDir $tempBuildDir `
-                -InstallPrefix $tempInstallDir `
-                -HostTarget $archInfo.HostTarget `
-                -Projects 'lld'
+    Invoke-InDirectory -Path $repoDir -ScriptBlock {
+        $cmakeArgs = Get-LlvmCommonCMakeArgs `
+            -BuildDir $tempBuildDir `
+            -InstallPrefix $tempInstallDir `
+            -HostTarget $archInfo.HostTarget `
+            -Projects 'lld'
 
-            Write-Step 'CMake configure (lld only, Release)'
-            Invoke-Checked -Command 'cmake' -Arguments $cmakeArgs -ErrorMessage 'lld cmake configure failed'
-            Write-Done
+        Write-Step 'CMake configure (lld only, Release)'
+        & cmake @cmakeArgs
+        Write-Done
 
-            Write-Step 'Build and install lld (Release)'
-            Invoke-Checked -Command 'cmake' -Arguments @('--build', $tempBuildDir, '--target', 'install-lld', '--config', 'Release') -ErrorMessage 'lld build/install failed'
-            Write-Done
-        }
-
-        Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $LldArchivePath -ZstdExePath $resolvedZstdExePath
-    } finally {
-        Remove-PathsIfExists -Paths $cleanupPaths
+        Write-Step 'Build and install lld (Release)'
+        cmake '--build' $tempBuildDir '--target' 'install-lld' '--config' 'Release'
+        Write-Done
     }
+
+    Compress-DirectoryToArchive -SourceDir $tempInstallDir -ArchivePath $LldArchivePath -ZstdExePath $resolvedZstdExePath
 }

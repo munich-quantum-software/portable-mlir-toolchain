@@ -27,65 +27,57 @@ $archInfo = Get-ArchInfo
 Enter-VisualStudioDevShell -VsArch $archInfo.VsArch
 Ensure-Ninja -Version $NinjaVersion
 
-Invoke-WithTempSession -ReferencePath (Get-Location).Path -ScriptBlock {
+Invoke-WithTempSession -ScriptBlock {
     param($tempRoot)
 
-    $cleanupPaths = @()
-    try {
-        $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
-        $resolvedMlirArchivePath = Resolve-ExistingPath -Path $MlirArchivePath -Description 'MLIR archive'
+    $resolvedZstdArchivePath = Resolve-ExistingPath -Path $ZstdArchivePath -Description 'zstd archive'
+    $resolvedMlirArchivePath = Resolve-ExistingPath -Path $MlirArchivePath -Description 'MLIR archive'
 
-        $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempZstdDir
-        $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
+    $tempZstdDir = New-ScopedTempDir -RootPath $tempRoot
+    $resolvedZstdExePath = Expand-ZstdExecutableFromTarGz -ArchivePath $resolvedZstdArchivePath -DestinationDir $tempZstdDir
 
-        $tempMlirExtractDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $tempMlirExtractDir
-        Decompress-ArchiveToDirectory -ArchivePath $resolvedMlirArchivePath -DestinationDir $tempMlirExtractDir -ZstdExePath $resolvedZstdExePath
+    $tempMlirExtractDir = New-ScopedTempDir -RootPath $tempRoot
+    Decompress-ArchiveToDirectory -ArchivePath $resolvedMlirArchivePath -DestinationDir $tempMlirExtractDir -ZstdExePath $resolvedZstdExePath
 
-        Write-Host "Testing installation from $resolvedMlirArchivePath..."
+    Write-Host "Testing installation from $resolvedMlirArchivePath..."
 
-        $testBuildDir = New-ScopedTempDir -RootPath $tempRoot
-        $cleanupPaths += $testBuildDir
+    $testBuildDir = New-ScopedTempDir -RootPath $tempRoot
 
-        Write-Step 'Verifying key binaries'
-        $env:PATH = "$tempMlirExtractDir\bin;$env:PATH"
-        & "$tempMlirExtractDir\bin\mlir-opt.exe" --version
-        if ($LASTEXITCODE -ne 0) { throw 'mlir-opt --version failed' }
-        & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
-        if ($LASTEXITCODE -ne 0) { throw 'mlir-translate --version failed' }
-        Write-Done
+    Write-Step 'Verifying key binaries'
+    $env:PATH = "$tempMlirExtractDir\bin;$env:PATH"
+    & "$tempMlirExtractDir\bin\mlir-opt.exe" --version
 
-        $repoRoot = Get-RepoRootFromScript -ScriptPath $PSCommandPath
-        $integrationSrc = Join-Path $repoRoot 'tests\integration'
+    & "$tempMlirExtractDir\bin\mlir-translate.exe" --version
 
-        if (-not (Test-Path $integrationSrc)) {
-            throw "Error: integration test sources not found at $integrationSrc"
-        }
+    Write-Done
 
-        Write-Step 'CMake configure - integration test'
-        cmake -G Ninja `
-            -S $integrationSrc `
-            -B $testBuildDir `
-            '-DCMAKE_BUILD_TYPE=Release' `
-            "-DEXPECTED_LLVM_ASSERTIONS=$(if ($env:LLVM_ENABLE_ASSERTIONS) { $env:LLVM_ENABLE_ASSERTIONS } else { 'ON' })" `
-            "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
-            '-DLLVM_ENABLE_LLD=ON'
-        if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed' }
-        Write-Done
+    $repoRoot = Get-RepoRootFromScript -ScriptPath $PSCommandPath
+    $integrationSrc = Join-Path $repoRoot 'tests\integration'
 
-        Write-Step 'CMake build - integration test'
-        cmake --build $testBuildDir --config Release
-        if ($LASTEXITCODE -ne 0) { throw 'cmake build failed' }
-        Write-Done
-
-        Write-Step 'Running integration test binary'
-        & "$testBuildDir\hello_mlir.exe"
-        if ($LASTEXITCODE -ne 0) { throw 'hello_mlir failed' }
-        Write-Done
-
-        Write-Host 'Integration test passed!'
-    } finally {
-        Remove-PathsIfExists -Paths $cleanupPaths
+    if (-not (Test-Path $integrationSrc)) {
+        throw "Error: integration test sources not found at $integrationSrc"
     }
+
+    Write-Step 'CMake configure - integration test'
+    cmake -G Ninja `
+        -S $integrationSrc `
+        -B $testBuildDir `
+        '-DCMAKE_BUILD_TYPE=Release' `
+        "-DEXPECTED_LLVM_ASSERTIONS=$(if ($env:LLVM_ENABLE_ASSERTIONS) { $env:LLVM_ENABLE_ASSERTIONS } else { 'ON' })" `
+        "-DCMAKE_PREFIX_PATH=$tempMlirExtractDir" `
+        '-DLLVM_ENABLE_LLD=ON'
+
+    Write-Done
+
+    Write-Step 'CMake build - integration test'
+    cmake --build $testBuildDir --config Release
+
+    Write-Done
+
+    Write-Step 'Running integration test binary'
+    & "$testBuildDir\hello_mlir.exe"
+
+    Write-Done
+
+    Write-Host 'Integration test passed!'
 }

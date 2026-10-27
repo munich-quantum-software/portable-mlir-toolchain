@@ -13,22 +13,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+#Requires -Version 7.4
+
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
 
 $_step_sw = [Diagnostics.Stopwatch]::new()
-
-function Invoke-Checked {
-    param(
-        [Parameter(Mandatory = $true)][string]$Command,
-        [string[]]$Arguments = @(),
-        [Parameter(Mandatory = $true)][string]$ErrorMessage
-    )
-
-    & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "$ErrorMessage (exit code: $LASTEXITCODE)"
-    }
-}
 
 function Remove-PathIfExists {
     param([string]$Path)
@@ -41,22 +31,7 @@ function Remove-PathIfExists {
         return
     }
 
-    $item = Get-Item -LiteralPath $Path -Force
-    if ($item.PSIsContainer) {
-        Remove-Item -LiteralPath $Path -Recurse -Force
-    } else {
-        Remove-Item -LiteralPath $Path -Force
-    }
-}
-
-function Remove-PathsIfExists {
-    param([string[]]$Paths = @())
-
-    for ($i = $Paths.Count - 1; $i -ge 0; $i--) {
-        if ($Paths[$i]) {
-            Remove-PathIfExists -Path $Paths[$i]
-        }
-    }
+    Remove-Item -LiteralPath $Path -Recurse -Force
 }
 
 function Resolve-AbsolutePath {
@@ -82,57 +57,6 @@ function Resolve-ExistingPath {
     return $resolved
 }
 
-function Get-PreferredTempRoot {
-    param([string]$ReferencePath)
-
-    $candidates = [System.Collections.Generic.List[string]]::new()
-
-    if ($env:PMT_TEMP_ROOT) {
-        $candidates.Add((Resolve-AbsolutePath -Path $env:PMT_TEMP_ROOT))
-    }
-    if ($env:RUNNER_TEMP) {
-        $candidates.Add((Resolve-AbsolutePath -Path $env:RUNNER_TEMP))
-    }
-
-    if ($env:GITHUB_WORKSPACE) {
-        $workspacePath = Resolve-AbsolutePath -Path $env:GITHUB_WORKSPACE
-        $workspaceDrive = Split-Path -Path $workspacePath -Qualifier
-        if ($workspaceDrive) {
-            $candidates.Add((Join-Path $workspaceDrive 'pmt-temp'))
-        }
-        $candidates.Add((Join-Path $workspacePath '.pmt-temp'))
-    }
-
-    if ($ReferencePath) {
-        $resolvedReference = Resolve-AbsolutePath -Path $ReferencePath
-        if (-not (Test-Path $resolvedReference -PathType Container)) {
-            $resolvedReference = Split-Path -Parent $resolvedReference
-        }
-        if ($resolvedReference) {
-            $referenceDrive = Split-Path -Path $resolvedReference -Qualifier
-            if ($referenceDrive) {
-                $candidates.Add((Join-Path $referenceDrive 'pmt-temp'))
-            }
-        }
-    }
-
-    $candidates.Add(([IO.Path]::GetTempPath()))
-
-    foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
-        try {
-            New-Item -ItemType Directory -Path $candidate -Force | Out-Null
-            $probe = Join-Path $candidate ([IO.Path]::GetRandomFileName())
-            New-Item -ItemType Directory -Path $probe -Force | Out-Null
-            Remove-Item -LiteralPath $probe -Recurse -Force -ErrorAction SilentlyContinue
-            return (Resolve-AbsolutePath -Path $candidate)
-        } catch {
-            continue
-        }
-    }
-
-    throw 'Unable to find a writable temporary directory root.'
-}
-
 function New-ScopedTempDir {
     param([Parameter(Mandatory = $true)][string]$RootPath)
 
@@ -146,14 +70,14 @@ function New-ScopedTempDir {
 
 function Invoke-WithTempSession {
     param(
-        [string]$ReferencePath = (Get-Location).Path,
         [Parameter(Mandatory = $true)][scriptblock]$ScriptBlock
     )
 
-    $preferredTempRoot = Get-PreferredTempRoot -ReferencePath $ReferencePath
+    $preferredTempRoot = if ($env:PMT_TEMP_ROOT) { $env:PMT_TEMP_ROOT } else { [IO.Path]::GetTempPath() }
 
     $originalTemp = $env:TEMP
     $originalTmp = $env:TMP
+    $originalPath = $env:PATH
     $sessionTempDir = New-ScopedTempDir -RootPath $preferredTempRoot
     $env:TEMP = $sessionTempDir
     $env:TMP = $sessionTempDir
@@ -163,13 +87,12 @@ function Invoke-WithTempSession {
     Write-Host "TMP=$env:TMP"
 
     try {
-        & $ScriptBlock $preferredTempRoot
+        & $ScriptBlock $sessionTempDir
     } finally {
-        if (-not [string]::IsNullOrWhiteSpace($sessionTempDir)) {
-            Remove-PathIfExists -Path $sessionTempDir
-        }
         $env:TEMP = $originalTemp
         $env:TMP = $originalTmp
+        $env:PATH = $originalPath
+        Remove-PathIfExists -Path $sessionTempDir
     }
 }
 
@@ -243,7 +166,7 @@ function Enter-VisualStudioDevShell {
 
     Write-Step "Setting up VS developer environment ($VsArch)"
     & $devShell -Arch $VsArch -SkipAutomaticLocation
-    if ($LASTEXITCODE -ne 0) { throw 'Failed to set up VS developer environment' }
+
     Write-Done
 }
 
@@ -268,7 +191,7 @@ function Ensure-Ninja {
     }
 
     Write-Step "Installing build tools (Ninja $Version)"
-    Invoke-Checked -Command 'uv' -Arguments @('tool', 'install', "ninja==$Version") -ErrorMessage 'Failed to install Ninja via uv'
+    uv 'tool' 'install' "ninja==$Version"
     Write-Done
 }
 
@@ -280,9 +203,7 @@ function Compress-DirectoryToArchive {
     param(
         [Parameter(Mandatory = $true)][string]$SourceDir,
         [Parameter(Mandatory = $true)][string]$ArchivePath,
-        [Parameter(Mandatory = $true)][string]$ZstdExePath,
-        [int]$CompressionLevel = 19,
-        [long]$LongWindow = 30
+        [Parameter(Mandatory = $true)][string]$ZstdExePath
     )
 
     if (-not (Test-Path $ZstdExePath)) {
@@ -301,13 +222,10 @@ function Compress-DirectoryToArchive {
 
     Remove-Item -Path $ArchivePath -Force -ErrorAction SilentlyContinue
 
-    Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd (level $CompressionLevel, long window $LongWindow)"
+    Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd"
     Push-Location $sourceFullPath > $null
     try {
-        tar -cf - . | & $ZstdExePath "-$CompressionLevel" "--long=$LongWindow" '--threads=0' '-f' '-o' $ArchivePath '-'
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to compress directory with zstd: $ZstdExePath"
-        }
+        tar -cf - . | & $ZstdExePath '-19' '--long=30' '--threads=0' '-f' '-o' $ArchivePath '-'
     } finally {
         Pop-Location > $null
     }
@@ -318,8 +236,7 @@ function Decompress-ArchiveToDirectory {
     param(
         [Parameter(Mandatory = $true)][string]$ArchivePath,
         [Parameter(Mandatory = $true)][string]$DestinationDir,
-        [Parameter(Mandatory = $true)][string]$ZstdExePath,
-        [int]$LongWindow = 31
+        [Parameter(Mandatory = $true)][string]$ZstdExePath
     )
 
     if (-not (Test-Path $ArchivePath)) {
@@ -336,10 +253,7 @@ function Decompress-ArchiveToDirectory {
 
     Write-Step "Decompressing tar.zst archive $ArchivePath to directory $DestinationDir"
     # Stream: zstd decompression -> tar extraction.
-    & $ZstdExePath '-d' "--long=$LongWindow" $ArchivePath '-c' | tar '-xf' '-' '-C' $DestinationDir
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to extract tar stream from archive: $ArchivePath"
-    }
+    & $ZstdExePath '-d' '--long=31' $ArchivePath '-c' | tar '-xf' '-' '-C' $DestinationDir
     Write-Done
 }
 
@@ -355,7 +269,7 @@ function Expand-ZstdExecutableFromTarGz {
     Remove-PathIfExists -Path $resolvedDestinationDir
     New-Item -ItemType Directory -Path $resolvedDestinationDir -Force | Out-Null
 
-    Invoke-Checked -Command 'tar' -Arguments @('-xzf', $resolvedArchivePath, '-C', $resolvedDestinationDir) -ErrorMessage 'Failed to extract zstd archive'
+    tar '-xzf' $resolvedArchivePath '-C' $resolvedDestinationDir
 
     $zstdExePath = Join-Path $resolvedDestinationDir 'zstd.exe'
     return (Resolve-ExistingPath -Path $zstdExePath -Description 'zstd executable')
@@ -364,45 +278,18 @@ function Expand-ZstdExecutableFromTarGz {
 function Initialize-LlvmSourceTree {
     param(
         [Parameter(Mandatory = $true)][string]$LlvmProjectRef,
-        [string]$RepoDir = (Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.') 'llvm-project')
+        [Parameter(Mandatory = $true)][string]$RepoDir
     )
 
     $archiveUrl = "https://github.com/llvm/llvm-project/archive/$LlvmProjectRef.tar.gz"
-    $sanitizedRef = $LlvmProjectRef -replace '[\\/]', '-'
-    $tempRoot = Get-PreferredTempRoot -ReferencePath $RepoDir
-    $tempDir = New-ScopedTempDir -RootPath $tempRoot
-    $tempArchive = Join-Path $tempDir ("llvm-project-$sanitizedRef.tar.gz")
-
-    $downloadAttempts = 3
-    if ($env:LLVM_DOWNLOAD_ATTEMPTS) {
-        $downloadAttempts = [Math]::Max(1, [int]$env:LLVM_DOWNLOAD_ATTEMPTS)
-    }
-    $baseRetryDelaySeconds = 5
-    if ($env:LLVM_DOWNLOAD_RETRY_DELAY_SECONDS) {
-        $baseRetryDelaySeconds = [Math]::Max(1, [int]$env:LLVM_DOWNLOAD_RETRY_DELAY_SECONDS)
-    }
+    $tempArchive = "$RepoDir.tar.gz"
 
     Write-Step "Downloading LLVM/MLIR source ($LlvmProjectRef)"
     Remove-PathIfExists -Path $RepoDir
     New-Item -ItemType Directory -Path $RepoDir -Force | Out-Null
 
     try {
-        for ($attempt = 1; $attempt -le $downloadAttempts; $attempt++) {
-            try {
-                Write-Host "Downloading llvm-project archive (attempt $attempt/$downloadAttempts): $archiveUrl"
-                Invoke-WebRequest -Uri $archiveUrl -OutFile $tempArchive
-                break
-            } catch {
-                if ($attempt -ge $downloadAttempts) {
-                    Write-Host "Failed to download llvm-project archive after $downloadAttempts attempts."
-                    throw
-                }
-                $delaySeconds = $baseRetryDelaySeconds * $attempt
-                Write-Host "Download attempt $attempt failed: $($_.Exception.Message)"
-                Write-Host "Retrying in ${delaySeconds}s..."
-                Start-Sleep -Seconds $delaySeconds
-            }
-        }
+        Invoke-WebRequest -Uri $archiveUrl -OutFile $tempArchive -MaximumRetryCount 2 -RetryIntervalSec 5
 
         $excludeArgs = @(
             '-xzf', $tempArchive,
@@ -419,10 +306,9 @@ function Initialize-LlvmSourceTree {
             '--exclude=mlir/test',
             '--exclude=mlir/unittests'
         )
-        Invoke-Checked -Command 'tar' -Arguments $excludeArgs -ErrorMessage 'Failed to extract llvm-project archive'
+        & tar @excludeArgs
     } finally {
         Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
-        Remove-PathIfExists -Path $tempDir
     }
 
     Write-Done
@@ -435,7 +321,6 @@ function Get-LlvmCommonCMakeArgs {
         [Parameter(Mandatory = $true)][string]$InstallPrefix,
         [Parameter(Mandatory = $true)][string]$HostTarget,
         [Parameter(Mandatory = $true)][string]$Projects,
-        [string]$PrefixPath,
         [switch]$EnableLld
     )
 
@@ -472,9 +357,6 @@ function Get-LlvmCommonCMakeArgs {
 
     if ($EnableLld) {
         $cmakeArgs += '-DLLVM_ENABLE_LLD=ON'
-    }
-    if ($PrefixPath) {
-        $cmakeArgs += "-DCMAKE_PREFIX_PATH=$PrefixPath"
     }
 
     return $cmakeArgs

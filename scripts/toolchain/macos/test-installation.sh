@@ -53,6 +53,15 @@ ZSTD_EXE_PATH="$TEST_ZSTD_DIR/zstd"
 
 decompress_archive_to_dir "$MLIR_ARCHIVE_PATH" "$TEST_MLIR_DIR" "$ZSTD_EXE_PATH"
 
+log_step "Checking macOS deployment metadata"
+# otool emits version/minos for both LC_VERSION_MIN_MACOSX and LC_BUILD_VERSION.
+for binary in "$ZSTD_EXE_PATH" "$TEST_MLIR_DIR/bin/mlir-opt" "$TEST_MLIR_DIR/lib/libMLIRIR.a"; do
+  echo "Checking deployment target: $binary"
+  xcrun otool -l "$binary" | awk -v target="$MACOSX_DEPLOYMENT_TARGET" \
+    -f "$(dirname -- "${BASH_SOURCE[0]}")/check-deployment-target.awk"
+done
+log_done
+
 log_step "Verifying key binaries"
 export PATH="$TEST_MLIR_DIR/bin:$PATH"
 mlir-opt --version
