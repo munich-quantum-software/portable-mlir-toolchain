@@ -8,21 +8,37 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.10.28]
+
+### Distribution
+
+- LLVM tag: `llvmorg-23.1.4`
+- zstd version: `1.5.7`
+- mold version: `3.0.0`
+
+### Added
+
+- ✅ Test installed TableGen, MLIR lowering, and LLVM IR translation on all
+  supported platforms ([#117]) ([**@burgholzer**])
+
 ### Changed
 
-- Require macOS 13.3 or newer for Apple Silicon binaries.
-- Bundle mold 3.0.0, built with Rust 1.95.0 inside manylinux.
-- Require PowerShell 7.4 or newer for Windows build scripts.
-- Require a signed, GitHub-verified annotated tag on the workflow revision
-  before publishing a release; resolve the LLVM source once for all platform
-  builds.
+- 🍎 Require macOS 13.3 or newer for Apple Silicon binaries ([#117])
+  ([**@burgholzer**])
+- 🐧 Bundle mold 3.0.0, built with Rust 1.95.0 inside manylinux ([#117])
+  ([**@burgholzer**])
+- 🏁 Require PowerShell 7.4 or newer for Windows build scripts ([#117])
+  ([**@burgholzer**])
+- 🔐 Require a signed, GitHub-verified release tag and build every platform from
+  the same resolved LLVM commit ([#117]) ([**@burgholzer**])
 
 ### Fixed
 
-- Test affected platforms for shared-script, workflow, integration-test, and
-  deleted-file changes.
-- Isolate local build workspaces and propagate Windows archive-pipeline
-  failures.
+- 🐛 Run the relevant platform checks when shared scripts, workflows, tests, or
+  deleted files change ([#117]) ([**@burgholzer**])
+- 🛠️ Isolate build workspaces ([#117]) ([**@burgholzer**])
+- 🏁 Propagate native Windows archive-pipeline failures ([#117])
+  ([**@burgholzer**])
 
 ## [2026.10.27]
 
@@ -335,7 +351,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.10.27...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.10.28...HEAD
+[2026.10.28]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.28
 [2026.10.27]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.27
 [2026.10.06]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.06
 [2026.09.11]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.09.11
@@ -362,6 +379,7 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#117]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/117
 [#107]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/107
 [#101]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/101
 [#97]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/97
