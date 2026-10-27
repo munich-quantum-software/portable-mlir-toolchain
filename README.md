@@ -39,10 +39,10 @@ If desired, you can run the staged build scripts directly. Refer to
 
 The usage is documented in each script. Linux builds run in a manylinux
 container and require access to Docker without sudo. Each invocation owns a
-fresh directory under `HOST_BUILD_WORKSPACE` (or the system temporary
-directory); this override selects the parent directory, not a reusable build
-tree. Containers run as the calling user with a read-only checkout. The mold
-3.0.0 stage installs Rust 1.95.0 inside that container and bundles mold's
+fresh directory under `HOST_BUILD_WORKSPACE`, `RUNNER_TEMP` in CI, or the system
+temporary directory. The override selects the parent directory, not a reusable
+build tree. Containers run as the calling user with a read-only checkout. The
+mold 3.0.0 stage installs Rust 1.95.0 inside that container and bundles mold's
 wrapper and relative linker symlinks along with its executable.
 
 macOS scripts require CMake, a C++20-capable Xcode command-line toolchain, and

@@ -96,4 +96,21 @@ if FAIL_STAGE=1 bash scripts/toolchain/linux/build-zstd.sh -a "$tmp/failed.tar.g
   echo 'Failed build was accepted' >&2; exit 1
 fi
 [[ -z "$(ls -A "$HOST_BUILD_WORKSPACE")" ]]
+# CI must use the runner work disk instead of a potentially quota-limited /tmp.
+env -u HOST_BUILD_WORKSPACE RUNNER_TEMP="$tmp/runner" TMPDIR="$tmp" \
+  bash scripts/toolchain/linux/build-zstd.sh -a "$tmp/runner.tar.gz"
+[[ "$(tail -n 1 "$WORKSPACE_LOG")" == "$tmp/runner/"* ]]
+[[ -z "$(ls -A "$tmp/runner")" ]]
+
+# Tool versions nested under LC_BUILD_VERSION must not be read as OS versions.
+checker=scripts/toolchain/macos/check-deployment-target.awk
+printf 'cmd LC_BUILD_VERSION\nminos 13.3\nntools 1\ntool LD\nversion 1234.5\n' |
+  awk -v target=13.3 -f "$checker"
+printf 'cmd LC_VERSION_MIN_MACOSX\nversion 13.3.0\nsdk 26.5\n' |
+  awk -v target=13.3 -f "$checker"
+for metadata in $'cmd LC_BUILD_VERSION\nminos 14.0' $'cmd LC_VERSION_MIN_MACOSX\nversion 14.0' $'cmd LC_UUID\nversion 13.3'; do
+  if printf '%s\n' "$metadata" | awk -v target=13.3 -f "$checker"; then
+    echo 'Invalid deployment metadata was accepted' >&2; exit 1
+  fi
+done
 echo 'CI helper tests passed'

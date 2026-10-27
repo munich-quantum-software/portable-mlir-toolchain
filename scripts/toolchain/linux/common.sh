@@ -62,7 +62,8 @@ run_manylinux_stage() (
     env_args+=( -e LLVM_PROJECT_REF="$llvm_project_ref" )
   fi
 
-  local workspace_parent="${HOST_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"
+  # Hosted runners may quota /tmp; keep large builds on their designated work disk.
+  local workspace_parent="${HOST_BUILD_WORKSPACE:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
   mkdir -p "$workspace_parent"
   local host_build_workspace
   host_build_workspace="$(mktemp -d "$workspace_parent/pmt.XXXXXX")"
