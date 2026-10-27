@@ -15,25 +15,62 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-#include "mlir/IR/Builders.h"
+#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
+#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Dialect.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/Verifier.h"
+#include "mlir/Parser/Parser.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Export.h"
 
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 
+// Generated declarations require the MLIR headers above.
+// clang-format off
+#include "SmokeDialect.h.inc"
+// clang-format on
+
 int main() {
-  mlir::MLIRContext context;
-  mlir::OpBuilder builder(&context);
-
-  auto loc = builder.getUnknownLoc();
-  auto module = mlir::ModuleOp::create(loc);
-
-  if (mlir::failed(mlir::verify(module))) {
-    llvm::errs() << "Module verification failed\n";
+  mlir::DialectRegistry registry;
+  registry.insert<mlir::arith::ArithDialect, mlir::func::FuncDialect>();
+  mlir::registerLLVMDialectTranslation(registry);
+  mlir::registerBuiltinDialectTranslation(registry);
+  mlir::MLIRContext context(registry);
+  auto module = mlir::parseSourceString<mlir::ModuleOp>(R"(
+    module {
+      func.func @answer() -> i32 {
+        %c = arith.constant 42 : i32
+        return %c : i32
+      }
+    }
+  )",
+                                                        &context);
+  if (!module) {
     return 1;
   }
-
-  llvm::outs() << "MLIR integration test passed!\n";
+  mlir::PassManager pm(&context);
+  pm.addPass(mlir::createArithToLLVMConversionPass());
+  pm.addPass(mlir::createConvertFuncToLLVMPass());
+  pm.addPass(mlir::createReconcileUnrealizedCastsPass());
+  if (mlir::failed(pm.run(*module))) {
+    return 1;
+  }
+  llvm::LLVMContext llvmContext;
+  auto translated = mlir::translateModuleToLLVMIR(*module, llvmContext);
+  if (!translated || llvm::verifyModule(*translated, &llvm::errs()) ||
+      !translated->getFunction("answer")) {
+    return 1;
+  }
+  llvm::outs() << "MLIR lowering and translation passed!\n";
   return 0;
 }

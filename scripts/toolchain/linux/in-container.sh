@@ -14,20 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-# Linux in-container build script: build and package the MLIR toolchain
-#
-# Description:
-#   Builds LLVM and MLIR for Linux (arch-aware) inside a container, and packages the results.
-#
-# Environment:
-#   LLVM_PROJECT_REF  llvm-project Git ref or commit SHA (e.g., llvmorg-21.1.8 or 179d30f...)
-#   INSTALL_PREFIX    Absolute path for the final install
-#   BUILD_WORKSPACE   Path to the build workspace
-#
-# Outputs:
-#   - Installs into $INSTALL_PREFIX
-#   - Creates $INSTALL_PREFIX/llvm-mlir_$LLVM_PROJECT_REF_linux_<arch>_<host_target>.tar.zst
-#   - Creates $INSTALL_PREFIX/zstd-<zstd_version>_linux_<arch>_<host_target>.tar.gz
+# Build one stage in an invocation-owned workspace; exchange artifacts through IO_DIR.
 
 set -euo pipefail
 
@@ -39,7 +26,7 @@ set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.5.7)}"
-MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 2.42.1)}"
+MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 3.0.0)}"
 NINJA_VERSION="${NINJA_VERSION:-1.13.0}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
@@ -162,15 +149,13 @@ build_mold() {
     "https://github.com/rui314/mold/archive/refs/tags/v${MOLD_VERSION}.tar.gz" -o "$mold_tarball"
   tar -xzf "$mold_tarball" -C "$BUILD_WORKSPACE"
 
-  cmake -S "$mold_src_dir" -B "$mold_src_dir/build" -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX="$mold_install_dir" \
-    -DMOLD_LTO=ON \
-    -DMOLD_USE_SYSTEM_TBB=OFF \
-    -DMOLD_USE_SYSTEM_MIMALLOC=OFF \
-    -DMOLD_USE_MIMALLOC=ON
-
-  cmake --build "$mold_src_dir/build" --target install --config Release
+  # Rust runs inside manylinux so mold retains the same glibc baseline as LLVM.
+  curl -fL --retry 5 --retry-delay 5 https://sh.rustup.rs -o "$BUILD_WORKSPACE/rustup.sh"
+  bash "$BUILD_WORKSPACE/rustup.sh" -y --profile minimal --default-toolchain 1.95.0 --no-modify-path
+  export PATH="$HOME/.cargo/bin:$PATH"
+  export RUSTUP_TOOLCHAIN=1.95.0
+  (cd "$mold_src_dir" && cargo build --release --locked -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}" &&
+    PREFIX="$mold_install_dir" ./install-mold.sh)
   compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"
 
   rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
@@ -232,7 +217,7 @@ build_mlir() {
   rm -rf "$repo_dir" "$build_dir"
 
   # Bundle mold tools into the MLIR payload so downstream users only need one distribution.
-  cp -a "$mold_bin_dir"/. "$mlir_install_dir/bin/"
+  cp -a "$mold_extract_dir"/. "$mlir_install_dir/"
 
   local llvm_lib_dir="$mlir_install_dir/lib"
   if [[ -x "$mlir_install_dir/bin/llvm-config" ]]; then
@@ -254,6 +239,10 @@ build_mlir() {
 }
 
 case "$STAGE" in
+  test-installation)
+    PMT_IN_CONTAINER=1 bash /work/scripts/toolchain/linux/test-installation.sh \
+      -z "$IO_DIR/zstd.tar.gz" -a "$IO_DIR/mlir.tar.zst" -b "$BUILD_TYPE"
+    ;;
   build-zstd)
     build_zstd
     ;;

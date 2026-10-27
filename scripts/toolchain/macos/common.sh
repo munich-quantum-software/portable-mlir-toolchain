@@ -16,6 +16,8 @@
 
 set -euo pipefail
 
+export MACOSX_DEPLOYMENT_TARGET=13.3
+
 case "$(uname -m)" in
   arm64|aarch64) ;;
   *)

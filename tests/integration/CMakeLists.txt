@@ -45,6 +45,26 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND "${LLVM_DEFINITIONS}")
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
+set(LLVM_TARGET_DEFINITIONS Smoke.td)
+mlir_tablegen(SmokeDialect.h.inc -gen-dialect-decls -dialect=smoke)
+add_public_tablegen_target(SmokeIncGen)
+
 add_llvm_executable(hello_mlir main.cpp)
-target_link_libraries(hello_mlir PRIVATE MLIRIR MLIRSupport LLVMSupport)
+add_dependencies(hello_mlir SmokeIncGen)
+target_include_directories(hello_mlir PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(
+  hello_mlir
+  PRIVATE MLIRParser
+          MLIRFuncDialect
+          MLIRArithDialect
+          MLIRArithToLLVM
+          MLIRFuncToLLVM
+          MLIRReconcileUnrealizedCasts
+          MLIRBuiltinToLLVMIRTranslation
+          MLIRLLVMToLLVMIRTranslation
+          MLIRTargetLLVMIRExport
+          MLIRPass
+          MLIRIR
+          MLIRSupport
+          LLVMSupport)
 llvm_update_compile_flags(hello_mlir)

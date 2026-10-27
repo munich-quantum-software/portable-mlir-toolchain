@@ -34,7 +34,7 @@ repo_root_from_script_dir() {
   (cd "$script_dir/../../.." && pwd)
 }
 
-run_manylinux_stage() {
+run_manylinux_stage() (
   local stage="$1"
   local io_dir="$2"
   local llvm_project_ref="${3:-}"
@@ -62,18 +62,17 @@ run_manylinux_stage() {
     env_args+=( -e LLVM_PROJECT_REF="$llvm_project_ref" )
   fi
 
-  local host_build_workspace_default="${root_dir}/.build-work"
-  if [[ -d "/mnt" && -w "/mnt" ]]; then
-    host_build_workspace_default="/mnt/portable-mlir-toolchain-build"
-  fi
-  local host_build_workspace="${HOST_BUILD_WORKSPACE:-$host_build_workspace_default}"
-  mkdir -p "$host_build_workspace"
+  local workspace_parent="${HOST_BUILD_WORKSPACE:-${TMPDIR:-/tmp}}"
+  mkdir -p "$workspace_parent"
+  local host_build_workspace
+  host_build_workspace="$(mktemp -d "$workspace_parent/pmt.XXXXXX")"
+  trap 'rm -rf "$host_build_workspace"' EXIT
 
-  sudo docker run --rm --privileged \
-    -v "$root_dir":/work:rw \
+  docker run --rm --user "$(id -u):$(id -g)" \
+    -v "$root_dir":/work:ro \
     -v "$io_dir":/io:rw \
     -v "$host_build_workspace":/build:rw \
     "${env_args[@]}" \
     "$base_image" \
     bash -euo pipefail "$in_container_script"
-}
+)
