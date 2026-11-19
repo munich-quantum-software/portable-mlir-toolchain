@@ -64,13 +64,13 @@ exception handling and RTTI disabled.
 
 ## Release provenance
 
-CI resolves the requested LLVM tag, SHA, or simple branch name to one commit
-before building any platform. The input name remains the archive label; names
-containing slashes are not supported. Release builds require an existing signed
-annotated repository tag, verified by GitHub, pointing at the workflow revision.
-Create and push that tag with the configured signing key before dispatching the
-workflow. The workflow verifies it before building and again before publishing;
-it never creates release tags itself.
+CI accepts an LLVM tag, commit hash, or branch name without slashes. It resolves
+the ref to one commit for all platforms. Archives use the `llvmorg-X.Y.Z` label
+for LLVM release tags and the full commit hash for other refs.
+
+Before dispatching a release, create and push a signed annotated repository tag
+at the workflow revision. The workflow checks the tagged commit and GitHub's
+signature verification before building and again before publishing.
 
 ## Validation
 

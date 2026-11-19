@@ -36,7 +36,8 @@ jobs:
     outputs:
       run-linux: ${{ steps.changes.outputs.run-linux }}
       run-macos: ${{ steps.changes.outputs.run-macos }}
-      run-windows: ${{ steps.changes.outputs.run-windows }}
+      windows-build: ${{ steps.changes.outputs.windows-build }}
+      llvm-archive-ref: ${{ steps.source.outputs.archive-ref }}
       llvm-project-sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,14 +60,11 @@ jobs:
           fi | bash scripts/ci/changed-platforms.sh >> "$GITHUB_OUTPUT"
       - name: Resolve LLVM source once
         id: source
+        if: steps.changes.outputs.run-linux == 'true' || steps.changes.outputs.run-macos == 'true' || steps.changes.outputs.windows-build == 'mlir'
         env:
           GH_TOKEN: ${{ github.token }}
           LLVM_REF: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.4' }}
-        run: |
-          [[ "$LLVM_REF" =~ ^[A-Za-z0-9._-]+$ ]] || { echo 'Use a tag, SHA, or branch without slashes'; exit 1; }
-          sha=$(gh api "repos/llvm/llvm-project/commits/$LLVM_REF" --jq .sha)
-          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        run: bash scripts/ci/resolve-llvm-ref.sh "$LLVM_REF" >> "$GITHUB_OUTPUT"
       - name: Verify release tag before building
         if: inputs.release == true
         env:
@@ -89,7 +87,7 @@ jobs:
     with:
       runs-on: ${{ matrix.runner }}
       target: ${{ matrix.target }}
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.4' }}
+      llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
 
   macos:
@@ -98,12 +96,12 @@ jobs:
     uses: $/.github/workflows/build-mlir-macos-runner.yml
     with:
       runs-on: macos-26
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.4' }}
+      llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
 
   windows:
     needs: change-detection
-    if: fromJson(needs.change-detection.outputs.run-windows)
+    if: needs.change-detection.outputs.windows-build != 'none'
     strategy:
       fail-fast: false
       matrix:
@@ -114,9 +112,10 @@ jobs:
             target: aarch64-pc-windows-msvc
     uses: $/.github/workflows/build-mlir-windows-runner.yml
     with:
+      build-mlir: ${{ needs.change-detection.outputs.windows-build == 'mlir' }}
       runs-on: ${{ matrix.runner }}
       target: ${{ matrix.target }}
-      llvm-project-ref: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.4' }}
+      llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
 
   # this job does nothing and is only used for branch protection
@@ -136,7 +135,7 @@ jobs:
           allowed-skips: >-
             ${{ !fromJson(needs.change-detection.outputs.run-linux) && 'linux,' || '' }}
             ${{ !fromJson(needs.change-detection.outputs.run-macos) && 'macos,' || '' }}
-            ${{ !fromJson(needs.change-detection.outputs.run-windows) && 'windows,' || '' }}
+            ${{ needs.change-detection.outputs.windows-build == 'none' && 'windows,' || '' }}
           jobs: ${{ toJson(needs) }}
 
   release:

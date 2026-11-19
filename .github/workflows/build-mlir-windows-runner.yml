@@ -3,8 +3,12 @@ name: Build Portable MLIR Toolchain (Windows Runner)
 on:
   workflow_call:
     inputs:
+      build-mlir:
+        description: "Build the LLVM SDK after checking zstd"
+        default: true
+        type: boolean
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-23.1.4)"
+        description: "LLVM release tag or resolved commit used in archive names"
         required: true
         type: string
       llvm-project-sha:
@@ -62,6 +66,9 @@ jobs:
             -ZstdArchivePath $env:ZSTD_ARCHIVE_PATH `
             -NinjaVersion $env:NINJA_VERSION `
             -ZstdVersion $env:ZSTD_VERSION
+      - name: Check Windows helpers
+        run: ./tests/test-windows.ps1
+        shell: pwsh
       - name: Upload zstd executable (final payload)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -70,6 +77,7 @@ jobs:
           archive: false
 
   build-lld:
+    if: inputs.build-mlir
     needs: build-zstd
     runs-on: ${{ inputs.runs-on }}
     name: "${{ inputs.runs-on }}: Build lld"
@@ -191,9 +199,6 @@ jobs:
         with:
           name: ${{ env.MLIR_ARCHIVE_PATH }}
           skip-decompress: true
-      - name: Check Windows helpers
-        run: ./tests/test-windows.ps1
-        shell: pwsh
       - name: Test installation (Release)
         shell: pwsh
         env:
