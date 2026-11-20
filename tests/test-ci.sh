@@ -23,13 +23,14 @@ check_paths() {
   actual=$(printf '%s\0' "$@" | bash scripts/ci/changed-platforms.sh)
   [[ "$actual" == "$expected" ]] || { echo "Wrong platform selection: $actual" >&2; exit 1; }
 }
-all=$'run-linux=true\nrun-macos=true\nrun-windows=true'
+all=$'run-linux=true\nrun-macos=true\nwindows-build=mlir'
 check_paths "$all" scripts/toolchain/common.sh
 check_paths "$all" tests/integration/main.cpp
 check_paths "$all" .github/workflows/build-portable-mlir-toolchain.yml
-check_paths $'run-linux=true\nrun-macos=false\nrun-windows=false' .github/workflows/build-mlir-linux-runner.yml
-check_paths $'run-linux=false\nrun-macos=true\nrun-windows=true' scripts/toolchain/macos/deleted.sh scripts/toolchain/windows/new.ps1
-check_paths $'run-linux=false\nrun-macos=false\nrun-windows=false' README.md
+check_paths $'run-linux=true\nrun-macos=false\nwindows-build=none' .github/workflows/build-mlir-linux-runner.yml
+check_paths $'run-linux=false\nrun-macos=true\nwindows-build=mlir' scripts/toolchain/macos/deleted.sh scripts/toolchain/windows/new.ps1 tests/test-windows.ps1
+check_paths $'run-linux=false\nrun-macos=false\nwindows-build=none' README.md tests/test-ci.sh scripts/ci/changed-platforms.sh scripts/ci/verify-release-tag.sh
+check_paths $'run-linux=false\nrun-macos=false\nwindows-build=zstd' tests/test-windows.ps1
 
 # Exercise deletion and rename enumeration with a real Git diff.
 tmp=$(mktemp -d)
@@ -42,12 +43,16 @@ git -C "$tmp" add .
 tree=$(git -C "$tmp" write-tree)
 rm "$tmp/scripts/toolchain/linux/old.sh"
 git -C "$tmp" add -u
-[[ "$(git -C "$tmp" diff --cached --no-renames --name-only -z "$tree" | bash scripts/ci/changed-platforms.sh)" == $'run-linux=true\nrun-macos=false\nrun-windows=false' ]]
+[[ "$(git -C "$tmp" diff --cached --no-renames --name-only -z "$tree" | bash scripts/ci/changed-platforms.sh)" == $'run-linux=true\nrun-macos=false\nwindows-build=none' ]]
 
-# Stub the GitHub API; reject unsigned tags and tags for another revision.
+# Stub GitHub for LLVM ref resolution and signed release tag verification.
 mkdir "$tmp/bin"
 cat > "$tmp/bin/gh" <<'STUB'
 #!/bin/bash
+if [[ "$2" == repos/llvm/llvm-project/commits/* ]]; then
+  echo "$LLVM_SHA"
+  exit 0
+fi
 if [[ "$2" == */git/ref/* ]]; then
   [[ "$TAG_KIND" == tag ]] && echo abc
   exit 0
@@ -56,6 +61,11 @@ printf '{"verification":{"verified":%s},"object":{"type":"commit","sha":"%s"}}' 
 STUB
 chmod +x "$tmp/bin/gh"
 export PATH="$tmp/bin:$PATH" RELEASE_TAG=v1 GITHUB_REPOSITORY=owner/repo GITHUB_SHA=123
+export LLVM_SHA=1234567890abcdef1234567890abcdef12345678
+for ref in main 1234567 123.4.5 llvmorg-23.1.4-rc1; do
+  [[ "$(bash scripts/ci/resolve-llvm-ref.sh "$ref")" == "$(printf 'sha=%s\narchive-ref=%s' "$LLVM_SHA" "$LLVM_SHA")" ]]
+done
+[[ "$(bash scripts/ci/resolve-llvm-ref.sh llvmorg-23.1.4)" == "$(printf 'sha=%s\narchive-ref=llvmorg-23.1.4' "$LLVM_SHA")" ]]
 export TAG_KIND=tag TAG_VERIFIED=true TAG_COMMIT=123
 bash scripts/ci/verify-release-tag.sh
 for bad in unsigned wrong-commit lightweight; do

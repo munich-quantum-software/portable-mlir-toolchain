@@ -15,13 +15,15 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 set -euo pipefail
-linux=false macos=false windows=false
+linux=false macos=false windows=
 while IFS= read -r -d '' path; do
   case "$path" in
+    tests/test-ci.sh|scripts/ci/changed-platforms.sh|scripts/ci/verify-release-tag.sh) ;;
+    tests/test-windows.ps1) windows=${windows:-zstd} ;;
     scripts/toolchain/linux/*|.github/workflows/build-mlir-linux*) linux=true ;;
     scripts/toolchain/macos/*|.github/workflows/build-mlir-macos*) macos=true ;;
-    scripts/toolchain/windows/*|.github/workflows/build-mlir-windows*) windows=true ;;
-    scripts/*|tests/*|.github/workflows/*) linux=true macos=true windows=true ;;
+    scripts/toolchain/windows/*|.github/workflows/build-mlir-windows*) windows=mlir ;;
+    scripts/*|tests/*|.github/workflows/*) linux=true macos=true windows=mlir ;;
   esac
 done
-printf 'run-linux=%s\nrun-macos=%s\nrun-windows=%s\n' "$linux" "$macos" "$windows"
+printf 'run-linux=%s\nrun-macos=%s\nwindows-build=%s\n' "$linux" "$macos" "${windows:-none}"
