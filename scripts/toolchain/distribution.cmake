@@ -17,7 +17,7 @@
 set(LLVM_STRICT_DISTRIBUTIONS
     ON
     CACHE BOOL "")
-set(LLVM_DISTRIBUTION_COMPONENTS
+set(components
     llvm-libraries
     llvm-headers
     cmake-exports
@@ -65,6 +65,16 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     llvm-profdata
     llvm-mc
     llvm-size
-    llvm-dwarfdump
-    LLVMgold
-    CACHE STRING "")
+    llvm-dwarfdump)
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND components LLVMgold)
+elseif(CMAKE_HOST_APPLE)
+  list(APPEND components llvm-install-name-tool llvm-bitcode-strip)
+elseif(CMAKE_HOST_WIN32)
+  list(APPEND components llvm-rc llvm-cvtres)
+endif()
+
+set(LLVM_DISTRIBUTION_COMPONENTS
+    "${components}"
+    CACHE STRING "Portable LLVM/MLIR SDK components")

@@ -58,6 +58,8 @@ curl -fL --retry 5 --retry-delay 5 "https://github.com/meta/zstd/releases/downlo
 
 tar -xzf "$zstd_tarball" -C "$tmp_dir"
 cmake -S "$zstd_src_dir/build/cmake" -B "$zstd_src_dir/build_cmake" -G Ninja \
+  -DCMAKE_C_COMPILER="$(xcrun --find clang)" \
+  -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$install_dir" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \

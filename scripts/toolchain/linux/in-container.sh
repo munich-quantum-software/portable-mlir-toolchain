@@ -156,7 +156,7 @@ build_mold() {
   bash "$BUILD_WORKSPACE/rustup.sh" -y --profile minimal --default-toolchain "$rust_version" --no-modify-path
   export PATH="$HOME/.cargo/bin:$PATH"
   export RUSTUP_TOOLCHAIN="$rust_version"
-  (cd "$mold_src_dir" && cargo build --release --locked -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}" &&
+  (cd "$mold_src_dir" && RUSTFLAGS="-C linker=$CC" cargo build --release --locked -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}" &&
     PREFIX="$mold_install_dir" ./install-mold.sh)
   compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"
 
@@ -186,11 +186,9 @@ build_mlir() {
   export PATH="$mold_bin_dir:$PATH"
 
   log_step "CMake configure MLIR (${BUILD_TYPE})"
-  cmake -C /work/scripts/toolchain/linux/distribution.cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
+  cmake -C /work/scripts/toolchain/distribution.cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DCMAKE_INSTALL_PREFIX="$mlir_install_dir" \
-    -DCMAKE_C_COMPILER=/opt/clang/bin/clang \
-    -DCMAKE_CXX_COMPILER=/opt/clang/bin/clang++ \
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
     -DLLVM_BINUTILS_INCDIR="$DEVTOOLSET_ROOTPATH/usr/include" \
     -DLLVM_ENABLE_PROJECTS=mlir \

@@ -21,13 +21,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(MLIR REQUIRED CONFIG)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  foreach(mlir_target IN LISTS MLIR_EXPORTED_TARGETS)
-    if(NOT TARGET "${mlir_target}")
-      message(FATAL_ERROR "Missing installed MLIR target: ${mlir_target}")
-    endif()
-  endforeach()
-endif()
+foreach(mlir_target IN LISTS MLIR_EXPORTED_TARGETS)
+  if(NOT TARGET "${mlir_target}")
+    message(FATAL_ERROR "Missing installed MLIR target: ${mlir_target}")
+  endif()
+endforeach()
 
 if(DEFINED EXPECTED_LLVM_ASSERTIONS AND NOT "${LLVM_ENABLE_ASSERTIONS}" STREQUAL
                                         "${EXPECTED_LLVM_ASSERTIONS}")
