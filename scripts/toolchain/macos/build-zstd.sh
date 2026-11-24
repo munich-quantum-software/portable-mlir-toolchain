@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # shellcheck source=./common.sh
 source "$SCRIPT_DIR/common.sh"
 
-ZSTD_VERSION="1.5.7"
+ZSTD_VERSION="1.6.0"
 NINJA_VERSION="1.13.0"
 while getopts ":a:v:n:" opt; do
   case "$opt" in
@@ -54,7 +54,7 @@ cleanup() {
 trap cleanup EXIT
 
 log_step "Building zstd v${ZSTD_VERSION}"
-curl -fL --retry 5 --retry-delay 5 "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz" -o "$zstd_tarball"
+curl -fL --retry 5 --retry-delay 5 "https://github.com/meta/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz" -o "$zstd_tarball"
 
 tar -xzf "$zstd_tarball" -C "$tmp_dir"
 cmake -S "$zstd_src_dir/build/cmake" -B "$zstd_src_dir/build_cmake" -G Ninja \
