@@ -188,6 +188,7 @@ build_mlir() {
   log_step "CMake configure MLIR (${BUILD_TYPE})"
   cmake -C /work/scripts/toolchain/distribution.cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DCMAKE_EXE_LINKER_FLAGS_RELEASE="-Wl,--icf=safe" \
     -DCMAKE_INSTALL_PREFIX="$mlir_install_dir" \
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
     -DLLVM_BINUTILS_INCDIR="$DEVTOOLSET_ROOTPATH/usr/include" \
