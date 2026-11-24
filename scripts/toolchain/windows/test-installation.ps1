@@ -16,7 +16,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
     [Parameter(Mandatory = $true)][string]$MlirArchivePath,
-    [string]$NinjaVersion = '1.13.0'
+    [string]$NinjaVersion = '1.13.2'
 )
 
 $ErrorActionPreference = 'Stop'

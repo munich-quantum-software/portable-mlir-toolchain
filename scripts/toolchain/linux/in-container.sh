@@ -27,7 +27,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
 ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.6.0)}"
 MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 3.0.0)}"
-NINJA_VERSION="${NINJA_VERSION:-1.13.0}"
+NINJA_VERSION="${NINJA_VERSION:-1.13.2}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
 mkdir -p "$BUILD_WORKSPACE" "$IO_DIR"
@@ -53,9 +53,10 @@ compress_dir_to_archive() {
   local source_dir="$1"
   local archive_path="$2"
   local zstd_exe="$3"
-  log_step "Compressing $source_dir to $archive_path"
+  local level="${ZSTD_COMPRESSION_LEVEL:-19}"
+  log_step "Compressing $source_dir to $archive_path (zstd level $level)"
   pushd "$source_dir" > /dev/null
-  tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
+  tar -cf - . | "$zstd_exe" "-$level" --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
   log_done
 }
@@ -141,6 +142,7 @@ build_mold() {
   local mold_src_dir="$BUILD_WORKSPACE/mold-${MOLD_VERSION}"
   local mold_install_dir="$BUILD_WORKSPACE/mold-install"
   local mold_tarball="$BUILD_WORKSPACE/mold-${MOLD_VERSION}.tar.gz"
+  local rust_version="1.100.0"
 
   log_step "Building mold v${MOLD_VERSION}"
   rm -rf "$mold_src_dir" "$mold_install_dir" "$mold_tarball"
@@ -151,9 +153,9 @@ build_mold() {
 
   # Rust runs inside manylinux so mold retains the same glibc baseline as LLVM.
   curl -fL --retry 5 --retry-delay 5 https://sh.rustup.rs -o "$BUILD_WORKSPACE/rustup.sh"
-  bash "$BUILD_WORKSPACE/rustup.sh" -y --profile minimal --default-toolchain 1.95.0 --no-modify-path
+  bash "$BUILD_WORKSPACE/rustup.sh" -y --profile minimal --default-toolchain "$rust_version" --no-modify-path
   export PATH="$HOME/.cargo/bin:$PATH"
-  export RUSTUP_TOOLCHAIN=1.95.0
+  export RUSTUP_TOOLCHAIN="$rust_version"
   (cd "$mold_src_dir" && cargo build --release --locked -j "${CMAKE_BUILD_PARALLEL_LEVEL:-4}" &&
     PREFIX="$mold_install_dir" ./install-mold.sh)
   compress_dir_to_archive "$mold_install_dir" "$IO_DIR/mold.tar.zst" "$zstd_exe"

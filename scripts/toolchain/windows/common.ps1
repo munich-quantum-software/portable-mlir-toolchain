@@ -171,7 +171,7 @@ function Enter-VisualStudioDevShell {
 }
 
 function Ensure-Ninja {
-    param([string]$Version = '1.13.0')
+    param([string]$Version = '1.13.2')
 
     # Ensure uv-installed tools are reachable in this session.
     $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
@@ -222,10 +222,11 @@ function Compress-DirectoryToArchive {
 
     Remove-Item -Path $ArchivePath -Force -ErrorAction SilentlyContinue
 
-    Write-Step "Compressing directory $SourceDir to archive $ArchivePath with zstd"
+    $level = $env:ZSTD_COMPRESSION_LEVEL ?? '19'
+    Write-Step "Compressing directory $SourceDir to archive $ArchivePath (zstd level $level)"
     Push-Location $sourceFullPath > $null
     try {
-        tar -cf - . | & $ZstdExePath '-19' '--long=30' '--threads=0' '-f' '-o' $ArchivePath '-'
+        tar -cf - . | & $ZstdExePath "-$level" '--long=30' '--threads=0' '-f' '-o' $ArchivePath '-'
     } finally {
         Pop-Location > $null
     }

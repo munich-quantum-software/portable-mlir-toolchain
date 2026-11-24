@@ -23,9 +23,9 @@ manylinux_image_for_host() {
   local arch
   arch="$(uname -m)"
   if [[ "$arch" == "aarch64" || "$arch" == "arm64" ]]; then
-    echo "quay.io/pypa/manylinux_2_28_aarch64:2026.10.03-1"
+    echo "quay.io/pypa/manylinux_2_28_aarch64:2026.11.21-1"
   else
-    echo "quay.io/pypa/manylinux_2_28_x86_64:2026.10.03-1"
+    echo "quay.io/pypa/manylinux_2_28_x86_64:2026.11.21-1"
   fi
 }
 
@@ -56,6 +56,7 @@ run_manylinux_stage() (
     -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
     -e BUILD_TYPE="$build_type"
     -e LLVM_ENABLE_ASSERTIONS="${LLVM_ENABLE_ASSERTIONS:-ON}"
+    -e ZSTD_COMPRESSION_LEVEL="${ZSTD_COMPRESSION_LEVEL:-19}"
   )
 
   if [[ -n "$llvm_project_ref" ]]; then

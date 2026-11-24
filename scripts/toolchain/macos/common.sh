@@ -37,7 +37,7 @@ remove_path_if_exists() {
 }
 
 ensure_ninja() {
-  local version="${1:-1.13.0}"
+  local version="${1:-1.13.2}"
   export PATH="$HOME/.local/bin:$PATH"
 
   if command -v ninja >/dev/null 2>&1; then
@@ -61,9 +61,10 @@ compress_dir_to_archive() {
   mkdir -p "$(dirname "$archive_path")"
   rm -f "$archive_path"
 
-  log_step "Compressing $source_dir to $archive_path"
+  local level="${ZSTD_COMPRESSION_LEVEL:-19}"
+  log_step "Compressing $source_dir to $archive_path (zstd level $level)"
   pushd "$source_dir" > /dev/null
-  tar -cf - . | "$zstd_exe" -19 --long=31 --threads=0 -f -o "$archive_path" -
+  tar -cf - . | "$zstd_exe" "-$level" --long=31 --threads=0 -f -o "$archive_path" -
   popd > /dev/null
   log_done
 }

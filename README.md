@@ -42,7 +42,7 @@ container and require access to Docker without sudo. Each invocation owns a
 fresh directory under `HOST_BUILD_WORKSPACE`, `RUNNER_TEMP` in CI, or the system
 temporary directory. The override selects the parent directory, not a reusable
 build tree. Containers run as the calling user with a read-only checkout. The
-mold 3.0.0 stage installs Rust 1.95.0 inside that container and bundles mold's
+mold 3.0.0 stage installs Rust 1.100.0 inside that container and bundles mold's
 wrapper and relative linker symlinks along with its executable.
 
 macOS scripts require CMake, a C++20-capable Xcode command-line toolchain, and
@@ -68,6 +68,9 @@ exception handling and RTTI disabled.
 CI accepts an LLVM tag, commit hash, or branch name without slashes. It resolves
 the ref to one commit for all platforms. Archives use the `llvmorg-X.Y.Z` label
 for LLVM release tags and the full commit hash for other refs.
+
+Non-release CI builds use zstd level 15 for `.tar.zst` artifacts. Release
+workflows and local builds use level 19 by default.
 
 Before dispatching a release, create and push a signed annotated repository tag
 at the workflow revision. The workflow checks the tagged commit and GitHub's
