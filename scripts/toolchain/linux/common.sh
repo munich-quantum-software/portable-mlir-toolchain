@@ -46,6 +46,10 @@ run_manylinux_stage() (
   in_container_script="/work${script_dir#"${root_dir}"}/in-container.sh"
   base_image="$(manylinux_image_for_host)"
 
+  if [[ "$stage" == build-mlir ]]; then
+    base_image="$(docker build --quiet --build-arg "MANYLINUX_IMAGE=$base_image" - < "$script_dir/Dockerfile")"
+  fi
+
   mkdir -p "$io_dir"
 
   local env_args=(

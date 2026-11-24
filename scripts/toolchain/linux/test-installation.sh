@@ -68,6 +68,14 @@ mlir-translate --version
 "$TEST_MLIR_DIR/bin/mold" -run gcc --version
 log_done
 
+log_step "Linking LLVM bitcode with the installed mold plugin"
+printf 'define i32 @main() { ret i32 0 }\n' |
+  opt -mtriple="$(llvm-config --host-target)" -module-summary -o "$TEST_BUILD_DIR/main.bc"
+gcc -fno-use-linker-plugin -fuse-ld=mold "-Wl,-plugin,$(llvm-config --libdir)/LLVMgold.so" \
+  "$TEST_BUILD_DIR/main.bc" -o "$TEST_BUILD_DIR/lto-smoke"
+"$TEST_BUILD_DIR/lto-smoke"
+log_done
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 INTEGRATION_SRC="$REPO_ROOT/tests/integration"

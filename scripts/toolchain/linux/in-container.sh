@@ -186,12 +186,13 @@ build_mlir() {
   export PATH="$mold_bin_dir:$PATH"
 
   log_step "CMake configure MLIR (${BUILD_TYPE})"
-  cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
+  cmake -C /work/scripts/toolchain/linux/distribution.cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DCMAKE_INSTALL_PREFIX="$mlir_install_dir" \
-    -DCMAKE_C_COMPILER=gcc \
-    -DCMAKE_CXX_COMPILER=g++ \
+    -DCMAKE_C_COMPILER=/opt/clang/bin/clang \
+    -DCMAKE_CXX_COMPILER=/opt/clang/bin/clang++ \
     -DLLVM_TARGETS_TO_BUILD="$HOST_TARGET" \
+    -DLLVM_BINUTILS_INCDIR="$DEVTOOLSET_ROOTPATH/usr/include" \
     -DLLVM_ENABLE_PROJECTS=mlir \
     -DLLVM_BUILD_EXAMPLES=OFF \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
@@ -213,7 +214,7 @@ build_mlir() {
   log_done
 
   log_step "Build and install MLIR (${BUILD_TYPE})"
-  cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
+  cmake --build "$build_dir" --target install-distribution --config "$BUILD_TYPE"
   log_done
 
   rm -rf "$repo_dir" "$build_dir"

@@ -10,10 +10,10 @@ decompression.
 
 Windows builds support Release mode only. The Linux and macOS build scripts also
 support Debug mode. macOS builds require Apple silicon (`arm64`) and target
-macOS 13.3 or newer. Linux targets glibc 2.28 or newer on x86-64 and AArch64;
-CPU-specific native tuning and LTO bitcode are not used. Linux installation
-tests run inside the manylinux 2.28 build image. macOS CI checks deployment
-metadata on its current runner, but does not run on macOS 13.3.
+macOS 13.3 or newer. Linux targets glibc 2.28 or newer on x86-64 and AArch64.
+Both architectures use baseline CPU instructions. Linux installation tests run
+inside the manylinux 2.28 build image. macOS CI checks deployment metadata on
+its current runner, but does not run on macOS 13.3.
 
 ## Installation
 
@@ -42,8 +42,14 @@ container and require access to Docker without sudo. Each invocation owns a
 fresh directory under `HOST_BUILD_WORKSPACE`, `RUNNER_TEMP` in CI, or the system
 temporary directory. The override selects the parent directory, not a reusable
 build tree. Containers run as the calling user with a read-only checkout. The
-mold 3.0.0 stage installs Rust 1.100.0 inside that container and bundles mold's
-wrapper and relative linker symlinks along with its executable.
+LLVM stage uses PyPA’s Clang 23.1.6 with the manylinux system C++ library and
+mold. Its distribution includes the LLVM and MLIR development packages, all MLIR
+tools, selected LLVM utilities, and `lib/LLVMgold.so`. Clang consumers can link
+ThinLTO objects with the bundled mold by adding the SDK’s `bin` to `PATH` and
+passing `-fuse-ld=mold -Wl,-plugin,<sdk>/lib/LLVMgold.so`.
+
+The mold 3.0.0 stage installs Rust 1.100.0 inside that container and bundles
+mold's wrapper and relative linker symlinks along with its executable.
 
 macOS scripts require CMake, a C++20-capable Xcode command-line toolchain, and
 uv. Windows scripts require PowerShell 7.4+, CMake, uv, and Visual Studio. The
