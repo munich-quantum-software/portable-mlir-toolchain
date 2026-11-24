@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # shellcheck source=./common.sh
 source "$SCRIPT_DIR/common.sh"
 
-NINJA_VERSION="1.13.0"
+NINJA_VERSION="1.13.2"
 BUILD_TYPE="Release"
 while getopts ":r:z:a:n:b:" opt; do
   case "$opt" in

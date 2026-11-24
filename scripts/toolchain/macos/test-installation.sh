@@ -21,7 +21,7 @@ usage() {
   exit 1
 }
 
-NINJA_VERSION="1.13.0"
+NINJA_VERSION="1.13.2"
 BUILD_TYPE="Release"
 while getopts "z:a:n:b:" opt; do
   case $opt in

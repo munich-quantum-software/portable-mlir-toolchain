@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 ZSTD_VERSION="1.6.0"
-NINJA_VERSION="1.13.0"
+NINJA_VERSION="1.13.2"
 while getopts ":a:v:n:" opt; do
   case "$opt" in
     a) ZSTD_ARCHIVE_PATH="$OPTARG" ;;

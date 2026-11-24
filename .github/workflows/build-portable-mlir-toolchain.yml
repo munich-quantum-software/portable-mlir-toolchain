@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       llvm-project-ref:
-        description: "llvm-project ref or tag (e.g., llvmorg-23.1.4)"
-        default: "llvmorg-23.1.4"
+        description: "llvm-project ref or tag (e.g., llvmorg-23.1.6)"
+        default: "llvmorg-23.1.6"
         required: true
         type: string
       release:
@@ -63,7 +63,7 @@ jobs:
         if: steps.changes.outputs.run-linux == 'true' || steps.changes.outputs.run-macos == 'true' || steps.changes.outputs.windows-build == 'mlir'
         env:
           GH_TOKEN: ${{ github.token }}
-          LLVM_REF: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.4' }}
+          LLVM_REF: ${{ inputs.llvm-project-ref || 'llvmorg-23.1.6' }}
         run: bash scripts/ci/resolve-llvm-ref.sh "$LLVM_REF" >> "$GITHUB_OUTPUT"
       - name: Verify release tag before building
         if: inputs.release == true
@@ -89,6 +89,7 @@ jobs:
       target: ${{ matrix.target }}
       llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
+      zstd-compression-level: ${{ inputs.release && 19 || 15 }}
 
   macos:
     needs: change-detection
@@ -98,6 +99,7 @@ jobs:
       runs-on: macos-26
       llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
+      zstd-compression-level: ${{ inputs.release && 19 || 15 }}
 
   windows:
     needs: change-detection
@@ -117,6 +119,7 @@ jobs:
       target: ${{ matrix.target }}
       llvm-project-ref: ${{ needs.change-detection.outputs.llvm-archive-ref }}
       llvm-project-sha: ${{ needs.change-detection.outputs.llvm-project-sha }}
+      zstd-compression-level: ${{ inputs.release && 19 || 15 }}
 
   # this job does nothing and is only used for branch protection
   required-checks-pass:

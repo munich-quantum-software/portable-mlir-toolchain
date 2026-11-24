@@ -19,6 +19,10 @@ on:
         description: "GitHub runner label (e.g., ubuntu-26.04)"
         required: true
         type: string
+      zstd-compression-level:
+        description: "Compression level for .tar.zst artifacts"
+        default: 19
+        type: number
       zstd-version:
         description: "zstd version (e.g., 1.6.0)"
         default: "1.6.0"
@@ -35,6 +39,7 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
+  ZSTD_COMPRESSION_LEVEL: ${{ inputs.zstd-compression-level }}
   ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_${{ inputs.target }}.tar.gz
   MOLD_ARCHIVE_PATH: mold-${{ inputs.mold-version }}_${{ inputs.target }}.tar.zst
 

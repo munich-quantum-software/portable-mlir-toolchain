@@ -15,14 +15,18 @@ on:
         description: "GitHub runner label (e.g., macos-26)"
         required: true
         type: string
+      zstd-compression-level:
+        description: "Compression level for .tar.zst artifacts"
+        default: 19
+        type: number
       zstd-version:
         description: "zstd version (e.g., 1.6.0)"
         default: "1.6.0"
         required: false
         type: string
       ninja-version:
-        description: "ninja version (e.g., 1.13.0)"
-        default: "1.13.0"
+        description: "ninja version (e.g., 1.13.2)"
+        default: "1.13.2"
         required: false
         type: string
 
@@ -31,6 +35,7 @@ permissions:
 
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
+  ZSTD_COMPRESSION_LEVEL: ${{ inputs.zstd-compression-level }}
   ZSTD_ARCHIVE_PATH: zstd-${{ inputs.zstd-version }}_arm64-apple-darwin.tar.gz
 
 jobs:
