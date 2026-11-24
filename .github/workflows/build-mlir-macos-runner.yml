@@ -16,8 +16,8 @@ on:
         required: true
         type: string
       zstd-version:
-        description: "zstd version (e.g., 1.5.7)"
-        default: "1.5.7"
+        description: "zstd version (e.g., 1.6.0)"
+        default: "1.6.0"
         required: false
         type: string
       ninja-version:

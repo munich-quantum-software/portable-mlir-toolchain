@@ -25,7 +25,7 @@ set -euo pipefail
 # shellcheck source=../common.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../common.sh"
 
-ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.5.7)}"
+ZSTD_VERSION="${ZSTD_VERSION:-$(cat "$IO_DIR/zstd.version" 2>/dev/null || echo 1.6.0)}"
 MOLD_VERSION="${MOLD_VERSION:-$(cat "$IO_DIR/mold.version" 2>/dev/null || echo 3.0.0)}"
 NINJA_VERSION="${NINJA_VERSION:-1.13.0}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
@@ -103,10 +103,10 @@ build_zstd() {
   rm -rf "$zstd_dir" "$zstd_tarball" "$zstd_checksum_file"
 
   curl -fL --retry 5 --retry-delay 5 \
-    "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}" \
+    "https://github.com/meta/zstd/releases/download/v${ZSTD_VERSION}/${zstd_tarball}" \
     -o "$zstd_tarball"
   curl -fL --retry 5 --retry-delay 5 \
-    "https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum_file}" \
+    "https://github.com/meta/zstd/releases/download/v${ZSTD_VERSION}/${zstd_checksum_file}" \
     -o "$zstd_checksum_file"
 
   if ! sha256sum -c "$zstd_checksum_file" > /dev/null 2>&1; then

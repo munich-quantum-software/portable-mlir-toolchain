@@ -324,13 +324,22 @@ function Get-LlvmCommonCMakeArgs {
         [switch]$EnableLld
     )
 
+    $clangCl = 'clang-cl'
+    if ($env:VCINSTALLDIR -and $env:VSCMD_ARG_TGT_ARCH) {
+        # Visual Studio's bundled Clang matches its MSVC standard library.
+        $bundledClangCl = Join-Path $env:VCINSTALLDIR "Tools\Llvm\$env:VSCMD_ARG_TGT_ARCH\bin\clang-cl.exe"
+        if (Test-Path -LiteralPath $bundledClangCl -PathType Leaf) {
+            $clangCl = $bundledClangCl
+        }
+    }
+
     $cmakeArgs = @(
         '-S', 'llvm',
         '-B', $BuildDir,
         '-G', 'Ninja',
         '-DCMAKE_BUILD_TYPE=Release',
-        '-DCMAKE_C_COMPILER=clang-cl',
-        '-DCMAKE_CXX_COMPILER=clang-cl',
+        "-DCMAKE_C_COMPILER=$clangCl",
+        "-DCMAKE_CXX_COMPILER=$clangCl",
         "-DCMAKE_INSTALL_PREFIX=$InstallPrefix",
         "-DLLVM_TARGETS_TO_BUILD=$HostTarget",
         "-DLLVM_ENABLE_PROJECTS=$Projects",

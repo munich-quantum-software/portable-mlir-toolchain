@@ -15,7 +15,7 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$ZstdArchivePath,
-    [string]$ZstdVersion = '1.5.7',
+    [string]$ZstdVersion = '1.6.0',
     [string]$NinjaVersion = '1.13.0'
 )
 
@@ -44,8 +44,8 @@ Invoke-WithTempSession -ScriptBlock {
 
     $zstdTarball = Join-Path $tempBuildDir "zstd-$ZstdVersion.tar.gz"
     $zstdChecksumFile = "$zstdTarball.sha256"
-    $zstdUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdTarball)"
-    $zstdChecksumUrl = "https://github.com/facebook/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdChecksumFile)"
+    $zstdUrl = "https://github.com/meta/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdTarball)"
+    $zstdChecksumUrl = "https://github.com/meta/zstd/releases/download/v$ZstdVersion/$(Split-Path -Leaf $zstdChecksumFile)"
 
     Write-Step "Building zstd v$ZstdVersion"
     Invoke-WebRequest -Uri $zstdUrl -OutFile $zstdTarball
@@ -58,7 +58,8 @@ Invoke-WithTempSession -ScriptBlock {
         throw "Checksum verification failed for $zstdTarball. Expected: $expectedHash, Actual: $actualHash"
     }
 
-    tar '-xzf' $zstdTarball '-C' $tempRoot
+    # Upstream CLI tests contain symlinks that Windows tar cannot always create.
+    tar '-xzf' $zstdTarball '-C' $tempRoot '--exclude' "zstd-$ZstdVersion/tests"
 
     Invoke-InDirectory -Path (Join-Path $zstdDir 'build\cmake') -ScriptBlock {
         $commandArgs = @(
