@@ -46,12 +46,13 @@ mold 3.0.0 stage installs Rust 1.95.0 inside that container and bundles mold's
 wrapper and relative linker symlinks along with its executable.
 
 macOS scripts require CMake, a C++20-capable Xcode command-line toolchain, and
-uv. Windows scripts require PowerShell 7.4+, CMake, uv, Visual Studio, and
-`clang-cl` on `PATH`. Windows CI builds with clang-cl and tests consumers with
-MSVC; use a compatible MSVC runtime/toolset. `PMT_TEMP_ROOT` can select a
-Windows temporary parent directory with sufficient free space. One invocation
-owns and removes its entire temporary subtree. LLVM and MLIR include only the
-host LLVM backend. The bundled linkers are part of the distribution contract.
+uv. Windows scripts require PowerShell 7.4+, CMake, uv, and Visual Studio. The
+LLVM build uses Visual Studio's bundled `clang-cl` when available and falls back
+to `clang-cl` on `PATH`. Windows CI tests consumers with MSVC. Use a compatible
+MSVC runtime and toolset. `PMT_TEMP_ROOT` can select a Windows temporary parent
+directory with sufficient free space. One invocation owns and removes its entire
+temporary subtree. LLVM and MLIR include only the host LLVM backend. The bundled
+linkers are part of the distribution contract.
 
 ## Assertion-free release builds
 
