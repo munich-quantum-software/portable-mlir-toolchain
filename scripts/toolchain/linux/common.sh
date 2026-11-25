@@ -49,7 +49,6 @@ run_manylinux_stage() (
   mkdir -p "$io_dir"
 
   local env_args=(
-    -e HOME=/build/home
     -e STAGE="$stage"
     -e IO_DIR=/io
     -e BUILD_WORKSPACE=/build
@@ -70,11 +69,21 @@ run_manylinux_stage() (
   host_build_workspace="$(mktemp -d "$workspace_parent/pmt.XXXXXX")"
   trap 'rm -rf "$host_build_workspace"' EXIT
 
-  docker run --rm --user "$(id -u):$(id -g)" \
+  docker run --rm \
     -v "$root_dir":/work:ro \
     -v "$io_dir":/io:rw \
     -v "$host_build_workspace":/build:rw \
     "${env_args[@]}" \
     "$base_image" \
-    bash -euo pipefail "$in_container_script"
+    bash -euc '
+      if [[ "$STAGE" == build-* ]]; then
+        manylinux-install-clang -v 23.1.6.0 -c f2f15b723880761ec9c852dc8a46f0de6244b99e59fc632ae998a88fb5ddfeed
+        export CC=/opt/clang/bin/clang CXX=/opt/clang/bin/clang++
+      fi
+      if [[ "$STAGE" == build-mlir ]]; then
+        dnf -y install gcc-toolset-14-binutils-devel
+      fi
+      export HOME=/build/home
+      exec setpriv --reuid="$1" --regid="$2" --clear-groups bash "$3"
+    ' -- "$(id -u)" "$(id -g)" "$in_container_script"
 )

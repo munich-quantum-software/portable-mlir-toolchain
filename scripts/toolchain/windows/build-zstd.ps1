@@ -62,11 +62,14 @@ Invoke-WithTempSession -ScriptBlock {
     tar '-xzf' $zstdTarball '-C' $tempRoot '--exclude' "zstd-$ZstdVersion/tests"
 
     Invoke-InDirectory -Path (Join-Path $zstdDir 'build\cmake') -ScriptBlock {
+        $clangCl = Get-ClangCl
         $commandArgs = @(
             '-S', '.',
             '-B', 'build',
             '-G', 'Ninja',
             '-DCMAKE_BUILD_TYPE=Release',
+            "-DCMAKE_C_COMPILER=$clangCl",
+            "-DCMAKE_CXX_COMPILER=$clangCl",
             "-DCMAKE_INSTALL_PREFIX=$tempInstallDir",
             '-DZSTD_BUILD_STATIC=ON',
             '-DZSTD_BUILD_SHARED=OFF'

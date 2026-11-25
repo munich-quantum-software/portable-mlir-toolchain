@@ -316,6 +316,18 @@ function Initialize-LlvmSourceTree {
     return $RepoDir
 }
 
+function Get-ClangCl {
+    if ($env:VCINSTALLDIR -and $env:VSCMD_ARG_TGT_ARCH) {
+        # Visual Studio's bundled Clang matches its MSVC standard library.
+        $bundledClangCl = Join-Path $env:VCINSTALLDIR "Tools\Llvm\$env:VSCMD_ARG_TGT_ARCH\bin\clang-cl.exe"
+        if (Test-Path -LiteralPath $bundledClangCl -PathType Leaf) {
+            return $bundledClangCl
+        }
+    }
+
+    return 'clang-cl'
+}
+
 function Get-LlvmCommonCMakeArgs {
     param(
         [Parameter(Mandatory = $true)][string]$BuildDir,
@@ -325,14 +337,7 @@ function Get-LlvmCommonCMakeArgs {
         [switch]$EnableLld
     )
 
-    $clangCl = 'clang-cl'
-    if ($env:VCINSTALLDIR -and $env:VSCMD_ARG_TGT_ARCH) {
-        # Visual Studio's bundled Clang matches its MSVC standard library.
-        $bundledClangCl = Join-Path $env:VCINSTALLDIR "Tools\Llvm\$env:VSCMD_ARG_TGT_ARCH\bin\clang-cl.exe"
-        if (Test-Path -LiteralPath $bundledClangCl -PathType Leaf) {
-            $clangCl = $bundledClangCl
-        }
-    }
+    $clangCl = Get-ClangCl
 
     $cmakeArgs = @(
         '-S', 'llvm',

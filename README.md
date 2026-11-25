@@ -10,10 +10,10 @@ decompression.
 
 Windows builds support Release mode only. The Linux and macOS build scripts also
 support Debug mode. macOS builds require Apple silicon (`arm64`) and target
-macOS 13.3 or newer. Linux targets glibc 2.28 or newer on x86-64 and AArch64;
-CPU-specific native tuning and LTO bitcode are not used. Linux installation
-tests run inside the manylinux 2.28 build image. macOS CI checks deployment
-metadata on its current runner, but does not run on macOS 13.3.
+macOS 13.3 or newer. Linux targets glibc 2.28 or newer on x86-64 and AArch64.
+Both architectures use baseline CPU instructions. Linux installation tests run
+inside the manylinux 2.28 build image. macOS CI checks deployment metadata on
+its current runner, but does not run on macOS 13.3.
 
 ## Installation
 
@@ -37,22 +37,30 @@ If desired, you can run the staged build scripts directly. Refer to
   `scripts/toolchain/windows/build-lld.ps1`, and
   `scripts/toolchain/windows/build-mlir.ps1` for Windows.
 
-The usage is documented in each script. Linux builds run in a manylinux
-container and require access to Docker without sudo. Each invocation owns a
-fresh directory under `HOST_BUILD_WORKSPACE`, `RUNNER_TEMP` in CI, or the system
-temporary directory. The override selects the parent directory, not a reusable
-build tree. Containers run as the calling user with a read-only checkout. The
-mold 3.0.0 stage installs Rust 1.100.0 inside that container and bundles mold's
-wrapper and relative linker symlinks along with its executable.
+All platforms build the SDK with LLVM’s `install-distribution` target. The
+[shared component list](scripts/toolchain/distribution.cmake) includes the LLVM
+and MLIR development libraries, headers and CMake packages, all MLIR tools, and
+selected LLVM utilities. Each SDK includes the LLVM backend for its host.
 
-macOS scripts require CMake, a C++20-capable Xcode command-line toolchain, and
-uv. Windows scripts require PowerShell 7.4+, CMake, uv, and Visual Studio. The
-LLVM build uses Visual Studio's bundled `clang-cl` when available and falls back
-to `clang-cl` on `PATH`. Windows CI tests consumers with MSVC. Use a compatible
-MSVC runtime and toolset. `PMT_TEMP_ROOT` can select a Windows temporary parent
-directory with sufficient free space. One invocation owns and removes its entire
-temporary subtree. LLVM and MLIR include only the host LLVM backend. The bundled
-linkers are part of the distribution contract.
+Linux builds require Docker and run in the stock manylinux 2.28 image. Each
+stage builds as the calling user with a read-only checkout and a fresh directory
+under `HOST_BUILD_WORKSPACE`, `RUNNER_TEMP` in CI, or the system temporary
+directory. The build stages install PyPA’s Clang 23.1.6 in the container. Clang
+builds zstd, the native C code in mold, and LLVM/MLIR. Rust 1.100.0 compiles
+mold 3.0.0 and uses Clang as its link driver. LLVM/MLIR uses the manylinux
+system C++ library and links with mold.
+
+The Linux SDK includes mold, its wrapper and linker aliases, and
+`lib/LLVMgold.so`. Clang consumers can link ThinLTO objects by adding the SDK’s
+`bin` to `PATH` and passing `-fuse-ld=mold -Wl,-plugin,<sdk>/lib/LLVMgold.so`.
+
+macOS builds use Xcode’s Apple Clang and require C++20 support, CMake, and uv.
+Windows builds require PowerShell 7.4+, CMake, uv, and Visual Studio. They use
+Visual Studio’s bundled `clang-cl` when available and fall back to `clang-cl` on
+`PATH`. The Windows SDK bundles LLD and CI tests consumers with MSVC. Use a
+compatible MSVC runtime and toolset. `PMT_TEMP_ROOT` can select a Windows
+temporary parent directory with sufficient free space. Each invocation owns and
+removes its temporary subtree.
 
 ## Assertion-free release builds
 

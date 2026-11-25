@@ -57,12 +57,14 @@ Invoke-WithTempSession -ScriptBlock {
             -Projects 'mlir' `
             -EnableLld
 
+        $cmakeArgs += @('-C', (Join-Path $PSScriptRoot '..\distribution.cmake'))
+
         Write-Step 'CMake configure MLIR (Release)'
         & cmake @cmakeArgs
         Write-Done
 
         Write-Step 'Build and install MLIR (Release)'
-        cmake '--build' $tempBuildDir '--target' 'install' '--config' 'Release'
+        cmake '--build' $tempBuildDir '--target' 'install-distribution' '--config' 'Release'
         Write-Done
     }
 

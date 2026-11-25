@@ -70,7 +70,9 @@ ZSTD_EXE_PATH="$zstd_dir/zstd"
 log_done
 
 log_step "CMake configure MLIR (${BUILD_TYPE})"
-cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
+cmake -C "$SCRIPT_DIR/../distribution.cmake" -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
+  -DCMAKE_C_COMPILER="$(xcrun --find clang)" \
+  -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DCMAKE_INSTALL_PREFIX="$install_dir" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
@@ -95,7 +97,7 @@ cmake -S "$repo_dir/llvm" -B "$build_dir" -G Ninja \
 log_done
 
 log_step "Build and install MLIR (${BUILD_TYPE})"
-cmake --build "$build_dir" --target install --config "$BUILD_TYPE"
+cmake --build "$build_dir" --target install-distribution --config "$BUILD_TYPE"
 log_done
 
 log_step "Stripping debug symbols"

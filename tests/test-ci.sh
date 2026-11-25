@@ -81,7 +81,9 @@ done
 cat > "$tmp/bin/docker" <<'DOCKER'
 #!/bin/bash
 set -euo pipefail
-[[ " $* " != *' --privileged '* && " $* " == *' --user '* && " $* " == *':/work:ro '* ]]
+[[ " $* " != *' --privileged '* && " $* " == *':/work:ro '* ]]
+[[ "$*" == *'setpriv --reuid="$1" --regid="$2" --clear-groups'* ]]
+[[ "${*: -3:2}" == "$(id -u) $(id -g)" ]]
 for argument in "$@"; do
   case "$argument" in
     *:/build:rw) workspace=${argument%:/build:rw} ;;
