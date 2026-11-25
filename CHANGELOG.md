@@ -8,6 +8,54 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
 
 ## [Unreleased]
 
+## [2026.11.25]
+
+### Distribution
+
+- LLVM tag: `llvmorg-23.1.6` ([#135]) ([**@burgholzer**])
+- zstd version: `1.6.0` ([#133]) ([**@burgholzer**])
+- mold version: `3.0.0`
+
+### Added
+
+- 🐧 Bundle `lib/LLVMgold.so` in both Linux SDK variants so Clang consumers can
+  link ThinLTO objects with the bundled mold ([#136]) ([**@burgholzer**])
+
+### Changed
+
+- 📦 Package all MLIR tools, LLVM and MLIR development libraries, headers and
+  CMake packages, and a selection of LLVM tools on every platform. Standalone
+  LLVM utilities such as `lli`, `llvm-cov` and `llvm-reduce` are omitted
+  ([#136]) ([**@burgholzer**])
+- 🐧 Build Linux LLVM/MLIR, zstd and mold's C sources with Clang 23.1.6.
+  LLVM/MLIR links with mold and uses the manylinux system C++ library ([#136])
+  ([**@burgholzer**])
+- ⚡ Reduce the size of Linux Release tools with mold's safe identical code
+  folding ([#136]) ([**@burgholzer**])
+- 🏁 Build Windows zstd with the same `clang-cl` compiler as LLVM and LLD
+  ([#136]) ([**@burgholzer**])
+- 🐧 Update the manylinux 2.28 images to `2026.11.21-1` ([#135])
+  ([**@burgholzer**])
+- 🦀 Build the bundled mold linker with Rust 1.100.0 ([#135])
+  ([**@burgholzer**])
+- 🛠️ Build with Ninja 1.13.2 on all platforms ([#135]) ([**@burgholzer**])
+- ⚡ Use zstd level 15 for non-release CI archives and level 19 for release
+  archives ([#135]) ([**@burgholzer**])
+- 📦 Use the full resolved LLVM commit in archive names for branch and commit
+  builds. LLVM release builds keep the upstream tag in their filenames ([#129])
+  ([**@burgholzer**])
+- 👷 Skip LLVM builds for orchestration-only changes and run Windows helper-only
+  checks with the zstd build ([#129]) ([**@burgholzer**])
+- ✅ Test each Linux SDK in a fresh manylinux container on the build runner
+  before uploading its archive ([#129]) ([**@burgholzer**])
+
+### Fixed
+
+- 🏁 Prefer Visual Studio's bundled `clang-cl` for compatibility with its MSVC
+  headers ([#133]) ([**@burgholzer**])
+- 🏁 Skip upstream test symlinks when extracting zstd sources on Windows
+  ([#133]) ([**@burgholzer**])
+
 ## [2026.10.28]
 
 ### Distribution
@@ -351,7 +399,8 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- Version links -->
 
-[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.10.28...HEAD
+[unreleased]: https://github.com/munich-quantum-software/portable-mlir-toolchain/compare/2026.11.25...HEAD
+[2026.11.25]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.11.25
 [2026.10.28]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.28
 [2026.10.27]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.27
 [2026.10.06]: https://github.com/munich-quantum-software/portable-mlir-toolchain/releases/tag/2026.10.06
@@ -379,6 +428,10 @@ _This is the initial release of the `portable-mlir-toolchain` project._
 
 <!-- PR links -->
 
+[#136]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/136
+[#135]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/135
+[#133]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/133
+[#129]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/129
 [#117]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/117
 [#107]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/107
 [#101]: https://github.com/munich-quantum-software/portable-mlir-toolchain/pull/101
