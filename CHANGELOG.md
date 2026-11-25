@@ -34,16 +34,20 @@ The format is based on a mixture of [Keep a Changelog] and [Common Changelog].
   folding ([#136]) ([**@burgholzer**])
 - 🏁 Build Windows zstd with the same `clang-cl` compiler as LLVM and LLD
   ([#136]) ([**@burgholzer**])
-- 🐧 Update the manylinux 2.28 images to `2026.11.21-1` and build mold with Rust
-  1.100.0 ([#135]) ([**@burgholzer**])
+- 🐧 Update the manylinux 2.28 images to `2026.11.21-1` ([#135])
+  ([**@burgholzer**])
+- 🦀 Build the bundled mold linker with Rust 1.100.0 ([#135])
+  ([**@burgholzer**])
 - 🛠️ Build with Ninja 1.13.2 on all platforms ([#135]) ([**@burgholzer**])
 - ⚡ Use zstd level 15 for non-release CI archives and level 19 for release
   archives ([#135]) ([**@burgholzer**])
 - 📦 Use the full resolved LLVM commit in archive names for branch and commit
   builds. LLVM release builds keep the upstream tag in their filenames ([#129])
   ([**@burgholzer**])
-- 👷 Skip LLVM builds for orchestration-only changes and test each Linux SDK in
-  a fresh manylinux container before upload ([#129]) ([**@burgholzer**])
+- 👷 Skip LLVM builds for orchestration-only changes and run Windows helper-only
+  checks with the zstd build ([#129]) ([**@burgholzer**])
+- ✅ Test each Linux SDK in a fresh manylinux container on the build runner
+  before uploading its archive ([#129]) ([**@burgholzer**])
 
 ### Fixed
 
